@@ -1,15 +1,11 @@
 #pragma once
 
-#if __cplusplus >= 201703L
 #include <charconv>
-#include <system_error>
-#endif
-
 #include <cstdint>
+#include <string_view>
+#include <system_error>
 
 #include <expected.hpp>
-
-#include "utils/stdcompat/string_view.hpp"
 
 namespace devilution {
 
@@ -23,10 +19,9 @@ using ParseIntResult = tl::expected<IntT, ParseIntError>;
 
 template <typename IntT>
 ParseIntResult<IntT> ParseInt(
-    string_view str, IntT min = std::numeric_limits<IntT>::min(),
+    std::string_view str, IntT min = std::numeric_limits<IntT>::min(),
     IntT max = std::numeric_limits<IntT>::max(), const char **endOfParse = nullptr)
 {
-#if __cplusplus >= 201703L
 	IntT value;
 	const std::from_chars_result result = std::from_chars(str.data(), str.data() + str.size(), value);
 	if (endOfParse != nullptr) {
@@ -39,35 +34,6 @@ ParseIntResult<IntT> ParseInt(
 	if (result.ec != std::errc())
 		return tl::unexpected(ParseIntError::ParseError);
 	return value;
-#else
-	if (str.empty()) {
-		return tl::unexpected { ParseIntError::ParseError };
-	}
-	long long result = 0;
-	bool negative = false;
-	if (str[0] == '-') {
-		negative = true;
-		str.remove_prefix(1);
-	}
-	if (str.empty()) {
-		return tl::unexpected { ParseIntError::ParseError };
-	}
-	// Fall back to a simple implementation:
-	while (!str.empty()) {
-		if (str[0] < '0' || str[0] > '9') {
-			return tl::unexpected { ParseIntError::ParseError };
-		}
-		result = result * 10 + (str[0] - '0');
-		str.remove_prefix(1);
-	}
-	if (negative) {
-		result = -result;
-	}
-	if (result > max || result < min) {
-		return tl::unexpected { ParseIntError::OutOfRange };
-	}
-	return result;
-#endif
 }
 
 /**
@@ -76,10 +42,10 @@ ParseIntResult<IntT> ParseInt(
  * @param[out] endOfParse equivalent to std::from_chars_result::ptr, used to tell where parsing stopped
  * @return a value in the range [0, 64], representing a 2.6 fixed value in the range [0, 1.0]
  */
-uint8_t ParseFixed6Fraction(string_view str, const char **endOfParse = nullptr);
+uint8_t ParseFixed6Fraction(std::string_view str, const char **endOfParse = nullptr);
 
 template <typename IntT>
-ParseIntResult<IntT> ParseFixed6(string_view str, const char **endOfParse = nullptr)
+ParseIntResult<IntT> ParseFixed6(std::string_view str, const char **endOfParse = nullptr)
 {
 	if (endOfParse != nullptr) {
 		// To allow for early returns we set the end pointer to the start of the string, which is the common case for errors.
