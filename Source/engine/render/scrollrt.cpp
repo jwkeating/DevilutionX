@@ -1594,6 +1594,20 @@ void CalcViewportGeometry()
 	tileColums = (screenWidth - renderStart.x + TILE_WIDTH - 1) / TILE_WIDTH;
 }
 
+Point GetScreenPosition(Point tile)
+{
+	Point firstTile = ViewPosition;
+	Displacement offset = {};
+	CalcFirstTilePosition(firstTile, offset);
+
+	Displacement delta = firstTile - tile;
+
+	Point position {};
+	position += delta.worldToScreen();
+	position += offset;
+	return position;
+}
+
 extern SDL_Surface *PalSurface;
 
 void ClearScreenBuffer()
