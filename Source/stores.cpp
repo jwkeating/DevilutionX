@@ -349,6 +349,32 @@ bool StoreAutoPlace(Item &item, bool persistItem)
 	return AutoPlaceItemInInventory(player, item, persistItem);
 }
 
+void ScrollVendorStore(Item *itemData, int storeLimit, int idx, int selling = true)
+{
+	ClearSText(5, 21);
+	stextup = 5;
+
+	for (int l = 5; l < 20 && idx < storeLimit; l += 4) {
+		const Item &item = itemData[idx];
+		if (!item.isEmpty()) {
+			UiFlags itemColor = item.getTextColorWithStatCheck();
+			AddSText(20, l, item.getName(), itemColor, true, item._iCurs, true);
+			AddSTextVal(l, item._iIdentified ? item._iIvalue : item._ivalue);
+			PrintStoreItem(item, l + 1, itemColor, true);
+			stextdown = l;
+		} else {
+			l -= 4;
+		}
+		idx++;
+	}
+	if (selling) {
+		if (stextsel != -1 && !stext[stextsel].isSelectable() && stextsel != BackButtonLine())
+			stextsel = stextdown;
+	} else {
+		stextsmax = std::max(storeLimit - 4, 0);
+	}
+}
+
 void StartSmith()
 {
 	stextsize = false;
@@ -368,22 +394,7 @@ void StartSmith()
 
 void ScrollSmithBuy(int idx)
 {
-	ClearSText(5, 21);
-	stextup = 5;
-
-	for (int l = 5; l < 20; l += 4) {
-		if (!gSmithBasicItems[idx].isEmpty()) {
-			UiFlags itemColor = gSmithBasicItems[idx].getTextColorWithStatCheck();
-			AddSText(20, l, gSmithBasicItems[idx].getName(), itemColor, true, gSmithBasicItems[idx]._iCurs, true);
-			AddSTextVal(l, gSmithBasicItems[idx]._iIvalue);
-			PrintStoreItem(gSmithBasicItems[idx], l + 1, itemColor, true);
-			stextdown = l;
-			idx++;
-		}
-	}
-
-	if (stextsel != -1 && !stext[stextsel].isSelectable() && stextsel != BackButtonLine())
-		stextsel = stextdown;
+	ScrollVendorStore(gSmithBasicItems, std::size(gSmithBasicItems), idx);
 }
 
 uint32_t TotalPlayerGold()
@@ -423,29 +434,13 @@ void StartSmithBuy()
 
 void ScrollSmithPremiumBuy(int boughtitems)
 {
-	ClearSText(5, 21);
-	stextup = 5;
-
 	int idx = 0;
 	for (; boughtitems != 0; idx++) {
 		if (!gSmithPremiumItems[idx].isEmpty())
 			boughtitems--;
 	}
 
-	for (int l = 5; l < 20 && idx < SMITH_PREMIUM_ITEMS; l += 4) {
-		if (!gSmithPremiumItems[idx].isEmpty()) {
-			UiFlags itemColor = gSmithPremiumItems[idx].getTextColorWithStatCheck();
-			AddSText(20, l, gSmithPremiumItems[idx].getName(), itemColor, true, gSmithPremiumItems[idx]._iCurs, true);
-			AddSTextVal(l, gSmithPremiumItems[idx]._iIvalue);
-			PrintStoreItem(gSmithPremiumItems[idx], l + 1, itemColor, true);
-			stextdown = l;
-		} else {
-			l -= 4;
-		}
-		idx++;
-	}
-	if (stextsel != -1 && !stext[stextsel].isSelectable() && stextsel != BackButtonLine())
-		stextsel = stextdown;
+	ScrollVendorStore(gSmithPremiumItems, std::size(gSmithPremiumItems), idx);
 }
 
 bool StartSmithPremiumBuy()
@@ -512,30 +507,7 @@ bool SmithSellOk(int i)
 
 void ScrollSmithSell(int idx)
 {
-	ClearSText(5, 21);
-	stextup = 5;
-
-	for (int l = 5; l < 20; l += 4) {
-		if (idx >= storenumh)
-			break;
-		if (!storehold[idx].isEmpty()) {
-			UiFlags itemColor = storehold[idx].getTextColorWithStatCheck();
-
-			if (storehold[idx]._iMagical != ITEM_QUALITY_NORMAL && storehold[idx]._iIdentified) {
-				AddSText(20, l, storehold[idx].getName(), itemColor, true, storehold[idx]._iCurs, true);
-				AddSTextVal(l, storehold[idx]._iIvalue);
-			} else {
-				AddSText(20, l, storehold[idx].getName(), itemColor, true, storehold[idx]._iCurs, true);
-				AddSTextVal(l, storehold[idx]._ivalue);
-			}
-
-			PrintStoreItem(storehold[idx], l + 1, itemColor, true);
-			stextdown = l;
-		}
-		idx++;
-	}
-
-	stextsmax = std::max(storenumh - 4, 0);
+	ScrollVendorStore(storehold, storenumh, idx, false);
 }
 
 #if 0 // Something like resale = 1000*isqrt(value/1000) could be used to compute resale value.  Or just use sqrtf() because this code might be client-side only so desync isn't an issue.
@@ -782,22 +754,7 @@ void StartWitch()
 
 void ScrollWitchBuy(int idx)
 {
-	ClearSText(5, 21);
-	stextup = 5;
-
-	for (int l = 5; l < 20; l += 4) {
-		if (!gWitchItems[idx].isEmpty()) {
-			UiFlags itemColor = gWitchItems[idx].getTextColorWithStatCheck();
-			AddSText(20, l, gWitchItems[idx].getName(), itemColor, true, gWitchItems[idx]._iCurs, true);
-			AddSTextVal(l, gWitchItems[idx]._iIvalue);
-			PrintStoreItem(gWitchItems[idx], l + 1, itemColor, true);
-			stextdown = l;
-			idx++;
-		}
-	}
-
-	if (stextsel != -1 && !stext[stextsel].isSelectable() && stextsel != BackButtonLine())
-		stextsel = stextdown;
+	ScrollVendorStore(gWitchItems, std::size(gWitchItems), idx);
 }
 
 void WitchBookLevel(Item &bookItem)
@@ -1155,21 +1112,7 @@ void StartHealer()
 
 void ScrollHealerBuy(int idx)
 {
-	ClearSText(5, 21);
-	stextup = 5;
-	for (int l = 5; l < 20; l += 4) {
-		if (!gHealerItems[idx].isEmpty()) {
-			UiFlags itemColor = gHealerItems[idx].getTextColorWithStatCheck();
-			AddSText(20, l, gHealerItems[idx].getName(), itemColor, true, gHealerItems[idx]._iCurs, true);
-			AddSTextVal(l, gHealerItems[idx]._iIvalue);
-			PrintStoreItem(gHealerItems[idx], l + 1, itemColor, true);
-			stextdown = l;
-			idx++;
-		}
-	}
-
-	if (stextsel != -1 && !stext[stextsel].isSelectable() && stextsel != BackButtonLine())
-		stextsel = stextdown;
+	ScrollVendorStore(gHealerItems, std::size(gHealerItems), idx);
 }
 
 void StartHealerBuy()
