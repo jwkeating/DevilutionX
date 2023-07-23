@@ -33,7 +33,7 @@ namespace devilution {
 constexpr int InventoryGridCells = 40;
 constexpr int MaxBeltItems = 8;
 constexpr int MaxResistance = 75;
-constexpr int MaxCharacterLevel = 50;
+constexpr uint8_t MaxCharacterLevel = 50;
 constexpr uint8_t MaxSpellLevel = 15;
 constexpr int PlayerNameLength = 32;
 
@@ -338,7 +338,7 @@ struct Player {
 	ActorPosition position;
 	Direction _pdir; // Direction faced by player (direction enum)
 	HeroClass _pHeroClass;
-	int8_t _pLevel;
+	uint8_t _pLevel;
 	uint8_t _pgfxnum; // Bitmask indicating what variant of the sprite the player is using. The 3 lower bits define weapon (PlayerWeaponGraphic) and the higher bits define armour (starting with PlayerArmorGraphic)
 	int8_t _pISplLvlAdd;
 	int8_t _pManaCostMod; // JWK_ALLOW_MANA_COST_MODIFIER - This is a % chance to have free or costly spell (- means free, + means costly)

@@ -3013,7 +3013,7 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 	}
 
 	// Use a minimum of 1 so level 0 characters can still gain experience
-	const uint32_t clampedPlayerLevel = static_cast<uint32_t>(std::max(static_cast<int>(player._pLevel), 1));
+	const uint32_t clampedPlayerLevel = std::max<uint32_t>(player._pLevel, 1);
 #if JWK_EDIT_EXP_GAIN
 	constexpr uint32_t levelDiffForZeroExp = 16; // if monsters are this far below player level, player gets 0 experience.
 	uint32_t levelAdjustedExp;
@@ -3045,12 +3045,12 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 	}
 
 	// Increase player level if applicable
-	int newLvl = player._pLevel;
+	unsigned newLvl = player._pLevel;
 	while (newLvl < MaxCharacterLevel && player._pExperience >= GetNextExperienceThresholdForLevel(newLvl)) {
 		newLvl++;
 	}
 	if (newLvl != player._pLevel) {
-		for (int i = newLvl - player._pLevel; i > 0; i--) {
+		for (unsigned i = newLvl - player._pLevel; i > 0; i--) {
 			NextPlrLevel(player);
 		}
 	}

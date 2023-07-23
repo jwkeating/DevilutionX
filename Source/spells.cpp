@@ -345,7 +345,7 @@ void DoHealOther(const Player &caster, Player &target)
 	int hp = CalcHealOtherAmount(caster, target, caster.GetSpellLevel(SpellID::HealOther)) << 6;
 #else // original code, identical to missiles.cpp except monk is *3 instead of *2
 	int hp = (GenerateRnd(10) + 1) << 6;
-	for (int i = 0; i < caster._pLevel; i++) {
+	for (unsigned i = 0; i < caster._pLevel; i++) {
 		hp += (GenerateRnd(4) + 1) << 6;
 	}
 	for (int i = 0; i < caster.GetSpellLevel(SpellID::HealOther); i++) {

@@ -4269,7 +4269,7 @@ void SpawnItemsForWitch(int dungeonLevelUpTo16) // must match RecreateWitchItemF
 
 static void ConstructBoyItemFromSeed(Item &item, uint32_t seed, int itemLevel)
 {
-	itemLevel = std::clamp<int>(itemLevel, 1, std::min((int)CF_LEVEL, MaxCharacterLevel));
+	itemLevel = std::clamp<int>(itemLevel, 1, std::min((int)CF_LEVEL, (int)MaxCharacterLevel));
 #if JWK_LOOT_QUALITY_DEPENDS_ON_DIFFICULTY
 	int minLevelForBaseItem = FlipCoin() ? 1 : std::min(10, (itemLevel + 1) / 4); // itemLevel could be high so we need to make sure there are base items which exist
 	int minLevelForAffixes = FlipCoin(4) ? 1 : std::min(25, (itemLevel + 1) / 2);
