@@ -121,9 +121,9 @@ int GetManaAmount(const Player &player, SpellID spellID)
 	int ma; // mana amount
 	if (spellID == SpellID::Healing || spellID == SpellID::HealOther) {
 #if 1 // jwk - heal spell mana cost
-		ma = std::max(5, 5 + player._pLevel - std::max(0, spellLvlMinus1));
+		ma = std::max(5, 5 + player.getCharacterLevel() - std::max(0, spellLvlMinus1));
 #else // original code
-		ma = (GetSpellData(SpellID::Healing).sManaCost + 2 * player._pLevel - adj);
+		ma = (GetSpellData(SpellID::Healing).sManaCost + 2 * player.getCharacterLevel() - adj);
 #endif
 #if JWK_EDIT_MANA_SHIELD // make mana shield expensive to cast, proportional to your base mana
 	} else if (spellID == SpellID::ManaShield) {
@@ -345,7 +345,7 @@ void DoHealOther(const Player &caster, Player &target)
 	int hp = CalcHealOtherAmount(caster, target, caster.GetSpellLevel(SpellID::HealOther)) << 6;
 #else // original code, identical to missiles.cpp except monk is *3 instead of *2
 	int hp = (GenerateRnd(10) + 1) << 6;
-	for (unsigned i = 0; i < caster._pLevel; i++) {
+	for (unsigned i = 0; i < caster.getCharacterLevel(); i++) {
 		hp += (GenerateRnd(4) + 1) << 6;
 	}
 	for (int i = 0; i < caster.GetSpellLevel(SpellID::HealOther); i++) {

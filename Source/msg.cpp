@@ -2110,9 +2110,9 @@ size_t OnPlayerJoinLevel(const TCmd *pCmd, Player &player)
 		ResetPlayerGFX(player);
 		player.plractive = true;
 		if (IncreaseNumActivePlayers()) {
-			EventPlrMsg(fmt::format(fmt::runtime(_("Player '{:s}' (level {:d}) just joined the game.  Diablo's minions grow stronger.")), player._pName, player._pLevel));
+			EventPlrMsg(fmt::format(fmt::runtime(_("Player '{:s}' (level {:d}) just joined the game.  Diablo's minions grow stronger.")), player._pName, player.getCharacterLevel()));
 		} else {
-			EventPlrMsg(fmt::format(fmt::runtime(_("Player '{:s}' (level {:d}) just joined the game")), player._pName, player._pLevel));
+			EventPlrMsg(fmt::format(fmt::runtime(_("Player '{:s}' (level {:d}) just joined the game")), player._pName, player.getCharacterLevel()));
 		}
 	}
 

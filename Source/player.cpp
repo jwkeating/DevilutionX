@@ -503,10 +503,10 @@ void StartPlrHit(Player &player, int dam, bool forcehit)
 
 	RedrawComponent(PanelDrawComponent::Health);
 	if (player._pHeroClass == HeroClass::Barbarian) {
-		if (dam >> 6 < player._pLevel + player._pLevel / 4 && !forcehit) {
+		if (dam >> 6 < player.getCharacterLevel() + player.getCharacterLevel() / 4 && !forcehit) {
 			return;
 		}
-	} else if (dam >> 6 < player._pLevel && !forcehit) {
+	} else if (dam >> 6 < player.getCharacterLevel() && !forcehit) {
 		return;
 	}
 
@@ -1138,10 +1138,10 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 		return false;
 
 	if (adjacentDamage) {
-		if (player._pLevel > 20)
+		if (player.getCharacterLevel() > 20)
 			hitChance -= 30;
 		else
-			hitChance -= (35 - player._pLevel) * 2;
+			hitChance -= (35 - player.getCharacterLevel()) * 2;
 	}
 
 	int diceRollToAvoidHit = GenerateRnd(100);
@@ -1151,7 +1151,7 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 
 	hitChance += player.GetMeleeToHit() - player.CalculateArmorAfterPierce(monster.armorClass, true);
 #if JWK_EDIT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
-	hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty));
+	hitChance += 2 * (player.getCharacterLevel() - monster.level(sgGameInitInfo.nDifficulty));
 #endif
 	hitChance = std::clamp(hitChance, 5, 95);
 
@@ -1174,11 +1174,11 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 	dam += player._pDamageMod;
 	if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
 #if JWK_EDIT_CRITICAL_STRIKE
-		if (GenerateRnd(200) < player._pLevel) { // 0.5% - 25% chance at level 1 - 50
+		if (GenerateRnd(200) < player.getCharacterLevel()) { // 0.5% - 25% chance at level 1 - 50
 			dam *= 2;
 		}
 #else // original code
-		if (GenerateRnd(100) < player._pLevel) {
+		if (GenerateRnd(100) < player.getCharacterLevel()) {
 			dam *= 2;
 		}
 #endif
@@ -1305,7 +1305,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 
 	int hitChance = attacker.GetMeleeToHit() - target.GetArmor();
 #if JWK_EDIT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
-	hitChance += 2 * (attacker._pLevel - target._pLevel);
+	hitChance += 2 * (attacker.getCharacterLevel() - target.getCharacterLevel());
 #endif
 	hitChance = std::clamp(hitChance, 5, 95);
 
@@ -1320,7 +1320,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 	if ((target._pmode == PM_STAND || target._pmode == PM_ATTACK) && target._pBlockFlag) {
 		blockDiceRoll = GenerateRnd(100);
 	}
-	int blockChance = target.GetBlockChance(attacker._pLevel);
+	int blockChance = target.GetBlockChance(attacker.getCharacterLevel());
 	if (blockDiceRoll < blockChance) {
 		Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
@@ -1338,11 +1338,11 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 
 	if (attacker._pHeroClass == HeroClass::Warrior || attacker._pHeroClass == HeroClass::Barbarian) {
 #if JWK_EDIT_CRITICAL_STRIKE
-		if (GenerateRnd(200) < attacker._pLevel) { // 0.5% - 25% chance at level 1 - 50
+		if (GenerateRnd(200) < attacker.getCharacterLevel()) { // 0.5% - 25% chance at level 1 - 50
 			dam *= 2;
 		}
 #else // original code
-		if (GenerateRnd(100) < attacker._pLevel) {
+		if (GenerateRnd(100) < attacker.getCharacterLevel()) {
 			dam *= 2;
 		}
 #endif
@@ -1953,8 +1953,9 @@ static void ValidatePlayer()
 	assert(MyPlayer != nullptr);
 	Player &myPlayer = *MyPlayer;
 
-	if (myPlayer._pLevel > MaxCharacterLevel)
-		myPlayer._pLevel = MaxCharacterLevel;
+	// Player::setCharacterLevel both ensures that the player level is within the expected range and sets _pNextExpr to the appropriate value for their next level up
+	myPlayer.setCharacterLevel(myPlayer.getCharacterLevel());
+	// This lets us catch cases where someone is editing experience directly through memory modification and reset their experience back to the expected cap.
 	if (myPlayer._pExperience > myPlayer._pNextExper) {
 		myPlayer._pExperience = myPlayer._pNextExper;
 		if (*sgOptions.Gameplay.experienceBar) {
@@ -2567,7 +2568,8 @@ void Player::UpdatePreviewCelSprite(_cmd_id cmdId, Point point, uint16_t wParam1
 
 void Player::setCharacterLevel(uint8_t level)
 {
-	this->_pLevel = std::clamp<uint8_t>(level, 1U, getMaxCharacterLevel());
+	this->_pLevel = std::clamp<uint8_t>(level, 1U, MaxCharacterLevel);
+	this->_pNextExper = GetNextExperienceThresholdForLevel(this->getCharacterLevel());
 }
 
 uint8_t Player::getMaxCharacterLevel() const
@@ -2583,13 +2585,13 @@ uint32_t Player::getNextExperienceThreshold() const
 int32_t Player::calculateBaseLife() const
 {
 	const PlayerData &playerData = PlayersData[static_cast<size_t>(_pHeroClass)];
-	return playerData.adjLife + (playerData.lvlLife * _pLevel) + (playerData.chrLife * _pBaseVit);
+	return playerData.adjLife + (playerData.lvlLife * getCharacterLevel()) + (playerData.chrLife * _pBaseVit);
 }
 
 int32_t Player::calculateBaseMana() const
 {
 	const PlayerData &playerData = PlayersData[static_cast<size_t>(_pHeroClass)];
-	return playerData.adjMana + (playerData.lvlMana * _pLevel) + (playerData.chrMana * _pBaseMag);
+	return playerData.adjMana + (playerData.lvlMana * getCharacterLevel()) + (playerData.chrMana * _pBaseMag);
 }
 
 uint32_t Player::GetGolemToHit() const
@@ -2846,7 +2848,7 @@ void CreateNewPlayer(Player &player, HeroClass c) // called when creating a new 
 
 	const PlayerData &playerData = PlayersData[static_cast<size_t>(c)];
 
-	player._pLevel = 1;
+	player.setCharacterLevel(1);
 	player._pHeroClass = c;
 
 	player._pBaseStr = playerData.baseStr;
@@ -2874,7 +2876,6 @@ void CreateNewPlayer(Player &player, HeroClass c) // called when creating a new 
 	player._pMaxManaBase = player._pMana;
 
 	player._pExperience = 0;
-	player._pNextExper = GetNextExperienceThresholdForLevel(player._pLevel);
 	player._pArmorClass = 0;
 	player._pLightRad = 10;
 	player._pInfraFlag = false;
@@ -2967,8 +2968,6 @@ void NextPlrLevel(Player &player)
 	} else {
 		player._pStatPts += 5;
 	}
-	player._pNextExper = GetNextExperienceThresholdForLevel(player._pLevel);
-
 	int hp = PlayersData[static_cast<size_t>(player._pHeroClass)].lvlLife;
 
 	player._pMaxHP += hp;
@@ -3007,13 +3006,12 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 	if (&player != MyPlayer || player._pHitPoints <= 0)
 		return;
 
-	if (player._pLevel >= MaxCharacterLevel) {
-		player._pLevel = MaxCharacterLevel;
+	if (player.getCharacterLevel() >= MaxCharacterLevel) {
 		return;
 	}
 
 	// Use a minimum of 1 so level 0 characters can still gain experience
-	const uint32_t clampedPlayerLevel = std::max<uint32_t>(player._pLevel, 1);
+	const uint32_t clampedPlayerLevel = std::max<uint32_t>(player.getCharacterLevel(), 1);
 #if JWK_EDIT_EXP_GAIN
 	constexpr uint32_t levelDiffForZeroExp = 16; // if monsters are this far below player level, player gets 0 experience.
 	uint32_t levelAdjustedExp;
@@ -3032,7 +3030,7 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 	if (gbIsMultiplayer) {
 		// for low level characters experience gain is capped to 1/20 of current levels xp
 		// for high level characters experience gain is capped to 200 * current level - this is a smaller value than 1/20 of the exp needed for the next level after level 5.
-		clampedExp = std::min({ clampedExp, /* level 1-5: */ GetNextExperienceThresholdForLevel(clampedPlayerLevel) / 20U, /* level 6-50: */ 200U * clampedPlayerLevel });
+		clampedExp = std::min<uint32_t>({ clampedExp, /* level 1-5: */ GetNextExperienceThresholdForLevel(player.getCharacterLevel()) / 20U, /* level 6-50: */ 200U * player.getCharacterLevel() });
 	}
 #endif
 	const uint32_t MaxExperience = GetNextExperienceThresholdForLevel(MaxCharacterLevel);
@@ -3045,17 +3043,17 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 	}
 
 	// Increase player level if applicable
-	unsigned newLvl = player._pLevel;
+	unsigned newLvl = player.getCharacterLevel();
 	while (newLvl < MaxCharacterLevel && player._pExperience >= GetNextExperienceThresholdForLevel(newLvl)) {
 		newLvl++;
 	}
-	if (newLvl != player._pLevel) {
-		for (unsigned i = newLvl - player._pLevel; i > 0; i--) {
+	if (newLvl != player.getCharacterLevel()) {
+		for (unsigned i = newLvl - player.getCharacterLevel(); i > 0; i--) {
 			NextPlrLevel(player);
 		}
 	}
 
-	NetSendCmdParam1(false, CMD_PLRLEVEL, player._pLevel);
+	NetSendCmdParam1(false, CMD_PLRLEVEL, player.getCharacterLevel());
 }
 
 void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags, WorldTilePosition monsterLocation)
@@ -3188,7 +3186,6 @@ void InitPlayer(Player &player, bool firstTime) // called with firstTime=true wh
 	player._pAblSpells |= GetSpellBitmask(SpellID::Etherealize);
 #endif
 
-	player._pNextExper = GetNextExperienceThresholdForLevel(player._pLevel);
 	player._pInvincible = false;
 
 	if (&player == MyPlayer) {
@@ -3368,7 +3365,7 @@ StartPlayerKill(Player &player, DeathReason deathReason)
 
 				ear._iCreateInfo = player._pName[0] << 8 | player._pName[1];
 				ear._iSeed = player._pName[2] << 24 | player._pName[3] << 16 | player._pName[4] << 8 | player._pName[5];
-				ear._ivalue = player._pLevel;
+				ear._ivalue = player.getCharacterLevel();
 
 				if (FindGetItem(ear._iSeed, IDI_EAR, ear._iCreateInfo) == -1) {
 					DeadItem(player, std::move(ear), { 0, 0 });

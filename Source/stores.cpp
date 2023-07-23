@@ -2235,7 +2235,7 @@ void SetupTownStores()
 {
 	Player &myPlayer = *MyPlayer;
 
-	int dungeonLevelUpTo16 = myPlayer._pLevel / 2;
+	int dungeonLevelUpTo16 = myPlayer.getCharacterLevel() / 2;
 	if (!gbIsMultiplayer) {
 		dungeonLevelUpTo16 = 0;
 		for (int i = 0; i < NUMLEVELS; i++) {
@@ -2250,7 +2250,7 @@ void SetupTownStores()
 	SpawnBasicItemsForSmith(dungeonLevelUpTo16);
 	SpawnItemsForWitch(dungeonLevelUpTo16);
 	SpawnItemsForHealer(dungeonLevelUpTo16);
-	SpawnItemsForBoy(myPlayer._pLevel);
+	SpawnItemsForBoy(myPlayer.getCharacterLevel());
 	SpawnPremiumItemsForSmith(myPlayer);
 }
 

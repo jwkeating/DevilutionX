@@ -66,23 +66,23 @@ static int GenerateRndSumMax(int range, int iterations) { return iterations * Ge
 
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFireBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(2 + generateRndFunc(player._pLevel / 4), spellLevel);
+	return ScaleSpellEffect(2 + generateRndFunc(player.getCharacterLevel() / 4), spellLevel);
 	// original code: return generateRndFunc(10) + (player._pMagic / 8) + spellLevel + 1;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcChargedBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(30 + generateRndSumFunc(player._pLevel, 3), spellLevel) / 4;
+	return ScaleSpellEffect(30 + generateRndSumFunc(player.getCharacterLevel(), 3), spellLevel) / 4;
 	// original code: return generateRndFunc(player._pMagic / 4) + 1;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcHolyBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(((4 + player._pLevel) * (300 + player._pMagic) * (20 + generateRndSumFunc(10, 4))) >> 16, spellLevel);
-	// original code: return generateRndFunc(10) + player._pLevel + 9;
+	return ScaleSpellEffect(((4 + player.getCharacterLevel()) * (300 + player._pMagic) * (20 + generateRndSumFunc(10, 4))) >> 16, spellLevel);
+	// original code: return generateRndFunc(10) + player.getCharacterLevel() + 9;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFireBallDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(player._pLevel + generateRndSumFunc(10, 2) + 5, spellLevel);
-	// original code: return ScaleSpellEffect(2 * (player._pLevel + generateRndSumFunc(10, 2)) + 4, spellLevel);
+	return ScaleSpellEffect(player.getCharacterLevel() + generateRndSumFunc(10, 2) + 5, spellLevel);
+	// original code: return ScaleSpellEffect(2 * (player.getCharacterLevel() + generateRndSumFunc(10, 2)) + 4, spellLevel);
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcElementalDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
@@ -95,14 +95,14 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFlameWaveDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(3 + player._pLevel + generateRndSumFunc(player._pLevel, 3), spellLevel) / 5;
-	// original code: return generateRndFunc(10) + player._pLevel + 1;
+	return ScaleSpellEffect(3 + player.getCharacterLevel() + generateRndSumFunc(player.getCharacterLevel(), 3), spellLevel) / 5;
+	// original code: return generateRndFunc(10) + player.getCharacterLevel() + 1;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcLightningDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// Note: 64 means 1 when shifted by 6.  Also note: lightning damage is scaled by CalcLightningLength() because it ticks every frame as the bolt passes through a target
-	return 64 + ScaleSpellEffect(generateRndFunc(12 * player._pLevel), spellLevel);
-	// original code: return (generateRndFunc(2) + generateRndFunc(player._pLevel) + 2) << 6;
+	return 64 + ScaleSpellEffect(generateRndFunc(12 * player.getCharacterLevel()), spellLevel);
+	// original code: return (generateRndFunc(2) + generateRndFunc(player.getCharacterLevel()) + 2) << 6;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcChainLightningDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
@@ -112,64 +112,64 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFireWallDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// At normal game speed, damage ticks every 50ms
-	return ScaleSpellEffect(generateRndSumFunc(8, 3) + 2 * player._pLevel, spellLevel);
-	// original code: return (generateRndSumFunc(10, 2) + 2 + player._pLevel) * 8;
+	return ScaleSpellEffect(generateRndSumFunc(8, 3) + 2 * player.getCharacterLevel(), spellLevel);
+	// original code: return (generateRndSumFunc(10, 2) + 2 + player.getCharacterLevel()) * 8;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcLightningWallDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	return CalcFireWallDamageShifted(player, spellLevel, generateRndFunc, generateRndSumFunc);
-	// original code: return 16 * (generateRndSumFunc(10, 2) + player._pLevel + 2);
+	// original code: return 16 * (generateRndSumFunc(10, 2) + player.getCharacterLevel() + 2);
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcInfernoDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 #if JWK_EDIT_INFERNO
 	#error "Not implemented properly.  It's tile locked to 8 directions but we want it to be aribrary direction so there's no blind spots"
 	//return 10000; // This does 3125 dmage for first puff
-	return ScaleSpellEffect(generateRndSumFunc(20, 5) + player._pLevel, spellLevel) * 3;
+	return ScaleSpellEffect(generateRndSumFunc(20, 5) + player.getCharacterLevel(), spellLevel) * 3;
 #else
 	// "return (N << 6);" does (20 to 30) * N total damage to the target depending on 1,2,3 tile distance
-	return ScaleSpellEffect(generateRndSumFunc(20, 4) + player._pLevel, spellLevel) * 3;
-	// original code: int i = generateRndFunc(player._pLevel) + generateRndFunc(2);
+	return ScaleSpellEffect(generateRndSumFunc(20, 4) + player.getCharacterLevel(), spellLevel) * 3;
+	// original code: int i = generateRndFunc(player.getCharacterLevel()) + generateRndFunc(2);
 	// original code: return 8 * i + 16 + ((8 * i + 16) / 2);
 #endif
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFlashDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// "return 270 << 6;" deals 5130 damage in game.  5130/270 == 19 which means flash does 19 ticks.
-	return ScaleSpellEffect(25 + player._pLevel, spellLevel) * 7 / 2;
-	// original code: return ScaleSpellEffect(player._pLevel + 1 + generateRndSumFunc(20, player._pLevel + 1), spellLevel) * 3 / 2;
+	return ScaleSpellEffect(25 + player.getCharacterLevel(), spellLevel) * 7 / 2;
+	// original code: return ScaleSpellEffect(player.getCharacterLevel() + 1 + generateRndSumFunc(20, player.getCharacterLevel() + 1), spellLevel) * 3 / 2;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcNovaDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(8 + generateRndSumFunc(8, 2) + player._pLevel, spellLevel) / 2;
-	// original code: return ScaleSpellEffect((generateRndSumFunc(6, 5) + player._pLevel + 5) / 2, spellLevel);
+	return ScaleSpellEffect(8 + generateRndSumFunc(8, 2) + player.getCharacterLevel(), spellLevel) / 2;
+	// original code: return ScaleSpellEffect((generateRndSumFunc(6, 5) + player.getCharacterLevel() + 5) / 2, spellLevel);
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcBloodStarDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(40 + player._pLevel, spellLevel);
+	return ScaleSpellEffect(40 + player.getCharacterLevel(), spellLevel);
 	// Alternate formula:  Deal damage based on player health.  Note: player._pHitPoints is shifted << 6.  This was a neat idea but sorcerer has 150 health unbuffed and like 500 health if he wears +health items.  This makes the spell either useless or overpowered.
-	// return ScaleSpellEffect(((50 + player._pLevel) * (300 + player._pMagic) * std::min(player._pHitPoints, player._pMana)) >> 16, spellLevel) / 128;
+	// return ScaleSpellEffect(((50 + player.getCharacterLevel()) * (300 + player._pMagic) * std::min(player._pHitPoints, player._pMana)) >> 16, spellLevel) / 128;
 	// original code: return 3 * spellLevel - (player._pMagic / 8) + (player._pMagic / 2);
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcApocalypseDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// For this formula, we assume players can't learn the spell so every spell level added makes a big difference.
-	int base = 16 * player._pLevel + generateRndSumFunc(player._pLevel + 1, 4);
+	int base = 16 * player.getCharacterLevel() + generateRndSumFunc(player.getCharacterLevel() + 1, 4);
 	return base * (4 + spellLevel) / 4; // 25% more damage per spell level
-	// original code: return generateRndSumFunc(6, player._pLevel) + player._pLevel;
+	// original code: return generateRndSumFunc(6, player.getCharacterLevel()) + player.getCharacterLevel();
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcHealingAmount(const Player &caster, const Player& target, int casterSpellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 #if 1 // jwk - edit healing amount
 	if (casterSpellLevel < 0) { casterSpellLevel = 0; }
 	int healPercent = 20 + casterSpellLevel + generateRndSumFunc(9, 2 + casterSpellLevel / 2);
-	healPercent *= caster._pLevel;
-	healPercent /= target._pLevel;
+	healPercent *= caster.getCharacterLevel();
+	healPercent /= target.getCharacterLevel();
 	int hp = (healPercent * target._pMaxHP / 100) >> 6;
 	return hp;
 #else // original code
 	int hp = generateRndFunc(10) + 1;
-	hp += generateRndSumFunc(4, player._pLevel) + player._pLevel;
+	hp += generateRndSumFunc(4, player.getCharacterLevel()) + player.getCharacterLevel();
 	hp += generateRndSumFunc(6, spellLevel) + spellLevel;
 	if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian || player._pHeroClass == HeroClass::Monk) {
 		hp *= 2;
@@ -539,7 +539,7 @@ static bool MonsterHitByMissileFromPlayer(Player& player, Monster& monster, int 
 #if JWK_EDIT_HIT_CHANCE == 1
 	if (missileData.isArrow() && damageType == DamageType::Physical) { // the elemental portion of an arrow's damage always hits because the arrow itself already rolled a hit
 		hitChance = player.GetRangedToHit() - player.CalculateArmorAfterPierce(monster.armorClass, false);
-		hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty));
+		hitChance += 2 * (player.getCharacterLevel() - monster.level(sgGameInitInfo.nDifficulty));
 		hitChance = std::clamp(hitChance, 5, 95);
 	} else { // spells always hit
 		hitChance = 100;
@@ -550,7 +550,7 @@ static bool MonsterHitByMissileFromPlayer(Player& player, Monster& monster, int 
 	} else {
 		if (missileData.isArrow()) {
 			hitChance = player.GetRangedToHit() - player.CalculateArmorAfterPierce(monster.armorClass, false);
-			hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty)) - ChanceToMissAtDistance(dist);
+			hitChance += 2 * (player.getCharacterLevel() - monster.level(sgGameInitInfo.nDifficulty)) - ChanceToMissAtDistance(dist);
 		} else {
 			// magic ignores armor but caster level doesn't factor in, and there are no "+hit with magic" bonuses
 			hitChance = player.GetMagicToHit() - 2 * monster.level(sgGameInitInfo.nDifficulty) - ChanceToMissAtDistance(dist);
@@ -610,7 +610,7 @@ static bool MonsterHitByMissileFromPlayer(Player& player, Monster& monster, int 
 #endif
 #if JWK_EDIT_CRITICAL_STRIKE
 		if (player._pHeroClass == HeroClass::Rogue) {
-			if (GenerateRnd(200) < player._pLevel) { // 0.5% - 25% chance at level 1 - 50
+			if (GenerateRnd(200) < player.getCharacterLevel()) { // 0.5% - 25% chance at level 1 - 50
 				dam *= 2;
 			}
 		}
@@ -696,7 +696,7 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 	int hitChance = 100; // spells always hit
 	if (missileData.isArrow() && damageType == DamageType::Physical) { // the elemental portion of an arrow's damage always hits because the arrow itself already rolled a hit
 		if (monster) {
-			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) - player.GetArmor() + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel);
+			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) - player.GetArmor() + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player.getCharacterLevel());
 		} else { // arrow traps
 			int trapToHit = 100 * (sgGameInitInfo.nDifficulty + 1);
 			hitChance = trapToHit - player.GetArmor();
@@ -710,13 +710,13 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 	} else {
 		if (missileData.isArrow()) {
 			if (monster) {
-				hitChance = monster->toHit(sgGameInitInfo.nDifficulty) - player.GetArmor() + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel) - ChanceToMissAtDistance(dist);
+				hitChance = monster->toHit(sgGameInitInfo.nDifficulty) - player.GetArmor() + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player.getCharacterLevel()) - ChanceToMissAtDistance(dist);
 			} else { // arrow traps
 				int trapToHit = 100 * (sgGameInitInfo.nDifficulty + 1);
 				hitChance = trapToHit - player.GetArmor() - ChanceToMissAtDistance(dist);
 			}
 		} else if (monster) { // magic spell from monster
-			hitChance = monster->toHitWithMagic(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel) - ChanceToMissAtDistance(dist);
+			hitChance = monster->toHitWithMagic(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player.getCharacterLevel()) - ChanceToMissAtDistance(dist);
 		} else { // magical trap
 			hitChance = 100;
 		}
@@ -727,12 +727,12 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 	if (missileData.isArrow()) {
 		int tac = player.GetArmor();
 		if (monster) {
-			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel - dist) - tac;
+			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player.getCharacterLevel() - dist) - tac;
 		} else { // arrow traps
 			hitChance = 100 - (tac / 2) - 2 * dist;
 		}
 	} else if (monster != nullptr) {
-		hitChance += 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel - dist);
+		hitChance += 2 * (monster->level(sgGameInitInfo.nDifficulty) - player.getCharacterLevel() - dist);
 	}
 #endif
 
@@ -828,7 +828,7 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 		blockChance = 0;
 		blockDifficultyRoll = 100;
 	} else {
-		blockChance = monster ? player.GetBlockChance(monster->level(sgGameInitInfo.nDifficulty)) : player.GetBlockChance(player._pLevel);
+		blockChance = monster ? player.GetBlockChance(monster->level(sgGameInitInfo.nDifficulty)) : player.GetBlockChance(player.getCharacterLevel());
 		blockDifficultyRoll = GenerateRnd(100);
 	}
 
@@ -898,7 +898,7 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 #if JWK_EDIT_HIT_CHANCE == 1
 	hitChance = 100; // spells always hit
 	if (missileData.isArrow() && damageType == DamageType::Physical) { // the elemental portion of an arrow's damage always hits because the arrow itself already rolled a hit
-		hitChance = attacker.GetRangedToHit() - target.GetArmor() + 2 * (attacker._pLevel - target._pLevel);
+		hitChance = attacker.GetRangedToHit() - target.GetArmor() + 2 * (attacker.getCharacterLevel() - target.getCharacterLevel());
 		hitChance = std::min(hitChance, 95);
 	}
 #elif JWK_EDIT_HIT_CHANCE == 2
@@ -906,10 +906,10 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
 	} else {
 		if (missileData.isArrow()) {
-			hitChance = attacker.GetRangedToHit() - target.GetArmor() + 2 * (attacker._pLevel - target._pLevel) - ChanceToMissAtDistance(dist);
+			hitChance = attacker.GetRangedToHit() - target.GetArmor() + 2 * (attacker.getCharacterLevel() - target.getCharacterLevel()) - ChanceToMissAtDistance(dist);
 		} else {
 			// magic ignores armor but caster level doesn't factor in, and there are no "+hit with magic" bonuses
-			hitChance = attacker.GetMagicToHit() - 2 * target._pLevel - ChanceToMissAtDistance(dist);
+			hitChance = attacker.GetMagicToHit() - 2 * target.getCharacterLevel() - ChanceToMissAtDistance(dist);
 		}
 		hitChance = clamp(hitChance, 5, 95);
 	}
@@ -917,7 +917,7 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 	if (missileData.isArrow()) {
 		hitChance = attacker.GetRangedToHit() - target.GetArmor() - (dist * dist) / 2;
 	} else {
-		hitChance = attacker.GetMagicToHit() - 2 * target._pLevel - dist;
+		hitChance = attacker.GetMagicToHit() - 2 * target.getCharacterLevel() - dist;
 	}
 	hitChance = clamp(hitChance, 5, 95);
 #endif
@@ -947,7 +947,7 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 			dam += attacker._pIBonusDamMod + attacker._pDamageMod + dam * attacker._pIBonusDam / 100;
 #if JWK_EDIT_CRITICAL_STRIKE
 			if (attacker._pHeroClass == HeroClass::Rogue) {
-				if (GenerateRnd(200) < attacker._pLevel) { // 0.5% - 25% chance at level 1 - 50
+				if (GenerateRnd(200) < attacker.getCharacterLevel()) { // 0.5% - 25% chance at level 1 - 50
 					dam *= 2;
 				}
 			}
@@ -1009,7 +1009,7 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 		blockChance = 0;
 		blockDifficultyRoll = 100;
 	} else {
-		blockChance = target.GetBlockChance(attacker._pLevel);
+		blockChance = target.GetBlockChance(attacker.getCharacterLevel());
 		blockDifficultyRoll = GenerateRnd(100);
 	}
 
@@ -1729,7 +1729,7 @@ void AddRuneOfFire(Missile &missile, AddMissileParameter &parameter)
 
 void AddRuneOfLight(Missile &missile, AddMissileParameter &parameter)
 {
-	int lvl = (missile.sourceType() == MissileSource::Player) ? missile.sourcePlayer()->_pLevel : 0;
+	int lvl = (missile.sourceType() == MissileSource::Player) ? missile.sourcePlayer()->getCharacterLevel() : 0;
 	int dmg = 16 * (GenerateRndSum(10, 2) + lvl + 2);
 	missile._midam = dmg;
 	AddRune(missile, parameter.dst, MissileID::LightningWallSingleTile);
@@ -1759,7 +1759,7 @@ void AddReflect(Missile &missile, AddMissileParameter & /*parameter*/)
 
 	Player &player = *missile.sourcePlayer();
 
-	int add = (missile._mispllvl != 0 ? missile._mispllvl : 2) * player._pLevel;
+	int add = (missile._mispllvl != 0 ? missile._mispllvl : 2) * player.getCharacterLevel();
 	if (player.wReflections + add >= std::numeric_limits<uint16_t>::max())
 		add = 0;
 	player.wReflections += add;
@@ -2035,7 +2035,7 @@ void AddBigExplosion(Missile &missile, AddMissileParameter & /*parameter*/)
 {
 	// MissileID::BigExplosion is only created by AddRuneOfFire() or AddOpenNest() in hellfire expansion (not to be confused with MissileGraphicID::BigExplosion, which is used by fireball)
 	if (missile.sourceType() == MissileSource::Player) {
-		int dmg = 2 * (missile.sourcePlayer()->_pLevel + GenerateRndSum(10, 2)) + 4;
+		int dmg = 2 * (missile.sourcePlayer()->getCharacterLevel() + GenerateRndSum(10, 2)) + 4;
 		dmg = ScaleSpellEffect(dmg, missile._mispllvl);
 
 		missile._midam = dmg;
@@ -2089,7 +2089,7 @@ void AddMana(Missile &missile, AddMissileParameter & /*parameter*/)
 	Player &player = Players[missile._miSourceID];
 
 	int manaAmount = (GenerateRnd(10) + 1) << 6;
-	for (int i = 0; i < player._pLevel; i++) {
+	for (int i = 0; i < player.getCharacterLevel(); i++) {
 		manaAmount += (GenerateRnd(4) + 1) << 6;
 	}
 	for (int i = 0; i < missile._mispllvl; i++) {
@@ -2137,7 +2137,7 @@ void AddSearch(Missile &missile, AddMissileParameter & /*parameter*/)
 		AutoMapShowItems = true;
 	int lvl = 2;
 	if (missile._miSourceID >= 0)
-		lvl = player._pLevel * 2;
+		lvl = player.getCharacterLevel() * 2;
 	missile._ticksUntilExpiry = lvl + 10 * missile._mispllvl + 245;
 
 	for (auto &other : Missiles) {
@@ -2185,9 +2185,9 @@ void AddArrow(Missile &missile, AddMissileParameter &parameter)
 			av = GenerateRnd(32) + 16;
 		}
 		if (player._pHeroClass == HeroClass::Rogue)
-			av += (player._pLevel - 1) / 4;
+			av += (player.getCharacterLevel() - 1) / 4;
 		else if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Bard)
-			av += (player._pLevel - 1) / 8;
+			av += (player.getCharacterLevel() - 1) / 8;
 
 		if (gbIsHellfire) {
 			if (HasAnyOf(player._pIFlags, ItemSpecialEffect::QuickAttack))
@@ -2557,7 +2557,6 @@ void AddSneak(Missile &missile, AddMissileParameter &parameter)
 
 void AddFlameWave(Missile &missile, AddMissileParameter &parameter)
 {
-	//missile._midam = GenerateRnd(10) + Players[missile._miSourceID]._pLevel + 1;
 	missile._midam = CalcFlameWaveDamage(Players[missile._miSourceID], missile._mispllvl, GenerateRnd, GenerateRndSum);
 	UpdateMissileVelocity(missile, parameter.dst, 16);
 	missile._ticksUntilExpiry = 255;
@@ -2986,17 +2985,17 @@ void AddRage(Missile &missile, AddMissileParameter &parameter)
 {
 	Player &player = Players[missile._miSourceID];
 
-	if (HasAnyOf(player._pSpellFlags, SpellFlag::RageActive | SpellFlag::RageCooldown) || player._pHitPoints <= player._pLevel << 6) {
+	if (HasAnyOf(player._pSpellFlags, SpellFlag::RageActive | SpellFlag::RageCooldown) || player._pHitPoints <= player.getCharacterLevel() << 6) {
 		missile._miDelFlag = true;
 		parameter.spellFizzled = true;
 		return;
 	}
 
-	int tmp = 3 * player._pLevel;
+	int tmp = 3 * player.getCharacterLevel();
 	tmp <<= 7;
 	player._pSpellFlags |= SpellFlag::RageActive;
 	missile.var2 = tmp;
-	int lvl = player._pLevel * 2;
+	int lvl = player.getCharacterLevel() * 2;
 	missile._ticksUntilExpiry = lvl + 10 * missile._mispllvl + 245;
 	CalcPlayerPowerFromItems(player, true);
 	RedrawEverything();
@@ -3238,7 +3237,7 @@ void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
 	missile.var4 = std::max(missile.position.start.x - 8, 1);
 	missile.var5 = std::min(missile.position.start.x + 8, MAXDUNX - 1);
 	missile.var6 = missile.var4;
-	//int playerLevel = player._pLevel;
+	//int playerLevel = player.getCharacterLevel();
 	//missile._midam = GenerateRndSum(6, playerLevel) + playerLevel;
 	missile._midam = 0; // compute damage per target later
 	missile._ticksUntilExpiry = 255;
@@ -3726,9 +3725,9 @@ void AddElementalArrow(Missile &missile, AddMissileParameter &parameter)
 		const Player &player = Players[missile._miSourceID];
 		// increase missile speed
 		if (player._pHeroClass == HeroClass::Rogue)
-			av += (player._pLevel) / 4;
+			av += (player.getCharacterLevel()) / 4;
 		else if (IsAnyOf(player._pHeroClass, HeroClass::Warrior, HeroClass::Bard))
-			av += (player._pLevel) / 8;
+			av += (player.getCharacterLevel()) / 8;
 #if 0 // original code
 		if (gbIsHellfire) {
 			if (HasAnyOf(player._pIFlags, ItemSpecialEffect::QuickAttack))
@@ -4077,7 +4076,7 @@ void ProcessRingOfFire(Missile &missile)
 	missile._miDelFlag = true;
 	int damage;
 	if (missile._miEnemyType == TARGET_MONSTERS) {
-		int damage = 16 * (GenerateRndSum(10, 2) + Players[missile._miSourceID]._pLevel + 2) / 2;
+		int damage = 16 * (GenerateRndSum(10, 2) + Players[missile._miSourceID].getCharacterLevel() + 2) / 2;
 	} else if (missile.IsTrap()) {
 		damage = TrapRingOfFireDamageShifted();
 	} else {
@@ -4212,9 +4211,9 @@ void AddSpectralArrow(Missile &missile, AddMissileParameter &parameter)
 		const Player &player = *missile.sourcePlayer();
 
 		if (player._pHeroClass == HeroClass::Rogue)
-			av += (player._pLevel - 1) / 4;
+			av += (player.getCharacterLevel() - 1) / 4;
 		else if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Bard)
-			av += (player._pLevel - 1) / 8;
+			av += (player.getCharacterLevel() - 1) / 8;
 
 		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::QuickAttack))
 			av++;
@@ -4248,7 +4247,7 @@ void ProcessLightningControl(Missile &missile)
 		}
 	} else if (missile._miEnemyType == TARGET_MONSTERS) {
 		// BUGFIX: damage of missile should be encoded in missile struct; player can be dead/have left the game before missile arrives.
-		//dam = (GenerateRnd(2) + GenerateRnd(Players[missile._miSourceID]._pLevel) + 2) << 6;
+		//dam = (GenerateRnd(2) + GenerateRnd(Players[missile._miSourceID].getCharacterLevel()) + 2) << 6;
 		if (missile.var3 > 0) {
 			dam = CalcChainLightningDamageShifted(Players[missile._miSourceID], missile._mispllvl, GenerateRnd, GenerateRndSum);
 		} else {
@@ -4580,7 +4579,7 @@ void AddGuardian(Missile &missile, AddMissileParameter &parameter)
 	missile.position.start = *spawnPosition;
 
 	missile._mlid = AddLight(missile.position.tile, 1);
-	missile._ticksUntilExpiry = missile._mispllvl + (player._pLevel / 2); // duration of guardian spell
+	missile._ticksUntilExpiry = missile._mispllvl + (player.getCharacterLevel() / 2); // duration of guardian spell
 
 	if (missile._ticksUntilExpiry > 30)
 		missile._ticksUntilExpiry = 30;
@@ -4998,7 +4997,7 @@ void ProcessRage(Missile &missile)
 	if (HasAnyOf(player._pSpellFlags, SpellFlag::RageActive)) {
 		player._pSpellFlags &= ~SpellFlag::RageActive;
 		player._pSpellFlags |= SpellFlag::RageCooldown;
-		int lvl = player._pLevel * 2;
+		int lvl = player.getCharacterLevel() * 2;
 		missile._ticksUntilExpiry = lvl + 10 * missile._mispllvl + 245;
 	} else {
 		player._pSpellFlags &= ~SpellFlag::RageCooldown;

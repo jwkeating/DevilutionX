@@ -1257,7 +1257,7 @@ void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent,
 		ac += 40;
 	if (HasAnyOf(player.pDamAcFlags, ItemSpecialEffectHf::ACAgainstUndead) && monster.data().monsterClass == MonsterClass::Undead)
 		ac += 20;
-	hitChancePercent += 2 * (monster.level(sgGameInitInfo.nDifficulty) - player._pLevel) - ac;
+	hitChancePercent += 2 * (monster.level(sgGameInitInfo.nDifficulty) - player.getCharacterLevel()) - ac;
 
 	int minhitChance = GetMinHitChance();
 #if JWK_EDIT_HIT_CHANCE // allow natural dodge like all other cases
@@ -4886,7 +4886,7 @@ void SpawnGolem(Player &player, Monster &golem, Point position, Missile &missile
 	golem.position.old = position;
 	golem.pathCount = 0;
 #if !JWK_EDIT_GOLEM
-	golem.golemToHit = 5 * (missile._mispllvl + 8) + 2 * player._pLevel;
+	golem.golemToHit = 5 * (missile._mispllvl + 8) + 2 * player.getCharacterLevel();
 #endif
 	uint32_t golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage;
 	player.GetGolemStats(missile._mispllvl, golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage);
@@ -5088,7 +5088,7 @@ unsigned int Monster::level(_difficulty difficulty) const
 	int mid = getId();
 	if (mid < MAX_PLAYERS) {
 		assert(type().type == MT_GOLEM);
-		return Players[mid]._pLevel;
+		return Players[mid].getCharacterLevel();
 	}
 #endif
 	unsigned int baseLevel = data().level;

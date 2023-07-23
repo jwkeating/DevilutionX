@@ -338,7 +338,11 @@ struct Player {
 	ActorPosition position;
 	Direction _pdir; // Direction faced by player (direction enum)
 	HeroClass _pHeroClass;
-	uint8_t _pLevel;
+
+private:
+	uint8_t _pLevel = 1; // Use get/setCharacterLevel as this attribute is tied to _pNextExper
+
+public:
 	uint8_t _pgfxnum; // Bitmask indicating what variant of the sprite the player is using. The 3 lower bits define weapon (PlayerWeaponGraphic) and the higher bits define armour (starting with PlayerArmorGraphic)
 	int8_t _pISplLvlAdd;
 	int8_t _pManaCostMod; // JWK_ALLOW_MANA_COST_MODIFIER - This is a % chance to have free or costly spell (- means free, + means costly)
@@ -546,7 +550,7 @@ struct Player {
 		// See MonsterAttackPlayer(), PlayerAttackPlayer(), and PlayerAttackMonster
 		int hitChance = _pStrength + _pIBonusToHit + BaseHitChance;
 #else // original code:
-		int hitChance = _pLevel + _pDexterity / 2 + _pIBonusToHit + BaseHitChance;
+		int hitChance = getCharacterLevel() + _pDexterity / 2 + _pIBonusToHit + BaseHitChance;
 		if (_pHeroClass == HeroClass::Warrior) {
 			hitChance += 20;
 		}
@@ -563,7 +567,7 @@ struct Player {
 		// See hit chance formulas in MonsterHitByMissileFromPlayer(), MonsterHitByMissileFromMonsterOrTrap(), PlayerHitByMissle(), and PvPHitByMissile()
 		int hitChance = _pDexterity + _pIBonusToHit + BaseHitChance;
 #else // original code:
-		int hitChance = _pLevel + _pDexterity + _pIBonusToHit + BaseHitChance;
+		int hitChance = getCharacterLevel() + _pDexterity + _pIBonusToHit + BaseHitChance;
 		if (_pHeroClass == HeroClass::Rogue) {
 			hitChance += 20;
 		} else if (_pHeroClass == HeroClass::Warrior || _pHeroClass == HeroClass::Bard)
@@ -592,12 +596,12 @@ struct Player {
 #if JWK_EDIT_BLOCK_CHANCE
 	int GetBlockChance(int attackerLevel) const
 	{
-		return std::clamp(std::min<int>(_pDexterity, _pStrength) + 2 * (_pLevel - attackerLevel), 0, 100);
+		return std::clamp(std::min<int>(_pDexterity, _pStrength) + 2 * (getCharacterLevel() - attackerLevel), 0, 100);
 	}
 #else // original code
 	int GetBlockChance(int attackerLevel) const
 	{
-		return std::clampclamp(_pDexterity + _pBaseToBlk + 2 * (_pLevel - attackerLevel), 0, 100);
+		return std::clampclamp(_pDexterity + _pBaseToBlk + 2 * (getCharacterLevel() - attackerLevel), 0, 100);
 	}
 #endif
 
