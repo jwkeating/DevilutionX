@@ -2874,7 +2874,7 @@ void CreateNewPlayer(Player &player, HeroClass c) // called when creating a new 
 	player._pMaxManaBase = player._pMana;
 
 	player._pExperience = 0;
-	player._pNextExper = ExpLvlsTbl[1];
+	player._pNextExper = GetNextExperienceThresholdForLevel(player._pLevel);
 	player._pArmorClass = 0;
 	player._pLightRad = 10;
 	player._pInfraFlag = false;
@@ -2967,7 +2967,7 @@ void NextPlrLevel(Player &player)
 	} else {
 		player._pStatPts += 5;
 	}
-	player._pNextExper = ExpLvlsTbl[std::min<int8_t>(player._pLevel, MaxCharacterLevel - 1)];
+	player._pNextExper = GetNextExperienceThresholdForLevel(player._pLevel);
 
 	int hp = PlayersData[static_cast<size_t>(player._pHeroClass)].lvlLife;
 
@@ -3012,7 +3012,8 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 		return;
 	}
 
-	int clampedPlayerLevel = std::clamp<int>(player._pLevel, 1, MaxCharacterLevel);
+	// Use a minimum of 1 so level 0 characters can still gain experience
+	const uint32_t clampedPlayerLevel = static_cast<uint32_t>(std::max(static_cast<int>(player._pLevel), 1));
 #if JWK_EDIT_EXP_GAIN
 	constexpr uint32_t levelDiffForZeroExp = 16; // if monsters are this far below player level, player gets 0 experience.
 	uint32_t levelAdjustedExp;
@@ -3025,16 +3026,16 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 	} else { // lerp between 0 exp and full exp
 		levelAdjustedExp = ((uint32_t)exp) * (levelDiffForZeroExp - (clampedPlayerLevel - monsterlvl)) / levelDiffForZeroExp;
 	}
-	uint32_t clampedExp = std::min(levelAdjustedExp, ExpLvlsTbl[clampedPlayerLevel] / 20); // at most 1/20 of your experience bar
+	uint32_t clampedExp = std::min(levelAdjustedExp, GetNextExperienceThresholdForLevel(clampedPlayerLevel) / 20U); // at most 1/20 of your experience bar
 #else // original code
 	uint32_t clampedExp = std::max(static_cast<int>(exp * (1 + (monsterlvl - clampedPlayerLevel) / 10.0)), 0);
 	if (gbIsMultiplayer) {
 		// for low level characters experience gain is capped to 1/20 of current levels xp
 		// for high level characters experience gain is capped to 200 * current level - this is a smaller value than 1/20 of the exp needed for the next level after level 5.
-		clampedExp = std::min({ clampedExp, /* level 0-5: */ ExpLvlsTbl[clampedPlayerLevel] / 20U, /* level 6-50: */ 200U * clampedPlayerLevel });
+		clampedExp = std::min({ clampedExp, /* level 1-5: */ GetNextExperienceThresholdForLevel(clampedPlayerLevel) / 20U, /* level 6-50: */ 200U * clampedPlayerLevel });
 	}
 #endif
-	const uint32_t MaxExperience = ExpLvlsTbl[MaxCharacterLevel - 1];
+	const uint32_t MaxExperience = GetNextExperienceThresholdForLevel(MaxCharacterLevel);
 
 	// Overflow is only possible if a kill grants more than (2^32-1 - MaxExperience) XP in one go, which doesn't happen in normal gameplay. Clamp to experience required to reach max level
 	player._pExperience = std::min(player._pExperience + clampedExp, MaxExperience);
@@ -3045,7 +3046,7 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 
 	// Increase player level if applicable
 	int newLvl = player._pLevel;
-	while (newLvl < MaxCharacterLevel && player._pExperience >= ExpLvlsTbl[newLvl]) {
+	while (newLvl < MaxCharacterLevel && player._pExperience >= GetNextExperienceThresholdForLevel(newLvl)) {
 		newLvl++;
 	}
 	if (newLvl != player._pLevel) {
@@ -3187,7 +3188,7 @@ void InitPlayer(Player &player, bool firstTime) // called with firstTime=true wh
 	player._pAblSpells |= GetSpellBitmask(SpellID::Etherealize);
 #endif
 
-	player._pNextExper = ExpLvlsTbl[std::min<int8_t>(player._pLevel, MaxCharacterLevel - 1)];
+	player._pNextExper = GetNextExperienceThresholdForLevel(player._pLevel);
 	player._pInvincible = false;
 
 	if (&player == MyPlayer) {
