@@ -2103,7 +2103,7 @@ void Player::CalcScrolls()
 
 bool Player::CanUseItem(const Item &item) const
 {
-	if (!IsItemValid(item))
+	if (!IsItemValid(*this, item))
 		return false;
 
 	return (item._iDurability > 0 || (item._iLoc != ILOC_ARMOR && item._iLoc != ILOC_HELM && item._iLoc != ILOC_ONEHAND && item._iLoc != ILOC_TWOHAND))
@@ -2573,7 +2573,7 @@ void Player::setCharacterLevel(uint8_t level)
 
 uint8_t Player::getMaxCharacterLevel() const
 {
-	return MaxCharacterLevel;
+	return GetMaximumCharacterLevel();
 }
 
 uint32_t Player::getNextExperienceThreshold() const
@@ -3005,7 +3005,7 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 	if (&player != MyPlayer || player._pHitPoints <= 0)
 		return;
 
-	if (player.getCharacterLevel() >= MaxCharacterLevel) {
+	if (player.isMaxCharacterLevel()) {
 		return;
 	}
 
@@ -3032,17 +3032,17 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 		clampedExp = std::min<uint32_t>({ clampedExp, /* level 1-5: */ player.getNextExperienceThreshold() / 20U, /* level 6-50: */ 200U * player.getCharacterLevel() });
 	}
 #endif
-	const uint32_t MaxExperience = GetNextExperienceThresholdForLevel(MaxCharacterLevel);
+	const uint32_t maxExperience = GetNextExperienceThresholdForLevel(player.getMaxCharacterLevel());
 
-	// Overflow is only possible if a kill grants more than (2^32-1 - MaxExperience) XP in one go, which doesn't happen in normal gameplay. Clamp to experience required to reach max level
-	player._pExperience = std::min(player._pExperience + clampedExp, MaxExperience);
+	// ensure we only add enough experience to reach the max experience cap so we don't overflow
+	player._pExperience += std::min(clampedExp, maxExperience - player._pExperience);
 
 	if (*sgOptions.Gameplay.experienceBar) {
 		RedrawEverything();
 	}
 
 	// Increase player level if applicable
-	while (player.getCharacterLevel() < MaxCharacterLevel && player._pExperience >= player.getNextExperienceThreshold()) {
+	while (!player.isMaxCharacterLevel() && player._pExperience >= player.getNextExperienceThreshold()) {
 		// NextPlrLevel increments character level which changes the next experience threshold
 		NextPlrLevel(player);
 	}

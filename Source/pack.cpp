@@ -445,7 +445,7 @@ bool UnPackNetItem(const Player &player, const ItemNetPack &packedItem, Item &it
 	if (idx != IDI_GOLD)
 		ValidateField(creationFlags, IsCreationFlagComboValid(creationFlags));
 	if ((creationFlags & CF_TOWN) != 0)
-		ValidateField(creationFlags, IsTownItemValid(creationFlags));
+		ValidateField(creationFlags, IsTownItemValid(creationFlags, player));
 	else if ((creationFlags & CF_USEFUL) == CF_UPER15)
 		ValidateFields(creationFlags, dwBuff, IsUniqueMonsterItemValid(creationFlags, dwBuff));
 	else if ((dwBuff & CF_HELLFIRE) != 0 && AllItemsList[idx].iMiscId == IMISC_BOOK)
@@ -468,7 +468,7 @@ bool UnPackNetPlayer(const PlayerNetPack &packed, Player &player)
 	Point position { packed.px, packed.py };
 	ValidateFields(position.x, position.y, InDungeonBounds(position));
 	ValidateField(packed.currentDungeonLevel, packed.currentDungeonLevel < NUMLEVELS);
-	ValidateField(packed.pLevel, packed.pLevel >= 1 && packed.pLevel <= MaxCharacterLevel);
+	ValidateField(packed.pLevel, packed.pLevel >= 1 && packed.pLevel <= player.getMaxCharacterLevel());
 
 	int32_t baseHpMax = SDL_SwapLE32(packed.pMaxHPBase);
 	int32_t baseHp = SDL_SwapLE32(packed.pHPBase);

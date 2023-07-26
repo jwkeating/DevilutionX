@@ -44,14 +44,14 @@ bool IsCreationFlagComboValid(uint16_t iCreateInfo)
 	return true;
 }
 
-bool IsTownItemValid(uint16_t iCreateInfo)
+bool IsTownItemValid(uint16_t iCreateInfo, const Player &player)
 {
 	const uint8_t level = iCreateInfo & CF_LEVEL;
 	const bool isBoyItem = (iCreateInfo & CF_BOY) != 0;
 	const uint8_t maxTownItemLevel = 30;
 
 	// Wirt items in multiplayer are equal to the level of the player, therefore they cannot exceed the max character level
-	if (isBoyItem && level <= MaxCharacterLevel)
+	if (isBoyItem && level <= player.getMaxCharacterLevel())
 		return true;
 
 	return level <= maxTownItemLevel;
@@ -202,7 +202,7 @@ bool IsHellfireSpellBookValid(const Item &spellBook)
 }
 #endif
 
-bool IsItemValid(const Item &item)
+bool IsItemValid(const Player &player, const Item &item)
 {
 	if (!gbIsMultiplayer)
 		return true;
@@ -212,7 +212,7 @@ bool IsItemValid(const Item &item)
 	if (item.IDidx != IDI_GOLD && !IsCreationFlagComboValid(item._iCreateInfo))
 		return false;
 	if ((item._iCreateInfo & CF_TOWN) != 0)
-		return IsTownItemValid(item._iCreateInfo) && IsShopPriceValid(item);
+		return IsTownItemValid(item._iCreateInfo, player) && IsShopPriceValid(item);
 	if ((item._iCreateInfo & CF_USEFUL) == CF_UPER15)
 		return IsUniqueMonsterItemValid(item._iCreateInfo, item.dwBuff);
 #if JWK_EDIT_SPELLBOOK_DROPS
