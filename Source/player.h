@@ -284,7 +284,6 @@ struct Player {
 	uint8_t _pIThornsMin;
 	uint8_t _pIThornsMax;
 	uint32_t _pExperience;
-	uint32_t _pNextExper;
 #if JWK_EDIT_PLAYER_SKILLS
 	Uint64 _timeOfMostRecentSkillUse; // in milliseconds
 	Uint64 GetSkillCooldownMilliseconds();
@@ -340,7 +339,7 @@ struct Player {
 	HeroClass _pHeroClass;
 
 private:
-	uint8_t _pLevel = 1; // Use get/setCharacterLevel as this attribute is tied to _pNextExper
+	uint8_t _pLevel = 1; // Use get/setCharacterLevel to ensure this attribute stays within the accepted range
 
 public:
 	uint8_t _pgfxnum; // Bitmask indicating what variant of the sprite the player is using. The 3 lower bits define weapon (PlayerWeaponGraphic) and the higher bits define armour (starting with PlayerArmorGraphic)
