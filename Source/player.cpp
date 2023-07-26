@@ -3000,57 +3000,57 @@ void NextPlrLevel(Player &player)
 	PlaySFX(IS_ISIGN);
 }
 
-void AddPlrExperience(Player &player, int monsterlvl, int exp)
+void Player::_addExperience(uint32_t experience, int monsterLevelMinusPlayerLevel)
 {
-	if (&player != MyPlayer || player._pHitPoints <= 0)
+	if (this != MyPlayer || _pHitPoints <= 0)
 		return;
 
-	if (player.isMaxCharacterLevel()) {
+	if (isMaxCharacterLevel()) {
 		return;
 	}
 
 	// Use a minimum of 1 so level 0 characters can still gain experience
-	const uint32_t clampedPlayerLevel = std::max<uint32_t>(player.getCharacterLevel(), 1);
+	const uint32_t clampedPlayerLevel = std::max<uint32_t>(getCharacterLevel(), 1);
 #if JWK_EDIT_EXP_GAIN
 	constexpr uint32_t levelDiffForZeroExp = 16; // if monsters are this far below player level, player gets 0 experience.
 	uint32_t levelAdjustedExp;
-	if (clampedPlayerLevel <= monsterlvl) {
+	if (monsterLevelMinusPlayerLevel >= 0) {
 		// Don't award more than full experience when monster is higher level than player because higher level monsters already give more experience.
-		levelAdjustedExp = (uint32_t)exp;
-	} else if (clampedPlayerLevel - monsterlvl >= levelDiffForZeroExp) {
-		// Monsters that are too easy give no experience (otherwise players can just AoE farm low level zones)
+		levelAdjustedExp = experience;
+	} else if (-monsterLevelMinusPlayerLevel >= levelDiffForZeroExp) {
+		// Award no experience for monsters that are too easy (otherwise players can just AoE farm low level zones)
 		levelAdjustedExp = 0;
 	} else { // lerp between 0 exp and full exp
-		levelAdjustedExp = ((uint32_t)exp) * (levelDiffForZeroExp - (clampedPlayerLevel - monsterlvl)) / levelDiffForZeroExp;
+		levelAdjustedExp = experience * (levelDiffForZeroExp + monsterLevelMinusPlayerLevel) / levelDiffForZeroExp;
 	}
 	uint32_t clampedExp = std::min(levelAdjustedExp, GetNextExperienceThresholdForLevel(clampedPlayerLevel) / 20U); // at most 1/20 of your experience bar
 #else // original code
-	uint32_t clampedExp = std::max(static_cast<int>(exp * (1 + (monsterlvl - clampedPlayerLevel) / 10.0)), 0);
+	uint32_t clampedExp = std::max(static_cast<int>(experience * (1 + monsterLevelMinusPlayerLevel / 10.0)), 0);
 	if (gbIsMultiplayer) {
 		// for low level characters experience gain is capped to 1/20 of current levels xp
 		// for high level characters experience gain is capped to 200 * current level - this is a smaller value than 1/20 of the exp needed for the next level after level 5.
-		clampedExp = std::min<uint32_t>({ clampedExp, /* level 1-5: */ player.getNextExperienceThreshold() / 20U, /* level 6-50: */ 200U * player.getCharacterLevel() });
+		clampedExp = std::min<uint32_t>({ clampedExp, /* level 1-5: */ getNextExperienceThreshold() / 20U, /* level 6-50: */ 200U * getCharacterLevel() });
 	}
 #endif
-	const uint32_t maxExperience = GetNextExperienceThresholdForLevel(player.getMaxCharacterLevel());
+	const uint32_t maxExperience = GetNextExperienceThresholdForLevel(getMaxCharacterLevel());
 
 	// ensure we only add enough experience to reach the max experience cap so we don't overflow
-	player._pExperience += std::min(clampedExp, maxExperience - player._pExperience);
+	_pExperience += std::min(clampedExp, maxExperience - _pExperience);
 
 	if (*sgOptions.Gameplay.experienceBar) {
 		RedrawEverything();
 	}
 
 	// Increase player level if applicable
-	while (!player.isMaxCharacterLevel() && player._pExperience >= player.getNextExperienceThreshold()) {
+	while (!isMaxCharacterLevel() && _pExperience >= getNextExperienceThreshold()) {
 		// NextPlrLevel increments character level which changes the next experience threshold
-		NextPlrLevel(player);
+		NextPlrLevel(*this);
 	}
 
-	NetSendCmdParam1(false, CMD_PLRLEVEL, player.getCharacterLevel());
+	NetSendCmdParam1(false, CMD_PLRLEVEL, getCharacterLevel());
 }
 
-void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags, WorldTilePosition monsterLocation)
+void AddPlrMonstExper(int monsterLevel, unsigned int monsterExp, char whoHitMonsterFlags, WorldTilePosition monsterLocation)
 {
 #if JWK_BUFF_MONSTERS_IN_MULTIPLAYER
 	monsterExp += monsterExp * (GetNumActivePlayers() - 1) / 2;
@@ -3077,7 +3077,7 @@ void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags,
 		} else if (totplrs == 4) {
 			monsterExp = monsterExp * 1 / 2;  // better than 1/4
 		}
-		AddPlrExperience(*MyPlayer, monsterLevel, monsterExp);
+		MyPlayer->addExperience(monsterExp, monsterLevel);
 	} else {
 		// All players get a minimum amount of experience for just being nearby.
 		// This doesn't subtract from the experience awarded to players who actually damaged the monster.
@@ -3085,23 +3085,22 @@ void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags,
 		int sqrDistance = distanceToMonster.deltaX * distanceToMonster.deltaX + distanceToMonster.deltaY * distanceToMonster.deltaY;
 		bool inRange = sqrDistance <= 25 * 25;
 		if (inRange) {
-			AddPlrExperience(*MyPlayer, monsterLevel, monsterExp / 4);
+			MyPlayer->addExperience(monsterExp / 4, monsterLevel);
 		}
 	}
 #else // original code (Local player only gets experience if they damaged the monster)
-	if ((whoHitMonsterFlags & (1 << MyPlayerId)) == 0)
-		return;
-	int totplrs = 0;
+	unsigned totplrs = 0;
 	for (size_t i = 0; i < Players.size(); i++) {
 		if (((1 << i) & whoHitMonsterFlags) != 0) {
 			totplrs++;
 		}
 	}
-	if (totplrs == 0)
-		return;
-	assert(totplrs != 0);
-	monsterExp /= totplrs;
-	AddPlrExperience(*MyPlayer, monsterLevel, monsterExp);
+
+	if (totplrs != 0) {
+		const unsigned e = monsterExp / totplrs;
+		if ((whoHitMonsterFlags & (1 << MyPlayerId)) != 0)
+			MyPlayer->addExperience(e, lvl);
+	}
 #endif
 }
 
