@@ -2708,8 +2708,8 @@ void SaveStash(SaveWriter &stashWriter)
 
 	std::vector<unsigned> pagesToSave;
 	for (const auto &stashPage : Stash.stashGrids) {
-		if (std::any_of(stashPage.second.cbegin(), stashPage.second.cend(), [](const auto &row) {
-			    return std::any_of(row.cbegin(), row.cend(), [](auto cell) {
+		if (c_any_of(stashPage.second, [](const auto &row) {
+			    return c_any_of(row, [](StashStruct::StashCell cell) {
 				    return cell > 0;
 			    });
 		    })) {

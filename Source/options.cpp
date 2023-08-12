@@ -24,6 +24,7 @@
 #include "platform/locale.hpp"
 #include "qol/monhealthbar.h"
 #include "qol/xpbar.h"
+#include "utils/algorithm/container.hpp"
 #include "utils/display.h"
 #include "utils/file_util.h"
 #include "utils/language.h"
@@ -812,7 +813,7 @@ string_view OptionEntryResolution::GetListDescription(size_t index) const
 size_t OptionEntryResolution::GetActiveListIndex() const
 {
 	CheckResolutionsAreInitialized();
-	auto found = std::find_if(resolutions.begin(), resolutions.end(), [this](const auto &x) { return x.first == this->size; });
+	auto found = c_find_if(resolutions, [this](const auto &x) { return x.first == this->size; });
 	if (found == resolutions.end())
 		return 0;
 	return std::distance(resolutions.begin(), found);
@@ -1260,7 +1261,7 @@ void OptionEntryLanguageCode::CheckLanguagesAreInitialized() const
 	}
 
 	// Ensures that the ini specified language is present in languages list even if unknown (for example if someone starts to translate a new language)
-	if (std::find_if(languages.begin(), languages.end(), [this](const auto &x) { return x.first == this->szCode; }) == languages.end()) {
+	if (c_find_if(languages, [this](const auto &x) { return x.first == this->szCode; }) == languages.end()) {
 		languages.emplace_back(szCode, szCode);
 	}
 }
@@ -1278,7 +1279,7 @@ string_view OptionEntryLanguageCode::GetListDescription(size_t index) const
 size_t OptionEntryLanguageCode::GetActiveListIndex() const
 {
 	CheckLanguagesAreInitialized();
-	auto found = std::find_if(languages.begin(), languages.end(), [this](const auto &x) { return x.first == this->szCode; });
+	auto found = c_find_if(languages, [this](const auto &x) { return x.first == this->szCode; });
 	if (found == languages.end())
 		return 0;
 	return std::distance(languages.begin(), found);

@@ -25,7 +25,6 @@
 #include "engine/rectangle.hpp"
 #include "engine/render/clx_render.hpp"
 #include "engine/render/primitive_render.hpp"
-#include "engine/surface.hpp"
 #include "utils/algorithm/container.hpp"
 #include "utils/language.h"
 #include "utils/log.hpp"
