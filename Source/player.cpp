@@ -2997,6 +2997,8 @@ void NextPlrLevel(Player &player)
 		FocusOnCharInfo();
 
 	CalcPlayerInventory(player, true);
+	PlaySFX(IS_IHARM);
+	PlaySFX(IS_ISIGN);
 }
 
 void AddPlrExperience(Player &player, int monsterlvl, int exp)
