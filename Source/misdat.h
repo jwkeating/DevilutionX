@@ -5,6 +5,7 @@
  */
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <type_traits>
 #include <vector>
@@ -14,7 +15,6 @@
 #include "engine/clx_sprite.hpp"
 #include "spelldat.h"
 #include "utils/enum_traits.h"
-#include "utils/stdcompat/cstddef.hpp"
 #include "utils/stdcompat/string_view.hpp"
 
 #define JWK_PREVENT_DUPLICATE_MISSILE_HITS 1 // prevent multiple hits per tick from the same spell effect.  This makes damage more consistent instead of randomly doing double damage depending on micro-differences in character position.

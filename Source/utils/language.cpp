@@ -271,7 +271,7 @@ bool ReadEntry(AssetHandle &handle, const MoEntry &e, char *result)
 	return handle.read(result, e.length);
 }
 
-bool CopyData(void *dst, const byte *data, size_t dataSize, size_t offset, size_t length)
+bool CopyData(void *dst, const std::byte *data, size_t dataSize, size_t offset, size_t length)
 {
 	if (offset + length > dataSize)
 		return false;
@@ -279,7 +279,7 @@ bool CopyData(void *dst, const byte *data, size_t dataSize, size_t offset, size_
 	return true;
 }
 
-bool ReadEntry(const byte *data, size_t dataSize, const MoEntry &e, char *result)
+bool ReadEntry(const std::byte *data, size_t dataSize, const MoEntry &e, char *result)
 {
 	if (!CopyData(result, data, dataSize, e.offset, e.length))
 		return false;
@@ -409,9 +409,9 @@ void LanguageInitialize()
 	const bool readWholeFile = handle.handle->type == SDL_RWOPS_UNKNOWN;
 #endif
 
-	std::unique_ptr<byte[]> data;
+	std::unique_ptr<std::byte[]> data;
 	if (readWholeFile) {
-		data.reset(new byte[fileSize]);
+		data.reset(new std::byte[fileSize]);
 		if (!handle.read(data.get(), fileSize))
 			return;
 		handle = {};

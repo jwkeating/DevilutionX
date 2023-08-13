@@ -6,7 +6,6 @@
 #include <utility>
 
 #include "appfat.h"
-#include "utils/attributes.h"
 
 namespace devilution {
 

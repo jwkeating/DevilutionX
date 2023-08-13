@@ -4,6 +4,7 @@
  * Implementation of functions for keeping multiplaye games in sync.
  */
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <ctime>
@@ -29,7 +30,6 @@
 #include "tmsg.h"
 #include "utils/endian_read.hpp"
 #include "utils/language.h"
-#include "utils/stdcompat/cstddef.hpp"
 #include "utils/stdcompat/string_view.hpp"
 #include "utils/str_cat.hpp"
 
@@ -110,27 +110,27 @@ uint32_t sgbSentThisCycle;
 void BufferInit(TBuffer *pBuf)
 {
 	pBuf->dwNextWriteOffset = 0;
-	pBuf->bData[0] = byte { 0 };
+	pBuf->bData[0] = std::byte { 0 };
 }
 
-void CopyPacket(TBuffer *buf, const byte *packet, size_t size)
+void CopyPacket(TBuffer *buf, const std::byte *packet, size_t size)
 {
 	if (buf->dwNextWriteOffset + size + 2 > 0x1000) {
 		return;
 	}
 
-	byte *p = &buf->bData[buf->dwNextWriteOffset];
+	std::byte *p = &buf->bData[buf->dwNextWriteOffset];
 	buf->dwNextWriteOffset += size + 1;
-	*p = static_cast<byte>(size);
+	*p = static_cast<std::byte>(size);
 	p++;
 	memcpy(p, packet, size);
-	p[size] = byte { 0 };
+	p[size] = std::byte { 0 };
 }
 
-byte *CopyBufferedPackets(byte *destination, TBuffer *source, size_t *size)
+std::byte *CopyBufferedPackets(std::byte *destination, TBuffer *source, size_t *size)
 {
 	if (source->dwNextWriteOffset != 0) {
-		byte *srcPtr = source->bData;
+		std::byte *srcPtr = source->bData;
 		while (true) {
 			auto chunkSize = static_cast<uint8_t>(*srcPtr);
 			if (chunkSize == 0)
@@ -215,7 +215,7 @@ void CheckPlayerInfoTimeouts()
 	}
 }
 
-void SendPacket(int playerId, const byte *packet, size_t size)
+void SendPacket(int playerId, const std::byte *packet, size_t size)
 {
 	TPkt pkt;
 
@@ -353,7 +353,7 @@ void BeginTimeout()
 	CheckDropPlayer();
 }
 
-void HandleAllPackets(size_t pnum, const byte *data, size_t size)
+void HandleAllPackets(size_t pnum, const std::byte *data, size_t size)
 {
 	for (unsigned offset = 0; offset < size;) {
 		size_t messageSize = ParseCmd(pnum, reinterpret_cast<const TCmd *>(&data[offset]));
@@ -367,7 +367,7 @@ void HandleAllPackets(size_t pnum, const byte *data, size_t size)
 void ProcessTmsgs()
 {
 	while (true) {
-		std::unique_ptr<byte[]> msg;
+		std::unique_ptr<std::byte[]> msg;
 		uint8_t size = tmsg_get(&msg);
 		if (size == 0)
 			break;
@@ -381,7 +381,7 @@ void SendPlayerInfo(int pnum, _cmd_id cmd)
 	PlayerNetPack packed;
 	Player &myPlayer = *MyPlayer;
 	PackNetPlayer(packed, myPlayer);
-	multi_send_zero_packet(pnum, cmd, reinterpret_cast<byte *>(&packed), sizeof(PlayerNetPack));
+	multi_send_zero_packet(pnum, cmd, reinterpret_cast<std::byte *>(&packed), sizeof(PlayerNetPack));
 }
 
 void SetupLocalPositions()
@@ -536,7 +536,7 @@ void InitGameInfo()
 	sgGameInitInfo.fullQuests = (!gbIsMultiplayer || *sgOptions.Gameplay.multiplayerFullQuests) ? 1 : 0;
 }
 
-void NetSendLoPri(int playerId, const byte *data, size_t size)
+void NetSendLoPri(int playerId, const std::byte *data, size_t size)
 {
 	if (data != nullptr && size != 0) {
 		CopyPacket(&lowPriorityBuffer, data, size);
@@ -544,7 +544,7 @@ void NetSendLoPri(int playerId, const byte *data, size_t size)
 	}
 }
 
-void NetSendHiPri(int playerId, const byte *data, size_t size)
+void NetSendHiPri(int playerId, const std::byte *data, size_t size)
 {
 	if (data != nullptr && size != 0) {
 		CopyPacket(&highPriorityBuffer, data, size);
@@ -554,7 +554,7 @@ void NetSendHiPri(int playerId, const byte *data, size_t size)
 		shareNextHighPriorityMessage = false;
 		TPkt pkt;
 		NetReceivePlayerData(&pkt);
-		byte *destination = pkt.body;
+		std::byte *destination = pkt.body;
 		size_t remainingSpace = gdwNormalMsgSize - sizeof(TPktHdr);
 		destination = CopyBufferedPackets(destination, &highPriorityBuffer, &remainingSpace);
 		destination = CopyBufferedPackets(destination, &lowPriorityBuffer, &remainingSpace);
@@ -566,7 +566,7 @@ void NetSendHiPri(int playerId, const byte *data, size_t size)
 	}
 }
 
-void multi_send_msg_packet(uint32_t pmask, const byte *data, size_t size)
+void multi_send_msg_packet(uint32_t pmask, const std::byte *data, size_t size)
 {
 	TPkt pkt;
 	NetReceivePlayerData(&pkt);
@@ -726,14 +726,14 @@ void multi_process_network_packets()
 				}
 			}
 		}
-		HandleAllPackets(playerId, (const byte *)(pkt + 1), dwMsgSize - sizeof(TPktHdr));
+		HandleAllPackets(playerId, (const std::byte *)(pkt + 1), dwMsgSize - sizeof(TPktHdr));
 	}
 	if (SErrGetLastError() != STORM_ERROR_NO_MESSAGES_WAITING)
 		nthread_terminate_game("SNetReceiveMsg");
 	CheckPlayerInfoTimeouts();
 }
 
-void multi_send_zero_packet(size_t pnum, _cmd_id bCmd, const byte *data, size_t size)
+void multi_send_zero_packet(size_t pnum, _cmd_id bCmd, const std::byte *data, size_t size)
 {
 	assert(pnum != MyPlayerId);
 	assert(data != nullptr);

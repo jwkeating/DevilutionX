@@ -15,7 +15,6 @@
 #include "utils/endian_read.hpp"
 #include "utils/endian_write.hpp"
 #include "utils/pcx.hpp"
-#include "utils/stdcompat/optional.hpp"
 
 #ifdef DEBUG_PCX_TO_CL2_SIZE
 #include <iomanip>
