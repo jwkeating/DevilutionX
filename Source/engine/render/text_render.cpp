@@ -9,6 +9,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <unordered_map>
 #include <utility>
 #include <variant>
@@ -27,10 +28,7 @@
 #include "engine/render/primitive_render.hpp"
 #include "utils/algorithm/container.hpp"
 #include "utils/language.h"
-#include "utils/log.hpp"
-#include "utils/stdcompat/optional.hpp"
-#include "utils/stdcompat/string_view.hpp"
-#include "utils/str_cat.hpp"
+#include "utils/sdl_compat.h"
 #include "utils/utf8.hpp"
 
 namespace devilution {

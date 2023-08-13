@@ -7,6 +7,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <utility>
 #include <variant>
@@ -17,9 +18,6 @@
 #include "engine/palette.h"
 #include "engine/point.hpp"
 #include "engine/rectangle.hpp"
-#include "engine/surface.hpp"
-#include "utils/enum_traits.h"
-#include "utils/stdcompat/optional.hpp"
 #include "utils/stdcompat/string_view.hpp"
 
 namespace devilution {

@@ -22,7 +22,6 @@
 #include "utils/format_int.hpp"
 #include "utils/language.h"
 #include "utils/stdcompat/algorithm.hpp"
-#include "utils/stdcompat/optional.hpp"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 
