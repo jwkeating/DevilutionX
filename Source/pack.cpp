@@ -350,8 +350,8 @@ void UnPackItem(const ItemPack &packedItem, Item &item, bool isHellfire)
 		item._iIdentified = (packedItem.bId & 1) != 0;
 		item._iMaxDur = packedItem.bMDur;
 		item._iDurability = ClampDurability(item, packedItem.bDur);
-		item._iMaxCharges = clamp<int>(packedItem.bMCh, 0, item._iMaxCharges);
-		item._iCharges = clamp<int>(packedItem.bCh, 0, item._iMaxCharges);
+		item._iMaxCharges = std::clamp<int>(packedItem.bMCh, 0, item._iMaxCharges);
+		item._iCharges = std::clamp<int>(packedItem.bCh, 0, item._iMaxCharges);
 	}
 }
 
@@ -360,17 +360,17 @@ void UnPackPlayer(const PlayerPack &packed, Player &player)
 	Point position { packed.px, packed.py };
 
 	player = {};
-	player._pLevel = clamp<int8_t>(packed.pLevel, 1, MaxCharacterLevel);
+	player._pLevel = std::clamp<int8_t>(packed.pLevel, 1, MaxCharacterLevel);
 	player._pMaxHPBase = SDL_SwapLE32(packed.pMaxHPBase);
 	player._pHPBase = SDL_SwapLE32(packed.pHPBase);
-	player._pHPBase = clamp<int32_t>(player._pHPBase, 0, player._pMaxHPBase);
+	player._pHPBase = std::clamp<int32_t>(player._pHPBase, 0, player._pMaxHPBase);
 	player._pMaxHP = player._pMaxHPBase;
 	player._pHitPoints = player._pHPBase;
 	player.position.tile = position;
 	player.position.future = position;
-	player.setLevel(clamp<int8_t>(packed.currentDungeonLevel, 0, NUMLEVELS));
+	player.setLevel(std::clamp<int8_t>(packed.currentDungeonLevel, 0, NUMLEVELS));
 
-	player._pHeroClass = static_cast<HeroClass>(clamp<uint8_t>(packed.pClass, 0, enum_size<HeroClass>::value - 1));
+	player._pHeroClass = static_cast<HeroClass>(std::clamp<uint8_t>(packed.pClass, 0, enum_size<HeroClass>::value - 1));
 
 	ClrPlrPath(player);
 	player.destAction = ACTION_NONE;

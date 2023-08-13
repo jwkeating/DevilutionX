@@ -310,8 +310,8 @@ int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 
 			// Then work out the bottom left cell of the nearest area that could fit this item (as pasting on the edge of the inventory would otherwise put it out of bounds)
 			int hotPixelCell = r - SLOTXY_INV_FIRST;
-			int targetRow = clamp((hotPixelCell / InventorySizeInSlots.width) - hotPixelCellOffset.deltaY, 0, InventorySizeInSlots.height - itemSize.height);
-			int targetColumn = clamp((hotPixelCell % InventorySizeInSlots.width) - hotPixelCellOffset.deltaX, 0, InventorySizeInSlots.width - itemSize.width);
+			int targetRow = std::clamp((hotPixelCell / InventorySizeInSlots.width) - hotPixelCellOffset.deltaY, 0, InventorySizeInSlots.height - itemSize.height);
+			int targetColumn = std::clamp((hotPixelCell % InventorySizeInSlots.width) - hotPixelCellOffset.deltaX, 0, InventorySizeInSlots.width - itemSize.width);
 			return SLOTXY_INV_FIRST + targetRow * InventorySizeInSlots.width + targetColumn;
 		}
 	}
@@ -1749,12 +1749,12 @@ bool CanPut(Point position)
 int ClampDurability(const Item &item, int durability)
 {
 #if JWK_EDIT_DURABILITY_LOSS
-	return clamp<int>(durability, 0, item._iMaxDur);
+	return std::clamp<int>(durability, 0, item._iMaxDur);
 #else
 	if (item._iMaxDur == 0)
 		return 0;
 
-	return clamp<int>(durability, 1, item._iMaxDur);
+	return std::clamp<int>(durability, 1, item._iMaxDur);
 #endif
 }
 
@@ -1786,8 +1786,8 @@ int SyncDropItem(Point position, BaseItemIdx idx, uint16_t icreateinfo, int isee
 		item._iIdentified = true;
 	item._iMaxDur = mdur;
 	item._iDurability = ClampDurability(item, dur);
-	item._iMaxCharges = clamp<int>(mch, 0, item._iMaxCharges);
-	item._iCharges = clamp<int>(ch, 0, item._iMaxCharges);
+	item._iMaxCharges = std::clamp<int>(mch, 0, item._iMaxCharges);
+	item._iCharges = std::clamp<int>(ch, 0, item._iMaxCharges);
 	if (gbIsHellfire) {
 		item._iPLToHit = ClampToHit(item, toHit);
 		item._iMaxDam = ClampMaxDam(item, maxDam);

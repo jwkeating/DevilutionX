@@ -1,5 +1,6 @@
 #include "qol/stash.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <utility>
 
@@ -21,7 +22,6 @@
 #include "stores.h"
 #include "utils/format_int.hpp"
 #include "utils/language.h"
-#include "utils/stdcompat/algorithm.hpp"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 
@@ -97,8 +97,8 @@ std::optional<Point> FindTargetSlotUnderItemCursor(Point cursorPosition, Size it
 				hotPixelCellOffset.deltaY++;
 			}
 			// Then work out the top left cell of the nearest area that could fit this item (as pasting on the edge of the stash would otherwise put it out of bounds)
-			point.y = clamp(point.y - hotPixelCellOffset.deltaY, 0, StashGridSize.height - itemSize.height);
-			point.x = clamp(point.x - hotPixelCellOffset.deltaX, 0, StashGridSize.width - itemSize.width);
+			point.y = std::clamp(point.y - hotPixelCellOffset.deltaY, 0, StashGridSize.height - itemSize.height);
+			point.x = std::clamp(point.x - hotPixelCellOffset.deltaX, 0, StashGridSize.width - itemSize.width);
 			return point;
 		}
 	}

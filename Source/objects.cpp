@@ -2374,7 +2374,7 @@ void OperateShrineHidden(Player &player) // jwk - I rewrote this function to mak
 			item._iMaxDur -= 20;
 			if (item._iMaxDur <= 0)
 				item._iMaxDur = 1;
-			item._iDurability = clamp(item._iDurability, 1, item._iMaxDur);
+			item._iDurability = std::clamp(item._iDurability, 1, item._iMaxDur);
 		}
 
 		for (auto &item : player.InvBody) {

@@ -224,7 +224,7 @@ static void DrawFlask(const Surface &out, const Surface &celBuf, Point sourcePos
 static void DrawFlaskUpper(const Surface &out, const Surface &sourceBuffer, int offset, int fillPer)
 {
 	// clamping because this function only draws the top 12% of the flask display
-	int emptyPortion = clamp(80 - fillPer, 0, 11) + 2; // +2 to account for the frame being included in the sprite
+	int emptyPortion = std::clamp(80 - fillPer, 0, 11) + 2; // +2 to account for the frame being included in the sprite
 
 	// Draw the empty part of the flask
 	DrawFlask(out, sourceBuffer, { 13, 3 }, GetMainPanel().position + Displacement { offset, -13 }, emptyPortion);
@@ -243,7 +243,7 @@ static void DrawFlaskUpper(const Surface &out, const Surface &sourceBuffer, int 
  */
 static void DrawFlaskLower(const Surface &out, const Surface &sourceBuffer, int offset, int fillPer)
 {
-	int filled = clamp(fillPer, 0, 69);
+	int filled = std::clamp(fillPer, 0, 69);
 
 	if (filled < 69)
 		DrawFlaskTop(out, GetMainPanel().position + Displacement { offset, 0 }, sourceBuffer, 16, 85 - filled);

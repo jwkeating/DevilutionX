@@ -392,6 +392,7 @@ static int ChanceToMissAtDistance(int distance)
 	distance = std::max(0, distance - 5);
 	return distance * distance / 2;
 }
+
 #endif
 
 static void RotateBlockedMissile(Missile &missile)
@@ -459,7 +460,7 @@ bool MonsterHitByMissileFromMonsterOrTrap(Monster& monster, Monster* attacker, i
 		if (attacker) {
 			hitChance = attacker->toHit(sgGameInitInfo.nDifficulty) - monster.armorClass;
 			hitChance += 2 * (attacker->level(sgGameInitInfo.nDifficulty) - monster.level(sgGameInitInfo.nDifficulty));
-			hitChance = clamp(hitChance, 5, 95);
+			hitChance = std::clamp(hitChance, 5, 95);
 		} else { // monster hit by arrow trap
 			hitChance = 100;
 		}
@@ -539,7 +540,7 @@ static bool MonsterHitByMissileFromPlayer(Player& player, Monster& monster, int 
 	if (missileData.isArrow() && damageType == DamageType::Physical) { // the elemental portion of an arrow's damage always hits because the arrow itself already rolled a hit
 		hitChance = player.GetRangedToHit() - player.CalculateArmorAfterPierce(monster.armorClass, false);
 		hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty));
-		hitChance = clamp(hitChance, 5, 95);
+		hitChance = std::clamp(hitChance, 5, 95);
 	} else { // spells always hit
 		hitChance = 100;
 	}
@@ -3351,7 +3352,7 @@ void ProcessChargedBolt(Missile &missile)
 			if ((rng & 0x3) == 0) {
 				// var6 is how much perpendicular (to the desired direction) we're adding as randomness
 				missile.var6 += (rng & 0x4) ? 64 : -64;
-				missile.var6 = clamp<int>(missile.var6, -256, 256);
+				missile.var6 = std::clamp<int>(missile.var6, -256, 256);
 			}
 			// Travel in the desired direction plus some amount in the perpendicular direction.  Perp vector of (x,y) is (y,-x).
 			int px = missile.position.tile.x + missile.var4 + missile.var6 * missile.var5 / 256;

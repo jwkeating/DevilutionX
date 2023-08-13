@@ -1261,7 +1261,7 @@ void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent,
 
 	int minhitChance = GetMinHitChance();
 #if JWK_EDIT_HIT_CHANCE // allow natural dodge like all other cases
-	hitChancePercent = clamp(hitChancePercent, minhitChance, 95);
+	hitChancePercent = std::clamp(hitChancePercent, minhitChance, 95);
 #else // original code
 	if (hitChancePercent < minhitChance) { hitChancePercent = minhitChance; }
 #endif
@@ -1351,7 +1351,7 @@ void MonsterAttackMonster(Monster &attacker, Monster &target, int hitChancePerce
 #if JWK_EDIT_HIT_CHANCE
 	hitChancePercent += 2 * (attacker.level(sgGameInitInfo.nDifficulty) - target.level(sgGameInitInfo.nDifficulty)) - target.armorClass;
 	int minHitChance = target.isPlayerMinion() ? GetMinHitChance() : 5;
-	hitChancePercent = clamp(hitChancePercent, minHitChance, 95);
+	hitChancePercent = std::clamp(hitChancePercent, minHitChance, 95);
 #endif
 	if (diceRollToAvoidHit >= hitChancePercent)
 		return;

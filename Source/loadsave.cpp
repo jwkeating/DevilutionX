@@ -37,7 +37,6 @@
 #include "stores.h"
 #include "utils/endian_read.hpp"
 #include "utils/language.h"
-#include "utils/stdcompat/algorithm.hpp"
 
 #define JWK_INCLUDE_MAGIC_DAMAGE_IN_FILE_FORMAT 1
 
@@ -159,7 +158,7 @@ public:
 	{
 		static_assert(sizeof(TSource) > sizeof(TDesired), "Can only narrow to a smaller type");
 		TSource value = SwapLE(Next<TSource>()) + modifier;
-		return static_cast<TDesired>(clamp<TSource>(value, std::numeric_limits<TDesired>::min(), std::numeric_limits<TDesired>::max()));
+		return static_cast<TDesired>(std::clamp<TSource>(value, std::numeric_limits<TDesired>::min(), std::numeric_limits<TDesired>::max()));
 	}
 
 	bool NextBool8()
@@ -1046,8 +1045,8 @@ void LoadMatchingItems(LoadHelper &file, const Player &player, const int n, Item
 				unpackedItem._iIdentified = heroItem._iIdentified;
 				unpackedItem._iMaxDur = heroItem._iMaxDur;
 				unpackedItem._iDurability = ClampDurability(unpackedItem, heroItem._iDurability);
-				unpackedItem._iMaxCharges = clamp<int>(heroItem._iMaxCharges, 0, unpackedItem._iMaxCharges);
-				unpackedItem._iCharges = clamp<int>(heroItem._iCharges, 0, unpackedItem._iMaxCharges);
+				unpackedItem._iMaxCharges = std::clamp<int>(heroItem._iMaxCharges, 0, unpackedItem._iMaxCharges);
+				unpackedItem._iCharges = std::clamp<int>(heroItem._iCharges, 0, unpackedItem._iMaxCharges);
 			}
 			if (gbIsHellfire) {
 				unpackedItem._iPLToHit = ClampToHit(unpackedItem, heroItem._iPLToHit); // Oil of Accuracy

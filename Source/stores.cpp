@@ -2246,7 +2246,7 @@ void SetupTownStores()
 		SetRndSeed(glSeedTbl[currlevel] * SDL_GetTicks());
 	}
 
-	dungeonLevelUpTo16 = clamp(dungeonLevelUpTo16 + 2, 6, 16);
+	dungeonLevelUpTo16 = std::clamp(dungeonLevelUpTo16 + 2, 6, 16);
 	SpawnBasicItemsForSmith(dungeonLevelUpTo16);
 	SpawnItemsForWitch(dungeonLevelUpTo16);
 	SpawnItemsForHealer(dungeonLevelUpTo16);

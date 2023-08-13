@@ -46,7 +46,6 @@
 #include "utils/language.h"
 #include "utils/log.hpp"
 #include "utils/math.h"
-#include "utils/stdcompat/algorithm.hpp"
 #include "utils/str_case.hpp"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
@@ -1569,7 +1568,7 @@ static void ConstructItemFromSeed(Item &item, BaseItemIdx idx, uint32_t iseed, i
 	item._iSeed = iseed;
 	SetRndSeed(iseed);
 #if JWK_LOOT_QUALITY_DEPENDS_ON_DIFFICULTY
-	level = clamp<int>(level, 1, CF_LEVEL); // make sure the level can be encoded into the bits allocated when we bit-pack the item
+	level = std::clamp<int>(level, 1, CF_LEVEL); // make sure the level can be encoded into the bits allocated when we bit-pack the item
 	// Note: There are two levels relevant when constructing an item:  The level of the base item, and the level of the affixes.  In this function, 'level' refers to level of the affixes.
 	// The base item level is not relevant here because we already selected a base item (BaseItemIdx), and this base item will be encoded directly into the bit-packed item.  See struct TItem.
 	int minBaseItemLevel = FlipCoin(3) ? 1 : (level + 1) / 2; // this allows all items while still producing higher quality items in higher zones
@@ -2158,7 +2157,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	player.pDamAcFlags = pDamAcFlags;
 	player._pIBonusDamMod = dmod;
 	player._pIGetHit = ghit;
-	player._pManaCostMod = clamp(manaCostMod, -100, 100);
+	player._pManaCostMod = std::clamp(manaCostMod, -100, 100);
 
 	if (player.pSneak) {
 		// Players can use sneak + rings of the night (-20% light radius) or rings of the dark (-40% light radius) to reach the minimum light radius of 2.
@@ -2167,7 +2166,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 		else
 			lrad -= 4;
 	}
-	lrad = clamp(lrad, 2, 15);
+	lrad = std::clamp(lrad, 2, 15);
 	if (player._pLightRad != lrad) {
 		ChangeVisionRadius(player.getId(), lrad);
 #if !JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
@@ -2246,9 +2245,9 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 		lr = 0;
 	}
 
-	player._pMagResist = clamp(mr, 0, MaxResistance);
-	player._pFireResist = clamp(fr, 0, MaxResistance);
-	player._pLghtResist = clamp(lr, 0, MaxResistance);
+	player._pMagResist = std::clamp(mr, 0, MaxResistance);
+	player._pFireResist = std::clamp(fr, 0, MaxResistance);
+	player._pLghtResist = std::clamp(lr, 0, MaxResistance);
 
 	vadd = (vadd * PlayersData[static_cast<size_t>(player._pHeroClass)].itmLife) >> 6;
 	ihp += (vadd << 6); // BUGFIX: blood boil can cause negative shifts here (see line 757)
@@ -3982,7 +3981,7 @@ static void SpawnOnePremiumItemForSmith(Item &premiumItem, int itemLevel, const 
 	dexterity += dexterity / 5;
 	magic += magic / 5;
 
-	itemLevel = clamp(itemLevel, 1, 30); // Smith shouldn't sell the most valuable items
+	itemLevel = std::clamp(itemLevel, 1, 30); // Smith shouldn't sell the most valuable items
 
 	int maxCount = 150;
 	const bool unlimited = !gbIsHellfire; // TODO: This could lead to an infinite loop if a suitable item can never be generated
@@ -4270,7 +4269,7 @@ void SpawnItemsForWitch(int dungeonLevelUpTo16) // must match RecreateWitchItemF
 
 static void ConstructBoyItemFromSeed(Item &item, uint32_t seed, int itemLevel)
 {
-	itemLevel = clamp<int>(itemLevel, 1, std::min((int)CF_LEVEL, MaxCharacterLevel));
+	itemLevel = std::clamp<int>(itemLevel, 1, std::min((int)CF_LEVEL, MaxCharacterLevel));
 #if JWK_LOOT_QUALITY_DEPENDS_ON_DIFFICULTY
 	int minLevelForBaseItem = FlipCoin() ? 1 : std::min(10, (itemLevel + 1) / 4); // itemLevel could be high so we need to make sure there are base items which exist
 	int minLevelForAffixes = FlipCoin(4) ? 1 : std::min(25, (itemLevel + 1) / 2);

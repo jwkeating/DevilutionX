@@ -1153,7 +1153,7 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 #if JWK_EDIT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
 	hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty));
 #endif
-	hitChance = clamp(hitChance, 5, 95);
+	hitChance = std::clamp(hitChance, 5, 95);
 
 	if (monster.tryLiftGargoyle())
 		return true;
@@ -1307,7 +1307,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 #if JWK_EDIT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
 	hitChance += 2 * (attacker._pLevel - target._pLevel);
 #endif
-	hitChance = clamp(hitChance, 5, 95);
+	hitChance = std::clamp(hitChance, 5, 95);
 
 	if (JWK_EDIT_DURABILITY_LOSS)
 		target.DamageArmor();
@@ -2759,7 +2759,7 @@ void NewPlrAnim(Player &player, player_graphic graphic, Direction dir, Animation
 	if (!HeadlessMode) {
 		sprites = player.AnimationData[static_cast<size_t>(graphic)].spritesForDirection(dir);
 		if (player.previewCelSprite && (*sprites)[0] == *player.previewCelSprite && !player.isWalking()) {
-			previewShownGameTickFragments = clamp<int>(AnimationInfo::baseValueFraction - player.progressToNextGameTickWhenPreviewWasSet, 0, AnimationInfo::baseValueFraction);
+			previewShownGameTickFragments = std::clamp<int>(AnimationInfo::baseValueFraction - player.progressToNextGameTickWhenPreviewWasSet, 0, AnimationInfo::baseValueFraction);
 		}
 	}
 
@@ -3012,7 +3012,7 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 		return;
 	}
 
-	int clampedPlayerLevel = clamp<int>(player._pLevel, 1, MaxCharacterLevel);
+	int clampedPlayerLevel = std::clamp<int>(player._pLevel, 1, MaxCharacterLevel);
 #if JWK_EDIT_EXP_GAIN
 	constexpr uint32_t levelDiffForZeroExp = 16; // if monsters are this far below player level, player gets 0 experience.
 	uint32_t levelAdjustedExp;
@@ -3413,7 +3413,7 @@ int Player::CalcManaShieldAbsorbPercent() const
 	// Mana shield approaches the ideal absorb value as you increase the spell skill, with a cap.
 	int manaShieldLevel = GetSpellLevel(SpellID::ManaShield);
 	int idealAbsorbPercent = (_pMaxMana * 100) / (_pMaxMana + _pMaxHP);
-	int maxAbsorbPercent = clamp(33 + 2 * manaShieldLevel, 0, 70);
+	int maxAbsorbPercent = std::clamp(33 + 2 * manaShieldLevel, 0, 70);
 	int absorbPercent = std::min(idealAbsorbPercent, maxAbsorbPercent);
 	return absorbPercent;
 }
@@ -3879,16 +3879,16 @@ void CheckStats(Player &player)
 		int maxStatPoint = player.GetMaximumAttributeValue(attribute);
 		switch (attribute) {
 		case CharacterAttribute::Strength:
-			player._pBaseStr = clamp(player._pBaseStr, 0, maxStatPoint);
+			player._pBaseStr = std::clamp(player._pBaseStr, 0, maxStatPoint);
 			break;
 		case CharacterAttribute::Magic:
-			player._pBaseMag = clamp(player._pBaseMag, 0, maxStatPoint);
+			player._pBaseMag = std::clamp(player._pBaseMag, 0, maxStatPoint);
 			break;
 		case CharacterAttribute::Dexterity:
-			player._pBaseDex = clamp(player._pBaseDex, 0, maxStatPoint);
+			player._pBaseDex = std::clamp(player._pBaseDex, 0, maxStatPoint);
 			break;
 		case CharacterAttribute::Vitality:
-			player._pBaseVit = clamp(player._pBaseVit, 0, maxStatPoint);
+			player._pBaseVit = std::clamp(player._pBaseVit, 0, maxStatPoint);
 			break;
 		}
 	}
@@ -3896,7 +3896,7 @@ void CheckStats(Player &player)
 
 void ModifyPlrStr(Player &player, int l)
 {
-	l = clamp(l, 0 - player._pBaseStr, player.GetMaximumAttributeValue(CharacterAttribute::Strength) - player._pBaseStr);
+	l = std::clamp(l, 0 - player._pBaseStr, player.GetMaximumAttributeValue(CharacterAttribute::Strength) - player._pBaseStr);
 
 	player._pStrength += l;
 	player._pBaseStr += l;
@@ -3910,7 +3910,7 @@ void ModifyPlrStr(Player &player, int l)
 
 void ModifyPlrMag(Player &player, int l)
 {
-	l = clamp(l, 0 - player._pBaseMag, player.GetMaximumAttributeValue(CharacterAttribute::Magic) - player._pBaseMag);
+	l = std::clamp(l, 0 - player._pBaseMag, player.GetMaximumAttributeValue(CharacterAttribute::Magic) - player._pBaseMag);
 
 	player._pMagic += l;
 	player._pBaseMag += l;
@@ -3934,7 +3934,7 @@ void ModifyPlrMag(Player &player, int l)
 
 void ModifyPlrDex(Player &player, int l)
 {
-	l = clamp(l, 0 - player._pBaseDex, player.GetMaximumAttributeValue(CharacterAttribute::Dexterity) - player._pBaseDex);
+	l = std::clamp(l, 0 - player._pBaseDex, player.GetMaximumAttributeValue(CharacterAttribute::Dexterity) - player._pBaseDex);
 
 	player._pDexterity += l;
 	player._pBaseDex += l;
@@ -3947,7 +3947,7 @@ void ModifyPlrDex(Player &player, int l)
 
 void ModifyPlrVit(Player &player, int l)
 {
-	l = clamp(l, 0 - player._pBaseVit, player.GetMaximumAttributeValue(CharacterAttribute::Vitality) - player._pBaseVit);
+	l = std::clamp(l, 0 - player._pBaseVit, player.GetMaximumAttributeValue(CharacterAttribute::Vitality) - player._pBaseVit);
 
 	player._pVitality += l;
 	player._pBaseVit += l;
