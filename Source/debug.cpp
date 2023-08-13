@@ -707,7 +707,7 @@ std::string DebugCmdSpawnUniqueMonster(const string_view parameter)
 			count = num;
 			break;
 		}
-		AppendStrView(name, arg);
+		name.append(arg);
 		name += ' ';
 	}
 	if (name.empty())
@@ -797,7 +797,7 @@ std::string DebugCmdSpawnMonster(const string_view parameter)
 			count = num;
 			break;
 		}
-		AppendStrView(name, arg);
+		name.append(arg);
 		name += ' ';
 	}
 	if (name.empty())
@@ -1067,7 +1067,7 @@ std::string DebugCmdSearchMonster(const string_view parameter)
 	}
 
 	std::string name;
-	AppendStrView(name, parameter);
+	name.append(parameter);
 	AsciiStrToLower(name);
 	SearchMonsters.push_back(name);
 
@@ -1082,7 +1082,7 @@ std::string DebugCmdSearchItem(const string_view parameter)
 	}
 
 	std::string name;
-	AppendStrView(name, parameter);
+	name.append(parameter);
 	AsciiStrToLower(name);
 	SearchItems.push_back(name);
 
@@ -1097,7 +1097,7 @@ std::string DebugCmdSearchObject(const string_view parameter)
 	}
 
 	std::string name;
-	AppendStrView(name, parameter);
+	name.append(parameter);
 	AsciiStrToLower(name);
 	SearchObjects.push_back(name);
 

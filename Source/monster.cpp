@@ -4554,9 +4554,9 @@ void PrintMonstHistory(const Monster& monster)
 			bool showMagicResist =     showMagic && (res & RESIST_MAGIC) != 0;
 			if (showFireResist || showLightningResist || showMagicResist) {
 				std::string resists = std::string(_("Resists:"));
-				if (showFireResist) { AppendStrView(resists, _(" Fire")); }
-				if (showLightningResist) { AppendStrView(resists, _(" Lightning")); }
-				if (showMagicResist) { AppendStrView(resists, _(" Magic")); }
+				if (showFireResist) { resists.append(_(" Fire")); }
+				if (showLightningResist) { resists.append(_(" Lightning")); }
+				if (showMagicResist) { resists.append(_(" Magic")); }
 				AddPanelString(resists);
 			}
 		}
@@ -4566,9 +4566,9 @@ void PrintMonstHistory(const Monster& monster)
 			bool showMagicResist =     showMagic && (res & IMMUNE_MAGIC) != 0;
 			if (showFireResist || showLightningResist || showMagicResist) {
 				std::string immune = std::string(_("Immune:"));
-				if (showFireResist) { AppendStrView(immune, _(" Fire")); }
-				if (showLightningResist) { AppendStrView(immune, _(" Lightning")); }
-				if (showMagicResist) { AppendStrView(immune, _(" Magic")); }
+				if (showFireResist) { immune.append(_(" Fire")); }
+				if (showLightningResist) { immune.append(_(" Lightning")); }
+				if (showMagicResist) { immune.append(_(" Magic")); }
 				AddPanelString(immune);
 			}
 		}
@@ -4582,21 +4582,21 @@ void PrintMonstHistory(const Monster& monster)
 			if ((res & (RESIST_MAGIC | RESIST_FIRE | RESIST_LIGHTNING)) != 0) {
 				std::string resists = std::string(_("Resists:"));
 				if ((res & RESIST_MAGIC) != 0)
-					AppendStrView(resists, _(" Magic"));
+					resists.append(_(" Magic"));
 				if ((res & RESIST_FIRE) != 0)
-					AppendStrView(resists, _(" Fire"));
+					resists.append(_(" Fire"));
 				if ((res & RESIST_LIGHTNING) != 0)
-					AppendStrView(resists, _(" Lightning"));
+					resists.append(_(" Lightning"));
 				AddPanelString(resists);
 			}
 			if ((res & (IMMUNE_MAGIC | IMMUNE_FIRE | IMMUNE_LIGHTNING)) != 0) {
 				std::string immune = std::string(_("Immune:"));
 				if ((res & IMMUNE_MAGIC) != 0)
-					AppendStrView(immune, _(" Magic"));
+					immune.append(_(" Magic"));
 				if ((res & IMMUNE_FIRE) != 0)
-					AppendStrView(immune, _(" Fire"));
+					immune.append(_(" Fire"));
 				if ((res & IMMUNE_LIGHTNING) != 0)
-					AppendStrView(immune, _(" Lightning"));
+					immune.append(_(" Lightning"));
 				AddPanelString(immune);
 			}
 		}

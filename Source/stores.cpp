@@ -251,7 +251,7 @@ void AddSText(uint8_t x, size_t y, string_view text, UiFlags flags, bool sel, in
 	stext[y]._sx = x;
 	stext[y]._syoff = 0;
 	stext[y].text.clear();
-	AppendStrView(stext[y].text, text);
+	stext[y].text.append(text);
 	stext[y].flags = flags;
 	stext[y].type = sel ? STextStruct::Selectable : STextStruct::Label;
 	stext[y].cursId = cursId;
@@ -285,18 +285,18 @@ void PrintStoreItem(const Item &item, int l, UiFlags flags, bool cursIndent = fa
 	if (item._iIdentified) {
 		if (item._iMagical != ITEM_QUALITY_UNIQUE) {
 			if (item._iPrefixPower != -1) {
-				AppendStrView(productLine, PrintItemPower(item._iPrefixPower, item));
+				productLine.append(PrintItemPower(item._iPrefixPower, item));
 			}
 		}
 		if (item._iSuffixPower != -1) {
 			if (!productLine.empty())
-				AppendStrView(productLine, _(",  "));
-			AppendStrView(productLine, PrintItemPower(item._iSuffixPower, item));
+				productLine.append(_(",  "));
+			productLine.append(PrintItemPower(item._iSuffixPower, item));
 		}
 	}
 	if (item._iMiscId == IMISC_STAFF && item._iMaxCharges != 0) {
 		if (!productLine.empty())
-			AppendStrView(productLine, _(",  "));
+			productLine.append(_(",  "));
 		productLine.append(fmt::format(fmt::runtime(_("Charges: {:d}/{:d}")), item._iCharges, item._iMaxCharges));
 	}
 	if (!productLine.empty()) {
@@ -313,7 +313,7 @@ void PrintStoreItem(const Item &item, int l, UiFlags flags, bool cursIndent = fa
 		if (item._iMaxDur != DUR_INDESTRUCTIBLE && item._iMaxDur != 0)
 			productLine += fmt::format(fmt::runtime(_("Dur: {:d}/{:d},  ")), item._iDurability, item._iMaxDur);
 		else
-			AppendStrView(productLine, _("Indestructible,  "));
+			productLine.append(_("Indestructible,  "));
 	}
 
 	uint8_t str = item._iMinStr;
@@ -321,9 +321,9 @@ void PrintStoreItem(const Item &item, int l, UiFlags flags, bool cursIndent = fa
 	uint8_t dex = item._iMinDex;
 
 	if (str == 0 && mag == 0 && dex == 0) {
-		AppendStrView(productLine, _("No required attributes"));
+		productLine.append(_("No required attributes"));
 	} else {
-		AppendStrView(productLine, _("Required:"));
+		productLine.append(_("Required:"));
 		if (str != 0)
 			productLine.append(fmt::format(fmt::runtime(_(" {:d} Str")), str));
 		if (mag != 0)
