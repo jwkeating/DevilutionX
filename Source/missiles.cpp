@@ -6,6 +6,7 @@
 #include "missiles.h"
 
 #include <climits>
+#include <cmath>
 #include <cstdint>
 
 #include "control.h"
@@ -1184,7 +1185,7 @@ static bool MoveMissile(Missile &missile, tl::function_ref<bool(Point)> checkTil
 			// skip collision logic if the missile is on a corner between tiles
 			if (pixelsTraveled.deltaY % 16 == 0
 			    && pixelsTraveled.deltaX % 32 == 0
-			    && abs(pixelsTraveled.deltaY / 16) % 2 != abs(pixelsTraveled.deltaX / 32) % 2) {
+			    && std::abs(pixelsTraveled.deltaY / 16) % 2 != std::abs(pixelsTraveled.deltaX / 32) % 2) {
 				continue;
 			}
 
@@ -1346,8 +1347,8 @@ static void SpawnLightning(Missile &missile, int dam)
 				if (missile._miEnemyType == mienemy_type::TARGET_MONSTERS || missile._miEnemyType == mienemy_type::TARGET_BOTH) {
 					hitMonsterID = dMonster[missilePos.x][missilePos.y];
 					// note: monster ID can be negative when the monster is moving between tiles (monster will occupy 2 tiles - positive ID on one tile and negative ID on the other tile)
-					if (hitMonsterID > 0 || (hitMonsterID != 0 && Monsters[abs(hitMonsterID) - 1].mode == MonsterMode::Petrified)) {
-						hitMonsterID = abs(dMonster[missilePos.x][missilePos.y]);
+					if (hitMonsterID > 0 || (hitMonsterID != 0 && Monsters[std::abs(hitMonsterID) - 1].mode == MonsterMode::Petrified)) {
+						hitMonsterID = std::abs(dMonster[missilePos.x][missilePos.y]);
 						if (missile.var6 < missile.monsterHistory.size()) { missile.monsterHistory[missile.var6++] = hitMonsterID; }
 					}
 				} else if (missile._miEnemyType == mienemy_type::TARGET_PLAYERS || missile._miEnemyType == mienemy_type::TARGET_BOTH) {
@@ -1372,7 +1373,7 @@ static void SpawnLightning(Missile &missile, int dam)
 								// Exclude targets that are too far from the original caster, otherwise chain lightning could bounce its way through the whole dungeon
 								// Note: We want to target monsters even if they aren't visible, similar to firing other spells into the dark.
 								if (!InDungeonBounds(target)) { return false; }
-								if (abs(casterPosX - target.x) > maxRadius || abs(casterPosY - target.y) > maxRadius) { return false; }
+								if (std::abs(casterPosX - target.x) > maxRadius || std::abs(casterPosY - target.y) > maxRadius) { return false; }
 
 								int16_t monsterTargetID = -1;
 								int16_t playerTargetID = -1;
@@ -1764,7 +1765,7 @@ void AddBerserk(Missile &missile, AddMissileParameter &parameter)
 			    return false;
 		    }
 
-		    int monsterId = abs(dMonster[target.x][target.y]) - 1;
+		    int monsterId = std::abs(dMonster[target.x][target.y]) - 1;
 		    if (monsterId < 0)
 			    return false;
 
@@ -1787,7 +1788,7 @@ void AddBerserk(Missile &missile, AddMissileParameter &parameter)
 	    parameter.dst, 0, 5);
 
 	if (targetMonsterPosition) {
-		auto &monster = Monsters[abs(dMonster[targetMonsterPosition->x][targetMonsterPosition->y]) - 1];
+		auto &monster = Monsters[std::abs(dMonster[targetMonsterPosition->x][targetMonsterPosition->y]) - 1];
 		Player &player = *missile.sourcePlayer();
 		const int slvl = player.GetSpellLevel(SpellID::Berserk);
 #if JWK_EDIT_GOLEM
@@ -1860,7 +1861,7 @@ void AddStealPotions(Missile &missile, AddMissileParameter & /*parameter*/)
 		int8_t pnum = dPlayer[target.x][target.y];
 		if (pnum == 0)
 			return false;
-		Player &player = Players[abs(pnum) - 1];
+		Player &player = Players[std::abs(pnum) - 1];
 
 		bool hasPlayedSFX = false;
 		for (int si = 0; si < MaxBeltItems; si++) {
@@ -1927,7 +1928,7 @@ void AddStealMana(Missile &missile, AddMissileParameter & /*parameter*/)
 	    missile.position.start, 0, 2);
 
 	if (trappedPlayerPosition) {
-		Player &player = Players[abs(dPlayer[trappedPlayerPosition->x][trappedPlayerPosition->y]) - 1];
+		Player &player = Players[std::abs(dPlayer[trappedPlayerPosition->x][trappedPlayerPosition->y]) - 1];
 
 		player._pMana = 0;
 		player._pManaBase = player._pMana + player._pMaxManaBase - player._pMaxMana;
@@ -2763,7 +2764,7 @@ void AddStoneCurse(Missile &missile, AddMissileParameter &parameter)
 			    return false;
 		    }
 
-		    int monsterId = abs(dMonster[target.x][target.y]) - 1;
+		    int monsterId = std::abs(dMonster[target.x][target.y]) - 1;
 		    if (monsterId < 0) {
 			    return false;
 		    }
@@ -2795,7 +2796,7 @@ void AddStoneCurse(Missile &missile, AddMissileParameter &parameter)
 	}
 
 	// Petrify the targeted monster
-	int monsterId = abs(dMonster[targetMonsterPosition->x][targetMonsterPosition->y]) - 1;
+	int monsterId = std::abs(dMonster[targetMonsterPosition->x][targetMonsterPosition->y]) - 1;
 	auto &monster = Monsters[monsterId];
 
 	if (monster.mode == MonsterMode::Petrified) {
@@ -3137,7 +3138,7 @@ void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
 		if (TileHasAny(dPiece[p.x][p.y], TileProperties::Solid)) {
 			return;
 		}
-		int monsterId = abs(dMonster[p.x][p.y]) - 1;
+		int monsterId = std::abs(dMonster[p.x][p.y]) - 1;
 		if (monsterId >= 0) {
 			targetMonster = &Monsters[monsterId];
 			if (player.friendlyMode && targetMonster->isPlayerMinion()) {
@@ -3147,7 +3148,7 @@ void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
 			}
 		}
 		if (!player.friendlyMode) {
-			int playerId = abs(dPlayer[p.x][p.y]) - 1;
+			int playerId = std::abs(dPlayer[p.x][p.y]) - 1;
 			if (playerId >= 0) {
 				targetPlayer = &Players[playerId];
 				if (targetPlayer == &player)
@@ -3436,8 +3437,8 @@ void AddChargedBolt(Missile &missile, AddMissileParameter &parameter)
 		// (dx,dy) can't be the zero vector because above, we checked for src == dst
 		int dx = dst.x - missile.position.start.x;
 		int dy = dst.y - missile.position.start.y;
-		int adx = abs(dx);
-		int ady = abs(dy);
+		int adx = std::abs(dx);
+		int ady = std::abs(dy);
 		if (adx >= ady) {
 			dx = 256 * dx / adx;
 			dy = 256 * dy / adx;
@@ -4034,7 +4035,7 @@ void ProcessRune(Missile &missile)
 	int mid = dMonster[position.x][position.y];
 	int pid = dPlayer[position.x][position.y];
 	if (mid != 0 || pid != 0) {
-		Point targetPosition = mid != 0 ? Monsters[abs(mid) - 1].position.tile : Players[abs(pid) - 1].position.tile;
+		Point targetPosition = mid != 0 ? Monsters[std::abs(mid) - 1].position.tile : Players[std::abs(pid) - 1].position.tile;
 		Direction dir = GetDirection(position, targetPosition);
 
 		missile._miDelFlag = true;

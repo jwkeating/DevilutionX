@@ -4,6 +4,7 @@
  * Implementation of function for sending and receiving network messages.
  */
 #include <climits>
+#include <cmath>
 #include <cstdint>
 #include <list>
 #include <memory>
@@ -1150,7 +1151,7 @@ size_t OnRequestGetItem(const TCmd *pCmd, Player &player)
 		if (GetItemRecord(dwSeed, wCI, wIndx)) {
 			int ii = -1;
 			if (InDungeonBounds(position)) {
-				ii = abs(dItem[position.x][position.y]) - 1;
+				ii = std::abs(dItem[position.x][position.y]) - 1;
 				if (ii >= 0 && !Items[ii].keyAttributesMatch(dwSeed, wIndx, wCI)) {
 					ii = -1;
 				}
@@ -1985,7 +1986,7 @@ size_t OnChangeItemDurability(const TCmd *pCmd, Player &player)
 		} else {
 			uint32_t gridCell = slotCode >> 2;
 			if (gridCell < InventoryGridCells && player.InvGrid[gridCell] != 0) {
-				item = &player.InvList[abs(player.InvGrid[gridCell]) - 1];
+				item = &player.InvList[std::abs(player.InvGrid[gridCell]) - 1];
 			}
 		}
 		if (item && !item->isEmpty() && item->_iDurability != durability) {
@@ -3109,7 +3110,7 @@ void NetSendCmdChInvItem(bool bHiPri, int invGridIndex)
 {
 	TCmdChItem cmd {};
 
-	int8_t invListIndex = abs(MyPlayer->InvGrid[invGridIndex]) - 1;
+	int8_t invListIndex = std::abs(MyPlayer->InvGrid[invGridIndex]) - 1;
 	const Item &item = MyPlayer->InvList[invListIndex];
 
 	cmd.bCmd = CMD_CHANGEINVITEMS;

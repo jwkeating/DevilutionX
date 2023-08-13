@@ -4,8 +4,6 @@
 #include <limits>
 #include <random>
 
-#include "utils/stdcompat/abs.hpp"
-
 namespace devilution {
 
 // Current game seed

@@ -374,7 +374,7 @@ void CheckInvPaste(Player &player, Point cursorPosition)
 					// FindTargetSlotUnderItemCursor returns the bottom left slot of the inventory region that fits the item, we can be confident this calculation is not going to read out of range.
 					assert(testCell < sizeof(player.InvGrid));
 					if (player.InvGrid[testCell] != 0) {
-						int8_t iv = abs(player.InvGrid[testCell]);
+						int8_t iv = std::abs(player.InvGrid[testCell]);
 						if (it != 0) {
 							if (it != iv) {
 								// Found two different items that would be displaced by the held item, can't paste the item here.
@@ -526,7 +526,7 @@ void CheckInvPaste(Player &player, Point cursorPosition)
 				if (player.HoldItem._itype == ItemType::Gold)
 					player._pGold = CalculateGold(player);
 				for (auto &itemIndex : player.InvGrid) {
-					if (abs(itemIndex) == it)
+					if (std::abs(itemIndex) == it)
 						itemIndex = 0;
 				}
 			}
@@ -691,7 +691,7 @@ void CheckInvCut(Player &player, Point cursorPosition, bool automaticMove, bool 
 		int ig = r - SLOTXY_INV_FIRST;
 		int8_t ii = player.InvGrid[ig];
 		if (ii != 0) {
-			int iv = abs(ii);
+			int iv = std::abs(ii);
 
 			holdItem = player.InvList[iv - 1];
 			if (automaticMove) {
@@ -1125,7 +1125,7 @@ void DrawInv(const Surface &out)
 			    out,
 			    GetPanelPosition(UiPanels::Inventory, InvRect[i + SLOTXY_INV_FIRST].position) + Displacement { 0, InventorySlotSizeInPixels.height },
 			    InventorySlotSizeInPixels,
-			    myPlayer.InvList[abs(myPlayer.InvGrid[i]) - 1]._iMagical);
+			    myPlayer.InvList[std::abs(myPlayer.InvGrid[i]) - 1]._iMagical);
 		}
 	}
 
@@ -1455,7 +1455,7 @@ bool CheckInvSwap(Player &player, const Item &item, int invGridIndex)
 		for (int x = 0; x < itemSize.width; x++) {
 			int gridIndex = rowGridIndex + x;
 			if (player.InvGrid[gridIndex] != 0) {
-				int existingItem = abs(player.InvGrid[gridIndex]);
+				int existingItem = std::abs(player.InvGrid[gridIndex]);
 				if (!invListIndex) {
 					invListIndex = existingItem;
 				} else if (invListIndex != existingItem) {
@@ -1473,7 +1473,7 @@ bool CheckInvSwap(Player &player, const Item &item, int invGridIndex)
 	} else {
 		// Remove the old location of the existing item
 		for (int8_t& itemIndex : player.InvGrid) {
-			if (abs(itemIndex) == invListIndex)
+			if (std::abs(itemIndex) == invListIndex)
 				itemIndex = 0;
 		}
 	}
@@ -1496,7 +1496,7 @@ bool CheckInvSwap(Player &player, const Item &item, int invGridIndex)
 
 void CheckInvRemove(Player &player, int invGridIndex)
 {
-	int invListIndex = abs(player.InvGrid[invGridIndex]) - 1;
+	int invListIndex = std::abs(player.InvGrid[invGridIndex]) - 1;
 
 	if (invListIndex >= 0) {
 		player.RemoveInvItem(invListIndex);
@@ -1859,7 +1859,7 @@ int8_t CheckInvHLight()
 		rv = INVLOC_CHEST;
 		pi = &myPlayer.InvBody[rv];
 	} else if (r >= SLOTXY_INV_FIRST && r <= SLOTXY_INV_LAST) {
-		int8_t itemId = abs(myPlayer.InvGrid[r - SLOTXY_INV_FIRST]);
+		int8_t itemId = std::abs(myPlayer.InvGrid[r - SLOTXY_INV_FIRST]);
 		if (itemId == 0)
 			return -1;
 		int ii = itemId - 1;

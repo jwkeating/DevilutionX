@@ -5,6 +5,7 @@
  */
 #include "engine/render/scrollrt.h"
 
+#include <cmath>
 #include <cstdint>
 
 #include "DiabloUI/ui_flags.hpp"
@@ -734,7 +735,7 @@ void DrawMonsterHelper(const Surface &out, Point tilePosition, Point targetBuffe
 {
 	int mi = dMonster[tilePosition.x][tilePosition.y];
 	bool isNegativeMonster = mi < 0;
-	mi = abs(mi) - 1;
+	mi = std::abs(mi) - 1;
 
 	if (leveltype == DTYPE_TOWN) {
 		if (isNegativeMonster)
@@ -765,7 +766,7 @@ void DrawMonsterHelper(const Surface &out, Point tilePosition, Point targetBuffe
 			int a = tilePosition.x - MyPlayer->position.future.x;
 			int b = tilePosition.y - MyPlayer->position.future.y;
 			// Grant infravision at close range.  If players want to see farther in the darkness, they should use an infravision scroll.
-			int maxDist = std::max(abs(a), abs(b));
+			int maxDist = std::max(std::abs(a), std::abs(b));
 			if (maxDist <= 2) {
 				sneakInfravision = true;
 			}
@@ -1221,7 +1222,7 @@ void DrawView(const Surface &out, Point startPosition)
 					auto DrawLine = [&out](Point from, Point to, uint8_t col) {
 						int dx = to.x - from.x;
 						int dy = to.y - from.y;
-						int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy);
+						int steps = std::abs(dx) > std::abs(dy) ? std::abs(dx) : std::abs(dy);
 						float ix = dx / (float)steps;
 						float iy = dy / (float)steps;
 						float sx = from.x;

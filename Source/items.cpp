@@ -590,7 +590,7 @@ static void CalcItemValue(Item &item)
 	if (multiplier > 0) {
 		item._iIvalue *= multiplier;
 	} else {
-		item._iIvalue = item._iIvalue / std::max(1, abs(multiplier)); // large negative multiplier decreases base item value
+		item._iIvalue = item._iIvalue / std::max(1, std::abs(multiplier)); // large negative multiplier decreases base item value
 	}
 	item._iIvalue += item._iVAdd1 + item._iVAdd2;
 	item._iIvalue = std::max(1, item._iIvalue);

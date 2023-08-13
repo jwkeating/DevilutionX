@@ -4,6 +4,7 @@
  * Implementation of object functionality, interaction, spawning, loading, etc.
  */
 #include <climits>
+#include <cmath>
 #include <cstdint>
 #include <ctime>
 
@@ -3685,7 +3686,7 @@ void UpdateState(Object &object, int frame)
 
 unsigned int Object::GetId() const
 {
-	return abs(dObject[position.x][position.y]) - 1;
+	return std::abs(dObject[position.x][position.y]) - 1;
 }
 
 bool Object::IsDisabled() const
@@ -3713,7 +3714,7 @@ Object *FindObjectAtPosition(Point position, bool considerLargeObjects)
 	auto objectId = dObject[position.x][position.y];
 
 	if (objectId > 0 || (considerLargeObjects && objectId != 0)) {
-		return &Objects[abs(objectId) - 1];
+		return &Objects[std::abs(objectId) - 1];
 	}
 
 	// nothing at this position, return a nullptr

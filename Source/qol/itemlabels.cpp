@@ -1,6 +1,7 @@
 #include "itemlabels.h"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <string>
 #include <vector>
@@ -162,7 +163,7 @@ void DrawItemNameLabels(const Surface &out)
 			for (unsigned j = 0; j < i; ++j) {
 				ItemLabel &a = labelQueue[i];
 				ItemLabel &b = labelQueue[j];
-				if (abs(b.pos.y - a.pos.y) < labelHeight + BorderY) {
+				if (std::abs(b.pos.y - a.pos.y) < labelHeight + BorderY) {
 					const int widthA = a.width + BorderX + MarginX * 2;
 					const int widthB = b.width + BorderX + MarginX * 2;
 					int newpos = b.pos.x;
