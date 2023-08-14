@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <variant>
 #include <vector>
@@ -18,7 +19,6 @@
 #include "engine/palette.h"
 #include "engine/point.hpp"
 #include "engine/rectangle.hpp"
-#include "utils/stdcompat/string_view.hpp"
 
 namespace devilution {
 
@@ -78,9 +78,9 @@ constexpr GameFontTables GetFontSizeFromUiFlags(UiFlags flags)
  */
 class DrawStringFormatArg {
 public:
-	using Value = std::variant<string_view, int>;
+	using Value = std::variant<std::string_view, int>;
 
-	DrawStringFormatArg(string_view value, UiFlags flags)
+	DrawStringFormatArg(std::string_view value, UiFlags flags)
 	    : value_(value)
 	    , flags_(flags)
 	{
@@ -92,10 +92,10 @@ public:
 	{
 	}
 
-	string_view GetFormatted() const
+	std::string_view GetFormatted() const
 	{
-		if (std::holds_alternative<string_view>(value_))
-			return std::get<string_view>(value_);
+		if (std::holds_alternative<std::string_view>(value_))
+			return std::get<std::string_view>(value_);
 		return formatted_;
 	}
 
@@ -106,7 +106,7 @@ public:
 
 	bool HasFormatted() const
 	{
-		return std::holds_alternative<string_view>(value_) || !formatted_.empty();
+		return std::holds_alternative<std::string_view>(value_) || !formatted_.empty();
 	}
 
 	const Value &value() const
@@ -172,7 +172,7 @@ void LoadSmallSelectionSpinner();
  * @param charactersInLine Receives characters read until newline or terminator
  * @return Line width in pixels
  */
-int GetLineWidth(string_view text, GameFontTables size = GameFont12, int spacing = 1, int *charactersInLine = nullptr);
+int GetLineWidth(std::string_view text, GameFontTables size = GameFont12, int spacing = 1, int *charactersInLine = nullptr);
 
 /**
  * @brief Calculate pixel width of first line of text, respecting kerning
@@ -186,10 +186,10 @@ int GetLineWidth(string_view text, GameFontTables size = GameFont12, int spacing
  * @param firstArgOffset If given, starts counting at `args[argsOffset - 1].GetFormatted().substr(*firstArgOffset)`.
  * @return Line width in pixels
  */
-int GetLineWidth(string_view fmt, DrawStringFormatArg *args, size_t argsLen, size_t argsOffset, GameFontTables size, int spacing, int *charactersInLine = nullptr,
+int GetLineWidth(std::string_view fmt, DrawStringFormatArg *args, size_t argsLen, size_t argsOffset, GameFontTables size, int spacing, int *charactersInLine = nullptr,
     std::optional<size_t> firstArgOffset = std::nullopt);
 
-int GetLineHeight(string_view text, GameFontTables fontIndex);
+int GetLineHeight(std::string_view text, GameFontTables fontIndex);
 
 /**
  * @brief Builds a multi-line version of the given text so it'll fit within the given width.
@@ -203,7 +203,7 @@ int GetLineHeight(string_view text, GameFontTables fontIndex);
  * @param spacing Any adjustment to apply between each character
  * @return A copy of the source text with newlines inserted where appropriate
  */
-[[nodiscard]] std::string WordWrapString(string_view text, unsigned width, GameFontTables size = GameFont12, int spacing = 1);
+[[nodiscard]] std::string WordWrapString(std::string_view text, unsigned width, GameFontTables size = GameFont12, int spacing = 1);
 
 /**
  * @brief Draws a line of text within a clipping rectangle (positioned relative to the origin of the output buffer).
@@ -221,7 +221,7 @@ int GetLineHeight(string_view text, GameFontTables fontIndex);
  * @param opts Rendering options.
  * @return The number of bytes rendered, including characters "drawn" outside the buffer.
  */
-uint32_t DrawString(const Surface &out, string_view text, const Rectangle &rect, TextRenderOptions opts = {});
+uint32_t DrawString(const Surface &out, std::string_view text, const Rectangle &rect, TextRenderOptions opts = {});
 
 /**
  * @brief Draws a line of text at the given position relative to the origin of the output buffer.
@@ -235,7 +235,7 @@ uint32_t DrawString(const Surface &out, string_view text, const Rectangle &rect,
  * @param position Location of the top left corner of the string relative to the top left corner of the output buffer.
  * @param opts Rendering options.
  */
-inline void DrawString(const Surface &out, string_view text, const Point &position, TextRenderOptions opts = {})
+inline void DrawString(const Surface &out, std::string_view text, const Point &position, TextRenderOptions opts = {})
 {
 	DrawString(out, text, { position, { out.w() - position.x, 0 } }, opts);
 }
@@ -252,9 +252,9 @@ inline void DrawString(const Surface &out, string_view text, const Point &positi
  * @param rect Clipping region relative to the output buffer describing where to draw the text and when to wrap long lines.
  * @param opts Rendering options.
  */
-void DrawStringWithColors(const Surface &out, string_view fmt, DrawStringFormatArg *args, std::size_t argsLen, const Rectangle &rect, TextRenderOptions opts = {});
+void DrawStringWithColors(const Surface &out, std::string_view fmt, DrawStringFormatArg *args, std::size_t argsLen, const Rectangle &rect, TextRenderOptions opts = {});
 
-inline void DrawStringWithColors(const Surface &out, string_view fmt, std::vector<DrawStringFormatArg> args, const Rectangle &rect, TextRenderOptions opts = {})
+inline void DrawStringWithColors(const Surface &out, std::string_view fmt, std::vector<DrawStringFormatArg> args, const Rectangle &rect, TextRenderOptions opts = {})
 {
 	return DrawStringWithColors(out, fmt, args.data(), args.size(), rect, opts);
 }

@@ -13,7 +13,6 @@
 #include "utils/log.hpp"
 #include "utils/parse_int.hpp"
 #include "utils/sdl_ptrs.h"
-#include "utils/stdcompat/string_view.hpp"
 #include "utils/str_cat.hpp"
 
 namespace devilution {
@@ -21,8 +20,8 @@ namespace devilution {
 namespace {
 
 bool HandleInputEvent(const SDL_Event &event, TextInputState &state,
-    tl::function_ref<bool(string_view)> typeFn,
-    [[maybe_unused]] tl::function_ref<bool(string_view)> assignFn)
+    tl::function_ref<bool(std::string_view)> typeFn,
+    [[maybe_unused]] tl::function_ref<bool(std::string_view)> assignFn)
 {
 	const auto modState = SDL_GetModState();
 	const bool isCtrl = (modState & KMOD_CTRL) != 0;
@@ -125,10 +124,10 @@ bool HandleInputEvent(const SDL_Event &event, TextInputState &state,
 bool HandleTextInputEvent(const SDL_Event &event, TextInputState &state)
 {
 	return HandleInputEvent(
-	    event, state, [&](string_view str) {
+	    event, state, [&](std::string_view str) {
 				state.type(str);
 				return true; },
-	    [&](string_view str) {
+	    [&](std::string_view str) {
 		    state.assign(str);
 		    return true;
 	    });
@@ -139,7 +138,7 @@ bool HandleTextInputEvent(const SDL_Event &event, TextInputState &state)
 	return ParseInt<int>(textInput_.value()).value_or(defaultValue);
 }
 
-std::string NumberInputState::filterStr(string_view str, bool allowMinus)
+std::string NumberInputState::filterStr(std::string_view str, bool allowMinus)
 {
 	std::string result;
 	if (allowMinus && !str.empty() && str[0] == '-') {
@@ -154,7 +153,7 @@ std::string NumberInputState::filterStr(string_view str, bool allowMinus)
 	return result;
 }
 
-void NumberInputState::type(string_view str)
+void NumberInputState::type(std::string_view str)
 {
 	const std::string filtered = filterStr(
 	    str, /*allowMinus=*/min_ < 0 && textInput_.cursorPosition() == 0);
@@ -164,7 +163,7 @@ void NumberInputState::type(string_view str)
 	enforceRange();
 }
 
-void NumberInputState::assign(string_view str)
+void NumberInputState::assign(std::string_view str)
 {
 	const std::string filtered = filterStr(str, /*allowMinus=*/min_ < 0);
 	if (filtered.empty()) {
@@ -192,10 +191,10 @@ void NumberInputState::enforceRange()
 bool HandleNumberInputEvent(const SDL_Event &event, NumberInputState &state)
 {
 	return HandleInputEvent(
-	    event, state.textInput(), [&](string_view str) {
+	    event, state.textInput(), [&](std::string_view str) {
 				state.type(str);
 				return true; },
-	    [&](string_view str) {
+	    [&](std::string_view str) {
 		    state.assign(str);
 		    return true;
 	    });

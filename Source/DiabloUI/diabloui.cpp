@@ -60,7 +60,7 @@ OptionalOwnedClxSpriteList ArtCursor;
 bool textInputActive = true;
 std::size_t SelectedItem = 0;
 
-const string_view BannedNames[] = {
+const std::string_view BannedNames[] = {
 	"gvdl",
 	"dvou",
 	"tiju",
@@ -637,7 +637,7 @@ void UiDestroy()
 	UnloadUiGFX();
 }
 
-bool UiValidPlayerName(string_view name)
+bool UiValidPlayerName(std::string_view name)
 {
 	if (name.empty())
 		return false;
@@ -662,7 +662,7 @@ bool UiValidPlayerName(string_view name)
 	for (char &character : buffer)
 		character++;
 
-	for (string_view bannedName : BannedNames) {
+	for (std::string_view bannedName : BannedNames) {
 		if (buffer.find(bannedName) != std::string::npos)
 			return false;
 	}

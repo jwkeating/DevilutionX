@@ -1323,7 +1323,7 @@ void DrawView(const Surface &out, Point startPosition)
 void DrawFPS(const Surface &out)
 {
 	static int framesSinceLastUpdate = 0;
-	static string_view formatted {};
+	static std::string_view formatted {};
 
 	if (!frameflag || !gbActive) {
 		return;
@@ -1356,7 +1356,7 @@ void DrawFPS(const Surface &out)
 		//int smoothedFPSx10 = (int)(1000 * FixedPoint10 / msPerUpdateSmoothed);
 		//const char *end = BufCopy(buf, smoothedFPSx10 / FixedPoint10, ".", smoothedFPSx10 % FixedPoint10, " FPS ", fps / FixedPoint10, ".", fps % FixedPoint10);
 
-		formatted = { buf, static_cast<string_view::size_type>(end - buf) };
+		formatted = { buf, static_cast<std::string_view::size_type>(end - buf) };
 	};
 	DrawString(out, formatted, Point { 8, 68 }, { UiFlags::ColorRed });
 }

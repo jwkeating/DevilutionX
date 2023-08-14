@@ -92,7 +92,7 @@ int dwRecCount;
 namespace {
 
 #ifdef LOG_RECEIVED_MESSAGES
-string_view CmdIdString(_cmd_id cmd)
+std::string_view CmdIdString(_cmd_id cmd)
 {
 	// clang-format off
 	switch (cmd) {

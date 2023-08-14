@@ -11,6 +11,7 @@
 
 #include <algorithm>
 #include <array>
+#include <string_view>
 
 #include <fmt/core.h>
 #include <fmt/format.h>
@@ -42,7 +43,6 @@
 #include "utils/cl2_to_clx.hpp"
 #include "utils/file_name_generator.hpp"
 #include "utils/language.h"
-#include "utils/stdcompat/string_view.hpp"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 
@@ -3266,7 +3266,7 @@ void GolemAi(Monster &golem)
 #endif
 }
 
-static string_view GetMonsterTypeText(const MonsterData &monsterData)
+static std::string_view GetMonsterTypeText(const MonsterData &monsterData)
 {
 #if 1 // jwk - Give the player a hint that holy bolt can damage Diablo
 	if (monsterData.ai == MonsterAIID::Diablo) {
@@ -3620,10 +3620,10 @@ void InitMonsterSND(CMonster &monsterType)
 	};
 
 	const MonsterData &data = MonstersData[monsterType.type];
-	string_view soundSuffix = data.soundSuffix != nullptr ? data.soundSuffix : data.assetsSuffix;
+	std::string_view soundSuffix = data.soundSuffix != nullptr ? data.soundSuffix : data.assetsSuffix;
 
 	for (int i = 0; i < 4; i++) {
-		string_view prefix = prefixes[i];
+		std::string_view prefix = prefixes[i];
 		if (prefix == "s" && !data.hasSpecialSound)
 			continue;
 

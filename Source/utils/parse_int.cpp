@@ -2,11 +2,9 @@
 
 #include <algorithm>
 
-#include "utils/stdcompat/string_view.hpp"
-
 namespace devilution {
 
-uint8_t ParseFixed6Fraction(string_view str, const char **endOfParse)
+uint8_t ParseFixed6Fraction(std::string_view str, const char **endOfParse)
 {
 	unsigned numDigits = 0;
 	uint32_t decimalFraction = 0;

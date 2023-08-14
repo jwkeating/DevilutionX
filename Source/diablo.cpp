@@ -5,6 +5,7 @@
  */
 #include <array>
 #include <cstdint>
+#include <string_view>
 
 #include <fmt/format.h>
 
@@ -80,7 +81,6 @@
 #include "utils/language.h"
 #include "utils/parse_int.hpp"
 #include "utils/paths.h"
-#include "utils/stdcompat/string_view.hpp"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 #if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
@@ -944,7 +944,7 @@ void RunGameLoop(interface_mode uMsg)
 	}
 }
 
-void PrintWithRightPadding(string_view str, size_t width)
+void PrintWithRightPadding(std::string_view str, size_t width)
 {
 	printInConsole(str);
 	if (str.size() >= width)
@@ -952,7 +952,7 @@ void PrintWithRightPadding(string_view str, size_t width)
 	printInConsole(std::string(width - str.size(), ' '));
 }
 
-void PrintHelpOption(string_view flags, string_view description)
+void PrintHelpOption(std::string_view flags, std::string_view description)
 {
 	printInConsole("    ");
 	PrintWithRightPadding(flags, 20);
@@ -1000,14 +1000,14 @@ void PrintHelpOption(string_view flags, string_view description)
 	diablo_quit(0);
 }
 
-void PrintFlagMessage(string_view flag, string_view message)
+void PrintFlagMessage(std::string_view flag, std::string_view message)
 {
 	printInConsole(flag);
 	printInConsole(message);
 	printNewlineInConsole();
 }
 
-void PrintFlagRequiresArgument(string_view flag)
+void PrintFlagRequiresArgument(std::string_view flag)
 {
 	PrintFlagMessage(flag, " requires an argument");
 }
@@ -1025,7 +1025,7 @@ void DiabloParseFlags(int argc, char **argv)
 	bool createDemoReference = false;
 #endif
 	for (int i = 1; i < argc; i++) {
-		const string_view arg = argv[i];
+		const std::string_view arg = argv[i];
 		if (arg == "-h" || arg == "--help") {
 			PrintHelpAndExit();
 		} else if (arg == "--version") {

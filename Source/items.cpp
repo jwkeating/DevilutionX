@@ -670,9 +670,9 @@ static void SelectRandomSpellBook(Item &item, int maxLevel, bool decreaseChanceO
 
 	SpellID chosenSpell = SelectRandomSpell(maxLevel, true, decreaseChanceOfHigherSpells);
 
-	const string_view spellName = GetSpellData(chosenSpell).sNameText;
-	const size_t iNameLen = string_view(item._iName).size();
-	const size_t iINameLen = string_view(item._iIName).size();
+	const std::string_view spellName = GetSpellData(chosenSpell).sNameText;
+	const size_t iNameLen = std::string_view(item._iName).size();
+	const size_t iINameLen = std::string_view(item._iIName).size();
 	CopyUtf8(item._iName + iNameLen, spellName, sizeof(item._iName) - iNameLen);
 	CopyUtf8(item._iIName + iINameLen, spellName, sizeof(item._iIName) - iINameLen);
 	item._iSpell = chosenSpell;
@@ -1100,12 +1100,12 @@ static void AddAffixToItem(Item &item, const ItemAffixData &affix)
 
 static std::string GetStaffName(const BaseItemData &baseItemData, SpellID spellId, bool translate)
 {
-	string_view baseName = translate ? _(baseItemData.iName) : baseItemData.iName;
-	string_view spellName = translate ? pgettext("spell", GetSpellData(spellId).sNameText) : GetSpellData(spellId).sNameText;
-	string_view normalFmt = translate ? pgettext("spell", /* TRANSLATORS: Constructs item names. Format: {Item} of {Spell}. Example: War Staff of Firewall */ "{0} of {1}") : "{0} of {1}";
+	std::string_view baseName = translate ? _(baseItemData.iName) : baseItemData.iName;
+	std::string_view spellName = translate ? pgettext("spell", GetSpellData(spellId).sNameText) : GetSpellData(spellId).sNameText;
+	std::string_view normalFmt = translate ? pgettext("spell", /* TRANSLATORS: Constructs item names. Format: {Item} of {Spell}. Example: War Staff of Firewall */ "{0} of {1}") : "{0} of {1}";
 	std::string name = fmt::format(fmt::runtime(normalFmt), baseName, spellName);
 	if (!StringInPanel(name.c_str())) {
-		string_view shortName = translate ? _(baseItemData.iSName) : baseItemData.iSName;
+		std::string_view shortName = translate ? _(baseItemData.iSName) : baseItemData.iSName;
 		name = fmt::format(fmt::runtime(normalFmt), shortName, spellName);
 	}
 	return name;
@@ -1113,29 +1113,29 @@ static std::string GetStaffName(const BaseItemData &baseItemData, SpellID spellI
 
 static std::string GetIdentifiedStaffName(const BaseItemData &baseItemData, SpellID spellId, int preidx, bool translate, std::optional<bool> forceNameLengthCheck)
 {
-	string_view baseName = translate ? _(baseItemData.iName) : baseItemData.iName;
-	string_view magicFmt = translate ? pgettext("spell", /* TRANSLATORS: Constructs item names. Format: {Prefix} {Item} of {Spell}. Example: King's War Staff of Firewall */ "{0} {1} of {2}") : "{0} {1} of {2}";
-	string_view spellName = translate ? pgettext("spell", GetSpellData(spellId).sNameText) : GetSpellData(spellId).sNameText;
-	string_view prefixName = translate ? _(ItemPrefixes[preidx].PLName) : ItemPrefixes[preidx].PLName;
+	std::string_view baseName = translate ? _(baseItemData.iName) : baseItemData.iName;
+	std::string_view magicFmt = translate ? pgettext("spell", /* TRANSLATORS: Constructs item names. Format: {Prefix} {Item} of {Spell}. Example: King's War Staff of Firewall */ "{0} {1} of {2}") : "{0} {1} of {2}";
+	std::string_view spellName = translate ? pgettext("spell", GetSpellData(spellId).sNameText) : GetSpellData(spellId).sNameText;
+	std::string_view prefixName = translate ? _(ItemPrefixes[preidx].PLName) : ItemPrefixes[preidx].PLName;
 
 	std::string identifiedName = fmt::format(fmt::runtime(magicFmt), prefixName, baseName, spellName);
 	if (forceNameLengthCheck ? *forceNameLengthCheck : !StringInPanel(identifiedName.c_str())) {
-		string_view shortName = translate ? _(baseItemData.iSName) : baseItemData.iSName;
+		std::string_view shortName = translate ? _(baseItemData.iSName) : baseItemData.iSName;
 		identifiedName = fmt::format(fmt::runtime(magicFmt), prefixName, shortName, spellName);
 	}
 	return identifiedName;
 }
 
-static std::string GetIdentifiedItemName(const string_view &baseNamel, const ItemAffixData *pPrefix, const ItemAffixData *pSufix, bool translate)
+static std::string GetIdentifiedItemName(const std::string_view &baseNamel, const ItemAffixData *pPrefix, const ItemAffixData *pSufix, bool translate)
 {
 	if (pPrefix != nullptr && pSufix != nullptr) {
-		string_view fmt = translate ? _(/* TRANSLATORS: Constructs item names. Format: {Prefix} {Item} of {Suffix}. Example: King's Long Sword of the Whale */ "{0} {1} of {2}") : "{0} {1} of {2}";
+		std::string_view fmt = translate ? _(/* TRANSLATORS: Constructs item names. Format: {Prefix} {Item} of {Suffix}. Example: King's Long Sword of the Whale */ "{0} {1} of {2}") : "{0} {1} of {2}";
 		return fmt::format(fmt::runtime(fmt), translate ? _(pPrefix->PLName) : pPrefix->PLName, baseNamel, translate ? _(pSufix->PLName) : pSufix->PLName);
 	} else if (pPrefix != nullptr) {
-		string_view fmt = translate ? _(/* TRANSLATORS: Constructs item names. Format: {Prefix} {Item}. Example: King's Long Sword */ "{0} {1}") : "{0} {1}";
+		std::string_view fmt = translate ? _(/* TRANSLATORS: Constructs item names. Format: {Prefix} {Item}. Example: King's Long Sword */ "{0} {1}") : "{0} {1}";
 		return fmt::format(fmt::runtime(fmt), translate ? _(pPrefix->PLName) : pPrefix->PLName, baseNamel);
 	} else if (pSufix != nullptr) {
-		string_view fmt = translate ? _(/* TRANSLATORS: Constructs item names. Format: {Item} of {Suffix}. Example: Long Sword of the Whale */ "{0} of {1}") : "{0} of {1}";
+		std::string_view fmt = translate ? _(/* TRANSLATORS: Constructs item names. Format: {Item} of {Suffix}. Example: Long Sword of the Whale */ "{0} of {1}") : "{0} of {1}";
 		return fmt::format(fmt::runtime(fmt), baseNamel, translate ? _(pSufix->PLName) : pSufix->PLName);
 	}
 
@@ -1853,8 +1853,8 @@ static void printItemMiscGenericGamepad(const Item &item, const bool isOil, bool
 
 static void printItemMiscGamepad(const Item &item, bool isOil, bool isCastOnTarget)
 {
-	string_view activateButton;
-	string_view castButton;
+	std::string_view activateButton;
+	std::string_view castButton;
 	switch (GamepadType) {
 	case GamepadLayout::Generic:
 		printItemMiscGenericGamepad(item, isOil, isCastOnTarget);
@@ -3585,7 +3585,7 @@ bool DoOil(Player &player, int cii)
 	case IPL_NOMINSTR:
 		return _("no strength requirement");
 	case IPL_INVCURS:
-		return { string_view(" ") };
+		return { std::string_view(" ") };
 	case IPL_DEVASTATION:
 		return _("occasional triple damage");
 	case IPL_DECAY:
@@ -4561,7 +4561,7 @@ void RecreateItem(Item &item, BaseItemIdx idx, uint16_t icreateinfo, uint32_t is
 	gbIsHellfire = tmpIsHellfire;
 }
 
-void RecreateEar(Item &item, uint16_t ic, uint32_t iseed, uint8_t bCursval, string_view heroName)
+void RecreateEar(Item &item, uint16_t ic, uint32_t iseed, uint8_t bCursval, std::string_view heroName)
 {
 	InitializeItemToDefaultValues(item, IDI_EAR);
 
@@ -4851,7 +4851,7 @@ StringOrView Item::getName() const
 	// JWK_DISABLE_ITEM_NAME_TRANSLATION - The original code included a lot of logic here for translating item names into different languages which involved re-creating the item using the random seed.
 	// I deleted this code because it was yet another failure point for random-seed code to become inconsistent.  Now, we just return the English name stored in the item data structure itself.  Much easier!
 	if (isEmpty()) {
-		return string_view("");
+		return std::string_view("");
 	} else if (!_iIdentified) {
 		return _(_iName);
 	} else if (_iMagical == ITEM_QUALITY_UNIQUE) {

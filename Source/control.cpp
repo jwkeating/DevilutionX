@@ -348,12 +348,12 @@ static struct TextCmdItem {
 	const std::string text;
 	const std::string description;
 	const std::string requiredParameter;
-	std::string (*actionProc)(const string_view);
+	std::string (*actionProc)(const std::string_view);
 };
 
 extern std::vector<TextCmdItem> TextCmdList;
 
-static std::string TextCmdHelp(const string_view parameter)
+static std::string TextCmdHelp(const std::string_view parameter)
 {
 	if (parameter.empty()) {
 		std::string ret;
@@ -386,7 +386,7 @@ static const dungeon_type DungeonTypeForArena[] = {
 	dungeon_type::DTYPE_HELL,      // SL_ARENA_CIRCLE_OF_LIFE
 };
 
-static std::string TextCmdArena(const string_view parameter)
+static std::string TextCmdArena(const std::string_view parameter)
 {
 	std::string ret;
 	if (!gbIsMultiplayer) {
@@ -418,7 +418,7 @@ static std::string TextCmdArena(const string_view parameter)
 	return ret;
 }
 
-static std::string TextCmdArenaPot(const string_view parameter)
+static std::string TextCmdArenaPot(const std::string_view parameter)
 {
 	std::string ret;
 	if (!gbIsMultiplayer) {
@@ -444,7 +444,7 @@ static std::string TextCmdArenaPot(const string_view parameter)
 	return ret;
 }
 
-static std::string TextCmdInspect(const string_view parameter)
+static std::string TextCmdInspect(const std::string_view parameter)
 {
 	std::string ret;
 	if (!gbIsMultiplayer) {
@@ -498,9 +498,9 @@ static bool IsQuestEnabled(const Quest &quest)
 	}
 }
 
-static std::string TextCmdLevelSeed(const string_view parameter)
+static std::string TextCmdLevelSeed(const std::string_view parameter)
 {
-	string_view levelType = setlevel ? "set level" : "dungeon level";
+	std::string_view levelType = setlevel ? "set level" : "dungeon level";
 
 	char gameId[] = {
 		static_cast<char>((sgGameInitInfo.programid >> 24) & 0xFF),
@@ -510,8 +510,8 @@ static std::string TextCmdLevelSeed(const string_view parameter)
 		'\0'
 	};
 
-	string_view mode = gbIsMultiplayer ? "MP" : "SP";
-	string_view questPool = UseMultiplayerQuests() ? "MP" : "Full";
+	std::string_view mode = gbIsMultiplayer ? "MP" : "SP";
+	std::string_view questPool = UseMultiplayerQuests() ? "MP" : "Full";
 
 	uint32_t questFlags = 0;
 	for (const Quest &quest : Quests) {
@@ -543,7 +543,7 @@ static std::vector<TextCmdItem> TextCmdList = {
 	{ N_("/seedinfo"), N_("Show seed infos for current level."), "", &TextCmdLevelSeed },
 };
 
-static bool CheckTextCommand(const string_view text)
+static bool CheckTextCommand(const std::string_view text)
 {
 	if (text.size() < 1 || text[0] != '/')
 		return false;
@@ -556,7 +556,7 @@ static bool CheckTextCommand(const string_view text)
 	}
 
 	TextCmdItem &textCmd = *textCmdIterator;
-	string_view parameter = "";
+	std::string_view parameter = "";
 	if (text.length() > (textCmd.text.length() + 1))
 		parameter = text.substr(textCmd.text.length() + 1);
 	const std::string result = textCmd.actionProc(parameter);
@@ -754,7 +754,7 @@ void ToggleCharPanel()
 		OpenCharPanel();
 }
 
-void AddPanelString(string_view str)
+void AddPanelString(std::string_view str)
 {
 	if (InfoString.empty())
 		InfoString = str;
@@ -822,7 +822,7 @@ void DrawFlaskValues(const Surface &out, Point pos, int currValue, int maxValue)
 {
 	UiFlags color = (currValue > 0 ? (currValue == maxValue ? UiFlags::ColorGold : UiFlags::ColorWhite) : UiFlags::ColorRed);
 
-	auto drawStringWithShadow = [out, color](string_view text, Point pos) {
+	auto drawStringWithShadow = [out, color](std::string_view text, Point pos) {
 		DrawString(out, text, pos + Displacement { -1, -1 }, { UiFlags::ColorBlack | UiFlags::KerningFitSpacing, 0 });
 		DrawString(out, text, pos, { color | UiFlags::KerningFitSpacing, 0 });
 	};
@@ -1206,13 +1206,13 @@ void DrawInfoBox(const Surface &out)
 					PrintMonstHistory(monster);
 				}
 			} else if (pcursitem == -1) {
-				InfoString = string_view(Towners[pcursmonst].name);
+				InfoString = std::string_view(Towners[pcursmonst].name);
 			}
 		}
 		if (pcursplr != -1) {
 			InfoColor = UiFlags::ColorWhitegold;
 			auto &target = Players[pcursplr];
-			InfoString = string_view(target._pName);
+			InfoString = std::string_view(target._pName);
 			AddPanelString(fmt::format(fmt::runtime(_("{:s}, Level: {:d}")), _(PlayersData[static_cast<std::size_t>(target._pHeroClass)].className), target._pLevel));
 			AddPanelString(fmt::format(fmt::runtime(_("Hit Points {:d} of {:d}")), target._pHitPoints >> 6, target._pMaxHP >> 6));
 		}
@@ -1356,7 +1356,7 @@ void DrawGoldSplit(const Surface &out)
 
 	ClxDraw(out, GetPanelPosition(UiPanels::Inventory, { dialogX, 178 }), (*pGBoxBuff)[0]);
 
-	const string_view amountText = GoldDropText;
+	const std::string_view amountText = GoldDropText;
 	const TextInputCursorState &cursor = GoldDropCursor;
 	const int max = GoldDropInputState->max();
 

@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <string_view>
 
 #include <SDL.h>
 
@@ -26,7 +27,6 @@
 #include "spelldat.h"
 #include "spells.h"
 #include "utils/attributes.h"
-#include "utils/stdcompat/string_view.hpp"
 #include "utils/string_or_view.hpp"
 #include "utils/ui_fwd.h"
 
@@ -87,7 +87,7 @@ void SetSpell();
 void SetSpeedSpell(size_t slot);
 void ToggleSpell(size_t slot);
 
-void AddPanelString(string_view str);
+void AddPanelString(std::string_view str);
 void AddPanelString(std::string &&str);
 void DrawPanelBox(const Surface &out, SDL_Rect srcRect, Point targetPosition);
 Point GetPanelPosition(UiPanels panel, Point offset = { 0, 0 });

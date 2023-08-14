@@ -641,7 +641,7 @@ void DrawGoldWithdraw(const Surface &out)
 		return;
 	}
 
-	const string_view amountText = GoldWithdrawText;
+	const std::string_view amountText = GoldWithdrawText;
 	const TextInputCursorState &cursor = GoldWithdrawCursor;
 
 	const int dialogX = 30;

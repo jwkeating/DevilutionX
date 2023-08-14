@@ -65,7 +65,7 @@ void FreeDlg()
 
 } // namespace
 
-void app_fatal(string_view str)
+void app_fatal(std::string_view str)
 {
 #if JWK_ALWAYS_LOG_ASSERTION_FAILURES
 	JwkLog(std::string(str));
@@ -82,7 +82,7 @@ void assert_fail(int nLineNo, const char *pszFile, const char *pszFail)
 }
 #endif
 
-void ErrDlg(const char *title, string_view error, string_view logFilePath, int logLineNr)
+void ErrDlg(const char *title, std::string_view error, std::string_view logFilePath, int logLineNr)
 {
 	FreeDlg();
 
@@ -92,7 +92,7 @@ void ErrDlg(const char *title, string_view error, string_view logFilePath, int l
 	diablo_quit(1);
 }
 
-void InsertCDDlg(string_view archiveName)
+void InsertCDDlg(std::string_view archiveName)
 {
 	std::string text = fmt::format(
 	    fmt::runtime(_("Unable to open main data archive ({:s}).\n"
@@ -104,7 +104,7 @@ void InsertCDDlg(string_view archiveName)
 	diablo_quit(1);
 }
 
-void DirErrorDlg(string_view error)
+void DirErrorDlg(std::string_view error)
 {
 	std::string text = fmt::format(fmt::runtime(_(/* TRANSLATORS: Error when Program is not allowed to write data */ "Unable to write to location:\n{:s}")), error);
 

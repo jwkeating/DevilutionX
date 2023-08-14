@@ -14,7 +14,7 @@
 
 namespace devilution {
 
-string_view ItemTypeToString(ItemType itemType)
+std::string_view ItemTypeToString(ItemType itemType)
 {
 	switch (itemType) {
 	case ItemType::Misc:

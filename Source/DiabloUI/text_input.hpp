@@ -7,7 +7,6 @@
 
 #include <SDL.h>
 
-#include "utils/stdcompat/string_view.hpp"
 #include "utils/utf8.hpp"
 
 namespace devilution {
@@ -55,7 +54,7 @@ class TextInputState {
 		    : buf_(begin)
 		    , maxLength_(maxLength)
 		{
-			string_view str(begin);
+			std::string_view str(begin);
 			str = TruncateUtf8(str, maxLength);
 			len_ = str.size();
 			buf_[len_] = '\0';
@@ -71,7 +70,7 @@ class TextInputState {
 			return len_ == 0;
 		}
 
-		Buffer &operator=(string_view value)
+		Buffer &operator=(std::string_view value)
 		{
 			value = TruncateUtf8(value, maxLength_);
 			CopyUtf8(buf_, value, maxLength_);
@@ -79,7 +78,7 @@ class TextInputState {
 			return *this;
 		}
 
-		void insert(size_t pos, string_view value)
+		void insert(size_t pos, std::string_view value)
 		{
 			value = truncateForInsertion(value);
 			std::memmove(&buf_[pos + value.size()], &buf_[pos], len_ - pos);
@@ -101,7 +100,7 @@ class TextInputState {
 			buf_[0] = '\0';
 		}
 
-		explicit operator string_view() const
+		explicit operator std::string_view() const
 		{
 			return { buf_, len_ };
 		}
@@ -111,7 +110,7 @@ class TextInputState {
 		 * @brief Truncates `text` so that it would fit when inserted,
 		 * respecting UTF-8 code point boundaries.
 		 */
-		[[nodiscard]] string_view truncateForInsertion(string_view text) const
+		[[nodiscard]] std::string_view truncateForInsertion(std::string_view text) const
 		{
 			return TruncateUtf8(text, maxLength_ - len_);
 		}
@@ -134,12 +133,12 @@ public:
 		cursor_->position = value_.size();
 	}
 
-	[[nodiscard]] string_view value() const
+	[[nodiscard]] std::string_view value() const
 	{
-		return string_view(value_);
+		return std::string_view(value_);
 	}
 
-	[[nodiscard]] string_view selectedText() const
+	[[nodiscard]] std::string_view selectedText() const
 	{
 		return value().substr(cursor_->selection.begin, cursor_->selection.size());
 	}
@@ -157,7 +156,7 @@ public:
 	/**
 	 * @brief Overwrites the value with the given text and moves cursor to the end.
 	 */
-	void assign(string_view text)
+	void assign(std::string_view text)
 	{
 		value_ = text;
 		cursor_->position = value_.size();
@@ -193,7 +192,7 @@ public:
 	/**
 	 * @brief Inserts the text at the current cursor position.
 	 */
-	void type(string_view text)
+	void type(std::string_view text)
 	{
 		if (!cursor_->selection.empty())
 			eraseSelection();
@@ -316,7 +315,7 @@ private:
 
 	[[nodiscard]] size_t prevPosition(bool word) const
 	{
-		const string_view str = beforeCursor();
+		const std::string_view str = beforeCursor();
 		size_t pos = FindLastUtf8Symbols(str);
 		if (!word)
 			return pos;
@@ -334,7 +333,7 @@ private:
 
 	[[nodiscard]] size_t nextPosition(bool word) const
 	{
-		const string_view str = afterCursor();
+		const std::string_view str = afterCursor();
 		size_t pos = Utf8CodePointLen(str.data());
 		if (!word)
 			return cursor_->position + pos;
@@ -349,12 +348,12 @@ private:
 		return cursor_->position + pos;
 	}
 
-	[[nodiscard]] string_view beforeCursor() const
+	[[nodiscard]] std::string_view beforeCursor() const
 	{
 		return value().substr(0, cursor_->position);
 	}
 
-	[[nodiscard]] string_view afterCursor() const
+	[[nodiscard]] std::string_view afterCursor() const
 	{
 		return value().substr(cursor_->position);
 	}
@@ -397,14 +396,14 @@ public:
 	 *
 	 * Ignores non-numeric characters.
 	 */
-	void type(string_view str);
+	void type(std::string_view str);
 
 	/**
 	 * @brief Sets the text of the input.
 	 *
 	 * Ignores non-numeric characters.
 	 */
-	void assign(string_view str);
+	void assign(std::string_view str);
 
 	TextInputState &textInput()
 	{
@@ -413,7 +412,7 @@ public:
 
 private:
 	void enforceRange();
-	std::string filterStr(string_view str, bool allowMinus);
+	std::string filterStr(std::string_view str, bool allowMinus);
 
 	TextInputState textInput_;
 	int min_;

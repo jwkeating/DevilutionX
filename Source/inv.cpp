@@ -1797,7 +1797,7 @@ int SyncDropItem(Point position, BaseItemIdx idx, uint16_t icreateinfo, int isee
 	return PlaceItemInWorld(std::move(item), position);
 }
 
-int SyncDropEar(Point position, uint16_t icreateinfo, uint32_t iseed, uint8_t cursval, string_view heroname)
+int SyncDropEar(Point position, uint16_t icreateinfo, uint32_t iseed, uint8_t cursval, std::string_view heroname)
 {
 	if (ActiveItemCount >= MAXITEMS)
 		return -1;

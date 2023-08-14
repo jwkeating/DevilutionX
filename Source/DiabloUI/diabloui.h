@@ -19,7 +19,7 @@ namespace devilution {
 extern std::size_t SelectedItem;
 bool IsTextInputActive();
 
-extern const string_view BannedNames[];
+extern const std::string_view BannedNames[];
 extern const size_t BannedNamesCount;
 
 enum _artFocus : uint8_t {
@@ -85,7 +85,7 @@ void UiDestroy();
 void UiTitleDialog();
 void UnloadUiGFX();
 void UiInitialize();
-bool UiValidPlayerName(string_view name); /* check */
+bool UiValidPlayerName(std::string_view name); /* check */
 void UiSelHeroMultDialog(bool (*fninfo)(bool (*fninfofunc)(_uiheroinfo *)), bool (*fncreate)(_uiheroinfo *), bool (*fnremove)(_uiheroinfo *), void (*fnstats)(unsigned int, _uidefaultstats *), _selhero_selections *dlgresult, uint32_t *saveNumber);
 void UiSelHeroSingDialog(bool (*fninfo)(bool (*fninfofunc)(_uiheroinfo *)), bool (*fncreate)(_uiheroinfo *), bool (*fnremove)(_uiheroinfo *), void (*fnstats)(unsigned int, _uidefaultstats *), _selhero_selections *dlgresult, uint32_t *saveNumber, _difficulty *difficulty);
 bool UiCreditsDialog();

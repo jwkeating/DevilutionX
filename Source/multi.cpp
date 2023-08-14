@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <cstring>
 #include <ctime>
+#include <string_view>
 
 #include <SDL.h>
 #include <config.h>
@@ -30,7 +31,6 @@
 #include "tmsg.h"
 #include "utils/endian_read.hpp"
 #include "utils/language.h"
-#include "utils/stdcompat/string_view.hpp"
 #include "utils/str_cat.hpp"
 
 namespace devilution {
@@ -181,7 +181,7 @@ bool IsNetPlayerValid(const Player &player)
 	    && static_cast<uint8_t>(player._pHeroClass) < enum_size<HeroClass>::value
 	    && player.currentDungeonLevel < NUMLEVELS
 	    && InDungeonBounds(player.position.tile)
-	    && !string_view(player._pName).empty();
+	    && !std::string_view(player._pName).empty();
 }
 
 void CheckPlayerInfoTimeouts()
@@ -281,7 +281,7 @@ void PlayerLeftMsg(Player &player, bool left)
 	RemovePlrMissiles(player);
 	bool minionsWeaken = DecreaseNumActivePlayers();
 	if (left) {
-		string_view pszFmt = minionsWeaken ? _("Player '{:s}' left the game.  Diablo's minions have weakened.") : _("Player '{:s}' left the game");
+		std::string_view pszFmt = minionsWeaken ? _("Player '{:s}' left the game.  Diablo's minions have weakened.") : _("Player '{:s}' left the game");
 		switch (sgdwPlayerLeftReasonTbl[player.getId()]) {
 		case LEAVE_ENDING:
 			pszFmt = minionsWeaken ? _("Player '{:s}' killed Diablo and left the game!  Diablo's minions have weakened.") : _("Player '{:s}' killed Diablo and left the game!");
@@ -293,7 +293,7 @@ void PlayerLeftMsg(Player &player, bool left)
 		}
 		EventPlrMsg(fmt::format(fmt::runtime(pszFmt), player._pName));
 	} else {
-		string_view pszFmt = minionsWeaken ? _("Player '{:s}' left the game?  Diablo's minions have weakened.") : _("Player '{:s}' left the game?");
+		std::string_view pszFmt = minionsWeaken ? _("Player '{:s}' left the game?  Diablo's minions have weakened.") : _("Player '{:s}' left the game?");
 		EventPlrMsg(fmt::format(fmt::runtime(pszFmt), player._pName));
 	}
 	player.plractive = false;
@@ -435,8 +435,8 @@ void HandleEvents(_SNETEVENT *pEvt)
 			gbDeltaSender = MAX_PLAYERS;
 	} break;
 	case EVENT_TYPE_PLAYER_MESSAGE: {
-		string_view data(static_cast<const char *>(pEvt->data), pEvt->databytes);
-		if (const size_t nullPos = data.find('\0'); nullPos != string_view::npos) {
+		std::string_view data(static_cast<const char *>(pEvt->data), pEvt->databytes);
+		if (const size_t nullPos = data.find('\0'); nullPos != std::string_view::npos) {
 			data.remove_suffix(data.size() - nullPos);
 		}
 		EventPlrMsg(data);
@@ -890,7 +890,7 @@ void recv_plrinfo(Player &player, const TCmdPlrInfoHdr &header, bool recv)
 	player.plractive = true;
 	bool minionsStronger = IncreaseNumActivePlayers();
 
-	string_view szEvent;
+	std::string_view szEvent;
 	if (sgbPlayerTurnBitTbl[pnum]) {
 		if (minionsStronger) {
 			szEvent = _("Player '{:s}' (level {:d}) just joined the game.  Diablo's minions grow stronger.");

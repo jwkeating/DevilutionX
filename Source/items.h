@@ -454,7 +454,7 @@ void CreateSpellBook(Point position, SpellID spellID, bool sendmsg, bool delta);
 void CreateGold(Point position, int value, bool sendmsg, bool delta, bool spawn); // pass value=0 to select a random value for loot drops (based on dungeon/difficulty level)
 
 void RecreateItem(Item &item, BaseItemIdx idx, uint16_t icreateinfo, uint32_t iseed, int ivalue, bool isHellfire);
-void RecreateEar(Item &item, uint16_t ic, uint32_t iseed, uint8_t bCursval, string_view heroName);
+void RecreateEar(Item &item, uint16_t ic, uint32_t iseed, uint8_t bCursval, std::string_view heroName);
 void CornerstoneSave();
 void CornerstoneLoad(Point position);
 void SpawnQuestItem(BaseItemIdx itemid, Point position, int randarea, int selflag, bool sendmsg);

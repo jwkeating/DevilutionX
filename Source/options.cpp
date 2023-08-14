@@ -156,7 +156,7 @@ float GetIniFloat(const char *sectionName, const char *keyName, float defaultVal
 	return (float)GetIni().GetDoubleValue(sectionName, keyName, defaultValue);
 }
 
-bool GetIniValue(string_view sectionName, string_view keyName, char *string, int stringSize, const char *defaultString = "")
+bool GetIniValue(std::string_view sectionName, std::string_view keyName, char *string, int stringSize, const char *defaultString = "")
 {
 	std::string sectionNameStr { sectionName };
 	std::string keyNameStr { keyName };
@@ -206,7 +206,7 @@ void SetIniValue(const char *sectionName, const char *keyName, const char *value
 	ini.SetValue(sectionName, keyName, value, nullptr, true);
 }
 
-void SetIniValue(string_view sectionName, string_view keyName, string_view value)
+void SetIniValue(std::string_view sectionName, std::string_view keyName, std::string_view value)
 {
 	std::string sectionNameStr { sectionName };
 	std::string keyNameStr { keyName };
@@ -407,11 +407,11 @@ void SaveOptions()
 	SaveIni();
 }
 
-string_view OptionEntryBase::GetName() const
+std::string_view OptionEntryBase::GetName() const
 {
 	return _(name);
 }
-string_view OptionEntryBase::GetDescription() const
+std::string_view OptionEntryBase::GetDescription() const
 {
 	return _(description);
 }
@@ -429,11 +429,11 @@ void OptionEntryBase::NotifyValueChanged()
 		callback();
 }
 
-void OptionEntryBoolean::LoadFromIni(string_view category)
+void OptionEntryBoolean::LoadFromIni(std::string_view category)
 {
 	value = GetIniBool(category.data(), key.data(), defaultValue);
 }
-void OptionEntryBoolean::SaveToIni(string_view category) const
+void OptionEntryBoolean::SaveToIni(std::string_view category) const
 {
 	SetIniValue(category.data(), key.data(), value);
 }
@@ -446,7 +446,7 @@ OptionEntryType OptionEntryBoolean::GetType() const
 {
 	return OptionEntryType::Boolean;
 }
-string_view OptionEntryBoolean::GetValueDescription() const
+std::string_view OptionEntryBoolean::GetValueDescription() const
 {
 	return value ? _("ON") : _("OFF");
 }
@@ -455,16 +455,16 @@ OptionEntryType OptionEntryListBase::GetType() const
 {
 	return OptionEntryType::List;
 }
-string_view OptionEntryListBase::GetValueDescription() const
+std::string_view OptionEntryListBase::GetValueDescription() const
 {
 	return GetListDescription(GetActiveListIndex());
 }
 
-void OptionEntryEnumBase::LoadFromIni(string_view category)
+void OptionEntryEnumBase::LoadFromIni(std::string_view category)
 {
 	value = GetIniInt(category.data(), key.data(), defaultValue);
 }
-void OptionEntryEnumBase::SaveToIni(string_view category) const
+void OptionEntryEnumBase::SaveToIni(std::string_view category) const
 {
 	SetIniValue(category.data(), key.data(), value);
 }
@@ -473,7 +473,7 @@ void OptionEntryEnumBase::SetValueInternal(int value)
 	this->value = value;
 	this->NotifyValueChanged();
 }
-void OptionEntryEnumBase::AddEntry(int value, string_view name)
+void OptionEntryEnumBase::AddEntry(int value, std::string_view name)
 {
 	entryValues.push_back(value);
 	entryNames.push_back(name);
@@ -482,7 +482,7 @@ size_t OptionEntryEnumBase::GetListSize() const
 {
 	return entryValues.size();
 }
-string_view OptionEntryEnumBase::GetListDescription(size_t index) const
+std::string_view OptionEntryEnumBase::GetListDescription(size_t index) const
 {
 	return _(entryNames[index].data());
 }
@@ -499,7 +499,7 @@ void OptionEntryEnumBase::SetActiveListIndex(size_t index)
 	this->NotifyValueChanged();
 }
 
-void OptionEntryIntBase::LoadFromIni(string_view category)
+void OptionEntryIntBase::LoadFromIni(std::string_view category)
 {
 	value = GetIniInt(category.data(), key.data(), defaultValue);
 	if (std::find(entryValues.begin(), entryValues.end(), value) == entryValues.end()) {
@@ -508,7 +508,7 @@ void OptionEntryIntBase::LoadFromIni(string_view category)
 		entryNames.clear();
 	}
 }
-void OptionEntryIntBase::SaveToIni(string_view category) const
+void OptionEntryIntBase::SaveToIni(std::string_view category) const
 {
 	SetIniValue(category.data(), key.data(), value);
 }
@@ -525,7 +525,7 @@ size_t OptionEntryIntBase::GetListSize() const
 {
 	return entryValues.size();
 }
-string_view OptionEntryIntBase::GetListDescription(size_t index) const
+std::string_view OptionEntryIntBase::GetListDescription(size_t index) const
 {
 	if (entryNames.empty()) {
 		for (auto value : entryValues) {
@@ -547,15 +547,15 @@ void OptionEntryIntBase::SetActiveListIndex(size_t index)
 	this->NotifyValueChanged();
 }
 
-string_view OptionCategoryBase::GetKey() const
+std::string_view OptionCategoryBase::GetKey() const
 {
 	return key;
 }
-string_view OptionCategoryBase::GetName() const
+std::string_view OptionCategoryBase::GetName() const
 {
 	return _(name);
 }
-string_view OptionCategoryBase::GetDescription() const
+std::string_view OptionCategoryBase::GetDescription() const
 {
 	return _(description);
 }
@@ -685,11 +685,11 @@ OptionEntryResolution::OptionEntryResolution()
     : OptionEntryListBase("", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI, N_("Resolution"), N_("Affect the game's internal resolution and determine your view area. Note: This can differ from screen resolution, when Upscaling, Integer Scaling or Fit to Screen is used."))
 {
 }
-void OptionEntryResolution::LoadFromIni(string_view category)
+void OptionEntryResolution::LoadFromIni(std::string_view category)
 {
 	size = { GetIniInt(category.data(), "Width", DEFAULT_WIDTH), GetIniInt(category.data(), "Height", DEFAULT_HEIGHT) };
 }
-void OptionEntryResolution::SaveToIni(string_view category) const
+void OptionEntryResolution::SaveToIni(std::string_view category) const
 {
 	SetIniValue(category.data(), "Width", size.width);
 	SetIniValue(category.data(), "Height", size.height);
@@ -805,7 +805,7 @@ size_t OptionEntryResolution::GetListSize() const
 	CheckResolutionsAreInitialized();
 	return resolutions.size();
 }
-string_view OptionEntryResolution::GetListDescription(size_t index) const
+std::string_view OptionEntryResolution::GetListDescription(size_t index) const
 {
 	CheckResolutionsAreInitialized();
 	return resolutions[index].second;
@@ -832,7 +832,7 @@ OptionEntryResampler::OptionEntryResampler()
           N_("Resampler"), N_("Audio resampler"))
 {
 }
-void OptionEntryResampler::LoadFromIni(string_view category)
+void OptionEntryResampler::LoadFromIni(std::string_view category)
 {
 	char resamplerStr[32];
 	if (GetIniValue(category, key, resamplerStr, sizeof(resamplerStr))) {
@@ -847,7 +847,7 @@ void OptionEntryResampler::LoadFromIni(string_view category)
 	UpdateDependentOptions();
 }
 
-void OptionEntryResampler::SaveToIni(string_view category) const
+void OptionEntryResampler::SaveToIni(std::string_view category) const
 {
 	SetIniValue(category, key, ResamplerToString(resampler_));
 }
@@ -857,7 +857,7 @@ size_t OptionEntryResampler::GetListSize() const
 	return NumResamplers;
 }
 
-string_view OptionEntryResampler::GetListDescription(size_t index) const
+std::string_view OptionEntryResampler::GetListDescription(size_t index) const
 {
 	return ResamplerToString(static_cast<Resampler>(index));
 }
@@ -889,14 +889,14 @@ OptionEntryAudioDevice::OptionEntryAudioDevice()
     : OptionEntryListBase("Device", OptionEntryFlags::CantChangeInGame, N_("Device"), N_("Audio device"))
 {
 }
-void OptionEntryAudioDevice::LoadFromIni(string_view category)
+void OptionEntryAudioDevice::LoadFromIni(std::string_view category)
 {
 	char deviceStr[100];
 	GetIniValue(category, key, deviceStr, sizeof(deviceStr), "");
 	deviceName_ = deviceStr;
 }
 
-void OptionEntryAudioDevice::SaveToIni(string_view category) const
+void OptionEntryAudioDevice::SaveToIni(std::string_view category) const
 {
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	SetIniValue(category, key, deviceName_);
@@ -912,17 +912,17 @@ size_t OptionEntryAudioDevice::GetListSize() const
 #endif
 }
 
-string_view OptionEntryAudioDevice::GetListDescription(size_t index) const
+std::string_view OptionEntryAudioDevice::GetListDescription(size_t index) const
 {
 	constexpr int MaxWidth = 500;
 
-	string_view deviceName = GetDeviceName(index);
+	std::string_view deviceName = GetDeviceName(index);
 	if (deviceName.empty())
 		return "System Default";
 
 	while (GetLineWidth(deviceName, GameFont24, 1) > MaxWidth) {
 		size_t lastSymbolIndex = FindLastUtf8Symbols(deviceName);
-		deviceName = string_view(deviceName.data(), lastSymbolIndex);
+		deviceName = std::string_view(deviceName.data(), lastSymbolIndex);
 	}
 
 	return deviceName;
@@ -931,7 +931,7 @@ string_view OptionEntryAudioDevice::GetListDescription(size_t index) const
 size_t OptionEntryAudioDevice::GetActiveListIndex() const
 {
 	for (size_t i = 0; i < GetListSize(); i++) {
-		string_view deviceName = GetDeviceName(i);
+		std::string_view deviceName = GetDeviceName(i);
 		if (deviceName == deviceName_)
 			return i;
 	}
@@ -944,7 +944,7 @@ void OptionEntryAudioDevice::SetActiveListIndex(size_t index)
 	NotifyValueChanged();
 }
 
-string_view OptionEntryAudioDevice::GetDeviceName(size_t index) const
+std::string_view OptionEntryAudioDevice::GetDeviceName(size_t index) const
 {
 #if SDL_VERSION_ATLEAST(2, 0, 0)
 	if (index != 0)
@@ -1176,7 +1176,7 @@ OptionEntryLanguageCode::OptionEntryLanguageCode()
     : OptionEntryListBase("Code", OptionEntryFlags::CantChangeInGame | OptionEntryFlags::RecreateUI, N_("Language"), N_("Define what language to use in game."))
 {
 }
-void OptionEntryLanguageCode::LoadFromIni(string_view category)
+void OptionEntryLanguageCode::LoadFromIni(std::string_view category)
 {
 	if (GetIniValue(category, key, szCode, sizeof(szCode))) {
 		if (HasTranslation(szCode)) {
@@ -1219,7 +1219,7 @@ void OptionEntryLanguageCode::LoadFromIni(string_view category)
 	LogVerbose("No suitable translation found");
 	strcpy(szCode, "en");
 }
-void OptionEntryLanguageCode::SaveToIni(string_view category) const
+void OptionEntryLanguageCode::SaveToIni(std::string_view category) const
 {
 	SetIniValue(category, key, szCode);
 }
@@ -1271,7 +1271,7 @@ size_t OptionEntryLanguageCode::GetListSize() const
 	CheckLanguagesAreInitialized();
 	return languages.size();
 }
-string_view OptionEntryLanguageCode::GetListDescription(size_t index) const
+std::string_view OptionEntryLanguageCode::GetListDescription(size_t index) const
 {
 	CheckLanguagesAreInitialized();
 	return languages[index].second;
@@ -1377,7 +1377,7 @@ std::vector<OptionEntryBase *> KeymapperOptions::GetEntries()
 	return entries;
 }
 
-KeymapperOptions::Action::Action(string_view key, const char *name, const char *description, uint32_t defaultKey, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
+KeymapperOptions::Action::Action(std::string_view key, const char *name, const char *description, uint32_t defaultKey, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
     : OptionEntryBase(key, OptionEntryFlags::None, name, description)
     , defaultKey(defaultKey)
     , actionPressed(std::move(actionPressed))
@@ -1386,12 +1386,12 @@ KeymapperOptions::Action::Action(string_view key, const char *name, const char *
     , dynamicIndex(index)
 {
 	if (index != 0) {
-		dynamicKey = fmt::format(fmt::runtime(fmt::string_view(key.data(), key.size())), index);
+		dynamicKey = fmt::format(fmt::runtime(std::string_view(key.data(), key.size())), index);
 		this->key = dynamicKey;
 	}
 }
 
-string_view KeymapperOptions::Action::GetName() const
+std::string_view KeymapperOptions::Action::GetName() const
 {
 	if (dynamicIndex == 0)
 		return _(name);
@@ -1399,7 +1399,7 @@ string_view KeymapperOptions::Action::GetName() const
 	return dynamicName;
 }
 
-void KeymapperOptions::Action::LoadFromIni(string_view category)
+void KeymapperOptions::Action::LoadFromIni(std::string_view category)
 {
 	std::array<char, 64> result;
 	if (!GetIniValue(category.data(), key.data(), result.data(), result.size())) {
@@ -1425,7 +1425,7 @@ void KeymapperOptions::Action::LoadFromIni(string_view category)
 	// actions while keeping the same order as they have been added.
 	SetValue(keyIt->second);
 }
-void KeymapperOptions::Action::SaveToIni(string_view category) const
+void KeymapperOptions::Action::SaveToIni(std::string_view category) const
 {
 	if (boundKey == SDLK_UNKNOWN) {
 		// Just add an empty config entry if the action is unbound.
@@ -1439,7 +1439,7 @@ void KeymapperOptions::Action::SaveToIni(string_view category) const
 	SetIniValue(category.data(), key.data(), keyNameIt->second.c_str());
 }
 
-string_view KeymapperOptions::Action::GetValueDescription() const
+std::string_view KeymapperOptions::Action::GetValueDescription() const
 {
 	if (boundKey == SDLK_UNKNOWN)
 		return "";
@@ -1479,7 +1479,7 @@ bool KeymapperOptions::Action::SetValue(int value)
 	return true;
 }
 
-void KeymapperOptions::AddAction(string_view key, const char *name, const char *description, uint32_t defaultKey, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
+void KeymapperOptions::AddAction(std::string_view key, const char *name, const char *description, uint32_t defaultKey, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
 {
 	actions.emplace_front(key, name, description, defaultKey, std::move(actionPressed), std::move(actionReleased), std::move(enable), index);
 }
@@ -1537,7 +1537,7 @@ bool KeymapperOptions::IsNumberEntryKey(SDL_Keycode vkey) const
 	return ((vkey >= SDLK_0 && vkey <= SDLK_9) || vkey == SDLK_BACKSPACE);
 }
 
-string_view KeymapperOptions::KeyNameForAction(string_view actionName) const
+std::string_view KeymapperOptions::KeyNameForAction(std::string_view actionName) const
 {
 	for (const Action &action : actions) {
 		if (action.key == actionName && action.boundKey != SDLK_UNKNOWN) {
@@ -1547,7 +1547,7 @@ string_view KeymapperOptions::KeyNameForAction(string_view actionName) const
 	return "";
 }
 
-uint32_t KeymapperOptions::KeyForAction(string_view actionName) const
+uint32_t KeymapperOptions::KeyForAction(std::string_view actionName) const
 {
 	for (const Action &action : actions) {
 		if (action.key == actionName && action.boundKey != SDLK_UNKNOWN) {
@@ -1595,7 +1595,7 @@ std::vector<OptionEntryBase *> PadmapperOptions::GetEntries()
 	return entries;
 }
 
-PadmapperOptions::Action::Action(string_view key, const char *name, const char *description, ControllerButtonCombo defaultInput, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
+PadmapperOptions::Action::Action(std::string_view key, const char *name, const char *description, ControllerButtonCombo defaultInput, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
     : OptionEntryBase(key, OptionEntryFlags::None, name, description)
     , defaultInput(defaultInput)
     , actionPressed(std::move(actionPressed))
@@ -1604,12 +1604,12 @@ PadmapperOptions::Action::Action(string_view key, const char *name, const char *
     , dynamicIndex(index)
 {
 	if (index != 0) {
-		dynamicKey = fmt::format(fmt::runtime(fmt::string_view(key.data(), key.size())), index);
+		dynamicKey = fmt::format(fmt::runtime(std::string_view(key.data(), key.size())), index);
 		this->key = dynamicKey;
 	}
 }
 
-string_view PadmapperOptions::Action::GetName() const
+std::string_view PadmapperOptions::Action::GetName() const
 {
 	if (dynamicIndex == 0)
 		return _(name);
@@ -1617,7 +1617,7 @@ string_view PadmapperOptions::Action::GetName() const
 	return dynamicName;
 }
 
-void PadmapperOptions::Action::LoadFromIni(string_view category)
+void PadmapperOptions::Action::LoadFromIni(std::string_view category)
 {
 	std::array<char, 64> result;
 	if (!GetIniValue(category.data(), key.data(), result.data(), result.size())) {
@@ -1664,7 +1664,7 @@ void PadmapperOptions::Action::LoadFromIni(string_view category)
 	// the actions while keeping the same order as they have been added.
 	SetValue(input);
 }
-void PadmapperOptions::Action::SaveToIni(string_view category) const
+void PadmapperOptions::Action::SaveToIni(std::string_view category) const
 {
 	if (boundInput.button == ControllerButton_NONE) {
 		// Just add an empty config entry if the action is unbound.
@@ -1695,18 +1695,18 @@ void PadmapperOptions::Action::UpdateValueDescription() const
 		boundInputShortDescription = "";
 		return;
 	}
-	string_view buttonName = ToString(boundInput.button);
+	std::string_view buttonName = ToString(boundInput.button);
 	if (boundInput.modifier == ControllerButton_NONE) {
 		boundInputDescription = std::string(buttonName);
 		boundInputShortDescription = std::string(Shorten(buttonName));
 		return;
 	}
-	string_view modifierName = ToString(boundInput.modifier);
+	std::string_view modifierName = ToString(boundInput.modifier);
 	boundInputDescription = StrCat(modifierName, "+", buttonName);
 	boundInputShortDescription = StrCat(Shorten(modifierName), "+", Shorten(buttonName));
 }
 
-string_view PadmapperOptions::Action::Shorten(string_view buttonName) const
+std::string_view PadmapperOptions::Action::Shorten(std::string_view buttonName) const
 {
 	size_t index = 0;
 	size_t chars = 0;
@@ -1717,15 +1717,15 @@ string_view PadmapperOptions::Action::Shorten(string_view buttonName) const
 			break;
 		index++;
 	}
-	return string_view(buttonName.data(), index);
+	return std::string_view(buttonName.data(), index);
 }
 
-string_view PadmapperOptions::Action::GetValueDescription() const
+std::string_view PadmapperOptions::Action::GetValueDescription() const
 {
 	return GetValueDescription(false);
 }
 
-string_view PadmapperOptions::Action::GetValueDescription(bool useShortName) const
+std::string_view PadmapperOptions::Action::GetValueDescription(bool useShortName) const
 {
 	if (GamepadType != boundInputDescriptionType)
 		UpdateValueDescription();
@@ -1742,7 +1742,7 @@ bool PadmapperOptions::Action::SetValue(ControllerButtonCombo value)
 	return true;
 }
 
-void PadmapperOptions::AddAction(string_view key, const char *name, const char *description, ControllerButtonCombo defaultInput, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
+void PadmapperOptions::AddAction(std::string_view key, const char *name, const char *description, ControllerButtonCombo defaultInput, std::function<void()> actionPressed, std::function<void()> actionReleased, std::function<bool()> enable, unsigned index)
 {
 	if (committed)
 		return;
@@ -1794,7 +1794,7 @@ void PadmapperOptions::ReleaseAllActiveButtons()
 	}
 }
 
-bool PadmapperOptions::IsActive(string_view actionName) const
+bool PadmapperOptions::IsActive(std::string_view actionName) const
 {
 	for (const Action &action : actions) {
 		if (action.key != actionName)
@@ -1805,7 +1805,7 @@ bool PadmapperOptions::IsActive(string_view actionName) const
 	return false;
 }
 
-string_view PadmapperOptions::ActionNameTriggeredByButtonEvent(ControllerButtonEvent ctrlEvent) const
+std::string_view PadmapperOptions::ActionNameTriggeredByButtonEvent(ControllerButtonEvent ctrlEvent) const
 {
 	if (!gbRunGame)
 		return "";
@@ -1820,7 +1820,7 @@ string_view PadmapperOptions::ActionNameTriggeredByButtonEvent(ControllerButtonE
 	return releaseAction->key;
 }
 
-string_view PadmapperOptions::InputNameForAction(string_view actionName, bool useShortName) const
+std::string_view PadmapperOptions::InputNameForAction(std::string_view actionName, bool useShortName) const
 {
 	for (const Action &action : actions) {
 		if (action.key == actionName && action.boundInput.button != ControllerButton_NONE) {
@@ -1830,7 +1830,7 @@ string_view PadmapperOptions::InputNameForAction(string_view actionName, bool us
 	return "";
 }
 
-ControllerButtonCombo PadmapperOptions::ButtonComboForAction(string_view actionName) const
+ControllerButtonCombo PadmapperOptions::ButtonComboForAction(std::string_view actionName) const
 {
 	for (const auto &action : actions) {
 		if (action.key == actionName && action.boundInput.button != ControllerButton_NONE) {
@@ -1877,10 +1877,10 @@ bool PadmapperOptions::CanDeferToMovementHandler(const Action &action) const
 		return false;
 
 	if (spselflag) {
-		const string_view prefix { "QuickSpell" };
-		const string_view key { action.key };
+		const std::string_view prefix { "QuickSpell" };
+		const std::string_view key { action.key };
 		if (key.size() >= prefix.size()) {
-			const string_view truncated { key.data(), prefix.size() };
+			const std::string_view truncated { key.data(), prefix.size() };
 			if (truncated == prefix)
 				return false;
 		}
@@ -1898,7 +1898,7 @@ constexpr char ResamplerSpeex[] = "Speex";
 constexpr char ResamplerSDL[] = "SDL";
 } // namespace
 
-string_view ResamplerToString(Resampler resampler)
+std::string_view ResamplerToString(Resampler resampler)
 {
 	switch (resampler) {
 #ifdef DEVILUTIONX_RESAMPLER_SPEEX
@@ -1914,7 +1914,7 @@ string_view ResamplerToString(Resampler resampler)
 	}
 }
 
-std::optional<Resampler> ResamplerFromString(string_view resampler)
+std::optional<Resampler> ResamplerFromString(std::string_view resampler)
 {
 #ifdef DEVILUTIONX_RESAMPLER_SPEEX
 	if (resampler == ResamplerSpeex)
