@@ -896,7 +896,7 @@ void InitControlPan()
 	for (bool &buttonEnabled : chrbtn)
 		buttonEnabled = false;
 	chrbtnactive = false;
-	InfoString = {};
+	InfoString = StringOrView {};
 	RedrawComponent(PanelDrawComponent::Health);
 	RedrawComponent(PanelDrawComponent::Mana);
 	CloseCharPanel();
@@ -1173,7 +1173,7 @@ void DrawInfoBox(const Surface &out)
 {
 	DrawPanelBox(out, { 177, 62, InfoBoxSize.width, InfoBoxSize.height }, GetMainPanel().position + InfoBoxTopLeft);
 	if (!panelflag && !trigflag && pcursinvitem == -1 && pcursstashitem == StashStruct::EmptyCell && !spselflag) {
-		InfoString = {};
+		InfoString = StringOrView {};
 		InfoColor = UiFlags::ColorWhite;
 	}
 	Player &myPlayer = *MyPlayer;

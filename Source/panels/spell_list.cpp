@@ -115,7 +115,7 @@ void DrawSpell(const Surface &out)
 
 void DrawSpellList(const Surface &out)
 {
-	InfoString = {};
+	InfoString = StringOrView {};
 
 	Player &myPlayer = *MyPlayer;
 
