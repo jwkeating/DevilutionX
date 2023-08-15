@@ -117,7 +117,7 @@ void DrawSpellList(const Surface &out)
 {
 	InfoString = StringOrView {};
 
-	Player &myPlayer = *MyPlayer;
+	const Player &myPlayer = *MyPlayer;
 
 	for (auto &spellListItem : GetSpellListItems()) {
 		const SpellID spellId = spellListItem.id;

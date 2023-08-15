@@ -248,7 +248,7 @@ Size GetInventorySize(const Item &item);
  * @brief Checks whether the player has an inventory item matching the predicate.
  */
 template <typename Predicate>
-bool HasInventoryItem(Player &player, Predicate &&predicate)
+bool HasInventoryItem(const Player &player, Predicate &&predicate)
 {
 	const InventoryPlayerItemsRange items { player };
 	return c_find_if(items, std::forward<Predicate>(predicate)) != items.end();
@@ -258,7 +258,7 @@ bool HasInventoryItem(Player &player, Predicate &&predicate)
  * @brief Checks whether the player has a belt item matching the predicate.
  */
 template <typename Predicate>
-bool HasBeltItem(Player &player, Predicate &&predicate)
+bool HasBeltItem(const Player &player, Predicate &&predicate)
 {
 	const BeltPlayerItemsRange items { player };
 	return c_find_if(items, std::forward<Predicate>(predicate)) != items.end();
@@ -268,7 +268,7 @@ bool HasBeltItem(Player &player, Predicate &&predicate)
  * @brief Checks whether the player has an inventory or a belt item matching the predicate.
  */
 template <typename Predicate>
-bool HasInventoryOrBeltItem(Player &player, Predicate &&predicate)
+bool HasInventoryOrBeltItem(const Player &player, Predicate &&predicate)
 {
 	return HasInventoryItem(player, predicate) || HasBeltItem(player, predicate);
 }
@@ -276,7 +276,7 @@ bool HasInventoryOrBeltItem(Player &player, Predicate &&predicate)
 /**
  * @brief Checks whether the player has an inventory item with the given ID (IDidx).
  */
-inline bool HasInventoryItemWithId(Player &player, BaseItemIdx id)
+inline bool HasInventoryItemWithId(const Player &player, BaseItemIdx id)
 {
 	return HasInventoryItem(player, [id](const Item &item) {
 		return item.IDidx == id;
@@ -286,7 +286,7 @@ inline bool HasInventoryItemWithId(Player &player, BaseItemIdx id)
 /**
  * @brief Checks whether the player has a belt item with the given ID (IDidx).
  */
-inline bool HasBeltItemWithId(Player &player, BaseItemIdx id)
+inline bool HasBeltItemWithId(const Player &player, BaseItemIdx id)
 {
 	return HasBeltItem(player, [id](const Item &item) {
 		return item.IDidx == id;
@@ -296,7 +296,7 @@ inline bool HasBeltItemWithId(Player &player, BaseItemIdx id)
 /**
  * @brief Checks whether the player has an inventory or a belt item with the given ID (IDidx).
  */
-inline bool HasInventoryOrBeltItemWithId(Player &player, BaseItemIdx id)
+inline bool HasInventoryOrBeltItemWithId(const Player &player, BaseItemIdx id)
 {
 	return HasInventoryItemWithId(player, id) || HasBeltItemWithId(player, id);
 }
