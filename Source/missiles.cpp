@@ -1491,41 +1491,54 @@ bool IsMissileBlockedByTile(Point tile)
 int GetNumberOfChargedBolts(int spellLevel)
 {
 #if JWK_EDIT_CHARGED_BOLT
-	// jwk - reduce number of charged bolts per cast since they move slower and stay on screen longer, and each bolt allocates a light
+	// Reduce number of charged bolts per cast since the bolts move slower and stay on screen longer, and each bolt allocates a light
 	return 3;
 #else // original code:
 	return (spllvl / 2) + 4;
 #endif
 }
 
-void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, int *mind, int *maxd)
+int GetStoneCurseDuration(int spellLevel)
+{
+#if JWK_EDIT_STONE_CURSE
+	return spellLevel + 6;
+#else // original code
+	return std::min(spellLevel + 6, 15);
+#endif
+}
+
+DamageRange GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel)
 {
 	assert(spellID >= SpellID::FIRST && spellID <= SpellID::LAST);
 	switch (spellID) {
 	case SpellID::Firebolt:
-		*mind = CalcFireBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcFireBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcFireBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcFireBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::Healing:
 	case SpellID::HealOther:
-		*mind = CalcHealingAmount(player, player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcHealingAmount(player, player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcHealingAmount(player, player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcHealingAmount(player, player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::RuneOfLight:
 	case SpellID::Lightning:
-		*mind = CalcLightningDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * CalcLightningLength(spellLevel) >> 6;
-		*maxd = CalcLightningDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * CalcLightningLength(spellLevel) >> 6;
-		break;
-	case SpellID::Flash:
-		// Note: Flash is a damage-over-time effect that lasts 19 ticks
-		*mind = CalcFlashDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 19 >> 6;
-		*maxd = CalcFlashDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 19 >> 6;
-		break;
+		return {
+			CalcLightningDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * CalcLightningLength(spellLevel) >> 6,
+			CalcLightningDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * CalcLightningLength(spellLevel) >> 6
+		};
+	case SpellID::Flash: // Note: Flash is a damage-over-time effect that lasts 19 ticks
+		return {
+			CalcFlashDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 19 >> 6,
+			CalcFlashDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 19 >> 6
+		};
 	case SpellID::BoneSpirit:
 #if JWK_EDIT_BONE_SPIRIT
-		*mind = CalcBoneSpiritHpPercent(spellLevel);
-		*maxd = *mind;
-		break;
+	{
+		int percent = CalcBoneSpiritHpPercent(spellLevel);
+		return { percent, percent };
+	}
 #endif
 	case SpellID::Identify:
 	case SpellID::TownPortal:
@@ -1549,79 +1562,81 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 	case SpellID::Berserk:
 	case SpellID::Search:
 	case SpellID::RuneOfStone:
-		*mind = -1;
-		*maxd = -1;
-		break;
+		return { -1, -1 };
 	case SpellID::FireWall:
 	case SpellID::LightningWall:
 	case SpellID::RingOfFire:
-		*mind = CalcFireWallDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * MaxMergeTicksForDamageNumbers >> 6;
-		*maxd = CalcFireWallDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * MaxMergeTicksForDamageNumbers >> 6;
-		break;
+		return {
+			CalcFireWallDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * MaxMergeTicksForDamageNumbers >> 6,
+			CalcFireWallDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * MaxMergeTicksForDamageNumbers >> 6
+		};
 	case SpellID::Fireball:
-	case SpellID::RuneOfFire: {
-		*mind = CalcFireBallDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcFireBallDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-	} break;
-	case SpellID::Guardian: {
-		*mind = CalcGuardianDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcGuardianDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-	} break;
+	case SpellID::RuneOfFire:
+		return {
+			CalcFireBallDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcFireBallDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
+	case SpellID::Guardian:
+		return {
+			CalcGuardianDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcGuardianDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::ChainLightning:
-		*mind = CalcChainLightningDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * CalcChainLightningLength(spellLevel) >> 6;
-		*maxd = CalcChainLightningDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * CalcChainLightningLength(spellLevel) >> 6;
-		break;
+		return {
+			CalcChainLightningDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * CalcChainLightningLength(spellLevel) >> 6,
+			CalcChainLightningDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * CalcChainLightningLength(spellLevel) >> 6
+		};
 	case SpellID::FlameWave:
-		*mind = CalcFlameWaveDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcFlameWaveDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcFlameWaveDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcFlameWaveDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::Nova:
 	case SpellID::Immolation:
 	case SpellID::RuneOfImmolation:
 	case SpellID::RuneOfNova:
-		*mind = CalcNovaDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcNovaDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcNovaDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcNovaDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::Inferno:
-#if JWK_EDIT_INFERNO
-		*mind = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 25 >> 6;
-		*maxd = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 25 >> 6;
-		*maxd = *maxd * 3 / 2; // See ProcessInfernoControl() which scales the damage by 150% for the middle puff
-#else
-		*mind = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 25 >> 6;
-		*maxd = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 25 >> 6;
-#endif
-		break;
+		return {
+			CalcInfernoDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 25 >> 6,
+			CalcInfernoDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 25 >> 6
+		};
 	case SpellID::Golem:
 	{
 		uint32_t golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage;
 		player.GetGolemStats(spellLevel, golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage);
-		*mind = golemMinDamage;
-		*maxd = golemMaxDamage;
-		break;
+		return { (int)golemMinDamage, (int)golemMaxDamage };
 	}
 	case SpellID::Apocalypse:
-		*mind = CalcApocalypseDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcApocalypseDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcApocalypseDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcApocalypseDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::Elemental:
-		*mind = CalcElementalDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcElementalDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcElementalDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcElementalDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::ChargedBolt:
-		*mind = CalcChargedBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcChargedBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcChargedBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcChargedBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::HolyBolt:
-		*mind = CalcHolyBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcHolyBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcHolyBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcHolyBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	case SpellID::BloodStar:
-		*mind = CalcBloodStarDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
-		*maxd = CalcBloodStarDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
-		break;
+		return {
+			CalcBloodStarDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin),
+			CalcBloodStarDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax)
+		};
 	default:
-		break;
+		return { -1, -1 };
 	}
 }
 
@@ -2813,13 +2828,7 @@ void AddStoneCurse(Missile &missile, AddMissileParameter &parameter)
 	// And set up the missile to unpetrify it in the future
 	missile.position.tile = *targetMonsterPosition;
 	missile.position.start = missile.position.tile;
-#if JWK_EDIT_STONE_CURSE // edit stone curse duration
-	missile._ticksUntilExpiry = missile._mispllvl + 6;
-#else // original code (cap the duration)
-	missile._ticksUntilExpiry = missile._mispllvl + 6;
-	if (missile._ticksUntilExpiry > 15)
-		missile._ticksUntilExpiry = 15;
-#endif
+	missile._ticksUntilExpiry = GetStoneCurseDuration(missile._mispllvl);
 	missile._ticksUntilExpiry <<= 4;
 }
 

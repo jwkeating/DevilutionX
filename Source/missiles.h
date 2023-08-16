@@ -181,8 +181,13 @@ struct Missile {
 extern std::list<Missile> Missiles;
 extern bool MissilePreFlag;
 
-void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, int *mind, int *maxd);
+struct DamageRange {
+	int min;
+	int max;
+};
+DamageRange GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel);
 int GetNumberOfChargedBolts(int spellLevel);
+int GetStoneCurseDuration(int spellLevel);
 
 /**
  * @brief Returns the direction a vector from p1(x1, y1) to p2(x2, y2) is pointing to.
