@@ -53,7 +53,7 @@ constexpr Rectangle StashButtonRect[] = {
 };
 
 constexpr Size StashGridSize { 10, 10 };
-constexpr PointsInRectangleRange<int> StashGridRange { { { 0, 0 }, StashGridSize } };
+constexpr PointsInRectangle<int> StashGridRange { { { 0, 0 }, StashGridSize } };
 
 OptionalOwnedClxSpriteList StashPanelArt;
 OptionalOwnedClxSpriteList StashNavButtonArt;
