@@ -340,7 +340,6 @@ struct Player {
 	Direction _pdir; // Direction faced by player (direction enum)
 	HeroClass _pHeroClass;
 	int8_t _pLevel;
-	int8_t _pMaxLvl;
 	uint8_t _pgfxnum; // Bitmask indicating what variant of the sprite the player is using. The 3 lower bits define weapon (PlayerWeaponGraphic) and the higher bits define armour (starting with PlayerArmorGraphic)
 	int8_t _pISplLvlAdd;
 	int8_t _pManaCostMod; // JWK_ALLOW_MANA_COST_MODIFIER - This is a % chance to have free or costly spell (- means free, + means costly)
@@ -760,6 +759,26 @@ struct Player {
 	 * @param wParam2 Second Parameter
 	 */
 	void UpdatePreviewCelSprite(_cmd_id cmdId, Point point, uint16_t wParam1, uint16_t wParam2);
+
+	[[nodiscard]] uint8_t getCharacterLevel() const
+	{
+		return _pLevel;
+	}
+
+	/**
+	 * @brief Sets the character level to the target level or nearest valid value.
+	 * @param level New character level, will be clamped to the allowed range
+	 */
+	void setCharacterLevel(uint8_t level);
+
+	[[nodiscard]] uint8_t getMaxCharacterLevel() const;
+
+	[[nodiscard]] bool isMaxCharacterLevel() const
+	{
+		return getCharacterLevel() >= getMaxCharacterLevel();
+	}
+
+	[[nodiscard]] uint32_t getNextExperienceThreshold() const;
 
 	/** @brief Checks if the player is on the same level as the local player (MyPlayer). */
 	bool isOnActiveLevel() const

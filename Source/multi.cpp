@@ -264,10 +264,8 @@ void ParseTurn(size_t pnum, uint32_t turn)
 	}
 }
 
-void PlayerLeftMsg(int pnum, bool left)
+void PlayerLeftMsg(Player &player, bool left)
 {
-	Player &player = Players[pnum];
-
 	if (&player == InspectPlayer)
 		InspectPlayer = MyPlayer;
 
@@ -277,14 +275,14 @@ void PlayerLeftMsg(int pnum, bool left)
 		return;
 
 	FixPlrWalkTags(player);
-	RemovePortalMissile(pnum);
-	DeactivatePortal(pnum);
-	delta_close_portal(pnum);
+	RemovePortalMissile(player);
+	DeactivatePortal(player);
+	delta_close_portal(player);
 	RemovePlrMissiles(player);
 	bool minionsWeaken = DecreaseNumActivePlayers();
 	if (left) {
 		string_view pszFmt = minionsWeaken ? _("Player '{:s}' left the game.  Diablo's minions have weakened.") : _("Player '{:s}' left the game");
-		switch (sgdwPlayerLeftReasonTbl[pnum]) {
+		switch (sgdwPlayerLeftReasonTbl[player.getId()]) {
 		case LEAVE_ENDING:
 			pszFmt = minionsWeaken ? _("Player '{:s}' killed Diablo and left the game!  Diablo's minions have weakened.") : _("Player '{:s}' killed Diablo and left the game!");
 			gbSomebodyWonGameKludge = true;
@@ -310,7 +308,7 @@ void ClearPlayerLeftState()
 			if (gbBufferMsgs == 1)
 				msg_send_drop_pkt(i, sgdwPlayerLeftReasonTbl[i]);
 			else
-				PlayerLeftMsg(i, true);
+				PlayerLeftMsg(Players[i], true);
 
 			sgbPlayerLeftGameTbl[i] = false;
 			sgdwPlayerLeftReasonTbl[i] = 0;
@@ -376,7 +374,7 @@ void ProcessTmsgs()
 	}
 }
 
-void SendPlayerInfo(int pnum, _cmd_id cmd)
+void SendPlayerInfo(size_t pnum, _cmd_id cmd)
 {
 	PlayerNetPack packed;
 	Player &myPlayer = *MyPlayer;
@@ -849,15 +847,14 @@ bool NetInit(bool bSinglePlayer)
 	return true;
 }
 
-void recv_plrinfo(int pnum, const TCmdPlrInfoHdr &header, bool recv)
+void recv_plrinfo(Player &player, const TCmdPlrInfoHdr &header, bool recv)
 {
 	static PlayerNetPack PackedPlayerBuffer[MAX_PLAYERS];
 
-	assert(pnum >= 0 && pnum < MAX_PLAYERS);
-	Player &player = Players[pnum];
 	if (&player == MyPlayer) {
 		return;
 	}
+	size_t pnum = player.getId();
 	auto &packedPlayer = PackedPlayerBuffer[pnum];
 
 	if (sgwPackPlrOffsetTbl[pnum] != SDL_SwapLE16(header.wOffset)) {
@@ -878,7 +875,7 @@ void recv_plrinfo(int pnum, const TCmdPlrInfoHdr &header, bool recv)
 	}
 	sgwPackPlrOffsetTbl[pnum] = 0;
 
-	PlayerLeftMsg(pnum, false);
+	PlayerLeftMsg(player, false);
 	if (!UnPackNetPlayer(packedPlayer, player)) {
 		player = {};
 		SNetDropPlayer(pnum, LEAVE_DROP);

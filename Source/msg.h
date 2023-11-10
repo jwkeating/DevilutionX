@@ -765,7 +765,7 @@ void NetSendCmdChBeltItem(bool bHiPri, int invGridIndex);
 void NetSendCmdPvPDamage(bool bHiPri, uint8_t targetPlayer, uint8_t attackerPlayer, uint32_t dwDam, uint8_t hitChance, DamageType damageType);
 void NetSendCmdMonDmg(bool bHiPri, uint16_t wMon, uint32_t dwDam);
 void NetSendCmdString(uint32_t pmask, const char *pszStr);
-void delta_close_portal(int pnum);
+void delta_close_portal(const Player &player);
 size_t ParseCmd(size_t pnum, const TCmd *pCmd);
 
 } // namespace devilution

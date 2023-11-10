@@ -40,7 +40,7 @@ void CastSpell(int id, SpellID spl, int sx, int sy, int dx, int dy, int spllvl);
  * @param pnum player index
  * @param rid target player index
  */
-void DoResurrect(size_t pnum, Player &target);
+void DoResurrect(Player &player, Player &target);
 void DoHealOther(const Player &caster, Player &target);
 int GetSpellBookLevel(SpellID s, bool onlyLearnable); // onlyLearnable=true for books, false for scrolls or staff charges
 

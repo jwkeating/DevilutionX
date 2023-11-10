@@ -2566,6 +2566,21 @@ void Player::UpdatePreviewCelSprite(_cmd_id cmdId, Point point, uint16_t wParam1
 	}
 }
 
+void Player::setCharacterLevel(uint8_t level)
+{
+	this->_pLevel = std::clamp<uint8_t>(level, 1U, getMaxCharacterLevel());
+}
+
+uint8_t Player::getMaxCharacterLevel() const
+{
+	return MaxCharacterLevel;
+}
+
+uint32_t Player::getNextExperienceThreshold() const
+{
+	return _pNextExper;
+}
+
 int32_t Player::calculateBaseLife() const
 {
 	const PlayerData &playerData = PlayersData[static_cast<size_t>(_pHeroClass)];
@@ -2859,7 +2874,6 @@ void CreateNewPlayer(Player &player, HeroClass c) // called when creating a new 
 	player._pManaBase = player._pMana;
 	player._pMaxManaBase = player._pMana;
 
-	player._pMaxLvl = player._pLevel;
 	player._pExperience = 0;
 	player._pNextExper = ExpLvlsTbl[1];
 	player._pArmorClass = 0;
@@ -2945,8 +2959,7 @@ int CalcStatDiff(Player &player)
 
 void NextPlrLevel(Player &player)
 {
-	player._pLevel++;
-	player._pMaxLvl++;
+	player.setCharacterLevel(player.getCharacterLevel() + 1);
 
 	CalcPlayerInventory(player, true);
 

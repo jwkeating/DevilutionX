@@ -473,7 +473,7 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	player._pMaxMana = file.NextLE<int32_t>();
 	file.Skip<int32_t>(); // Skip _pManaPer - always derived from mana and maxMana
 	player._pLevel = file.NextLE<int8_t>();
-	player._pMaxLvl = file.NextLE<int8_t>();
+	file.Skip(1); // _pMaxLvl is unused
 	file.Skip(2); // Alignment
 	player._pExperience = file.NextLE<uint32_t>();
 	file.Skip<uint32_t>();                        // Skip _pMaxExp - unused
@@ -1335,7 +1335,7 @@ void SavePlayer(SaveHelper &file, const Player &player)
 	file.WriteLE<int32_t>(player._pMaxMana);
 	file.Skip<int32_t>(); // Skip _pManaPer
 	file.WriteLE<int8_t>(player._pLevel);
-	file.WriteLE<int8_t>(player._pMaxLvl);
+	file.Skip(1); // _pMaxLvl is unused
 	file.Skip(2); // Alignment
 	file.WriteLE<uint32_t>(player._pExperience);
 	file.Skip<uint32_t>(); // Skip _pMaxExp
