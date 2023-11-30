@@ -50,7 +50,7 @@
 
 namespace devilution {
 
-size_t MyPlayerId;
+uint8_t MyPlayerId;
 Player *MyPlayer;
 std::vector<Player> Players;
 Player *InspectPlayer;
@@ -1323,7 +1323,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 	if (blockDiceRoll < blockChance) {
 		Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
-			NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), static_cast<uint8_t>(dir), 0, DamageType::Physical); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
+			NetSendCmdPvPDamage(true, target, attacker, static_cast<uint8_t>(dir), 0, DamageType::Physical); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
 		}
 		StartPlrBlock(target, dir);
 		return true;
@@ -1354,7 +1354,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 #if JWK_ALLOW_LEECH_IN_PVP
 		attacker.DoLifeAndManaSteal(skdam);
 #endif
-		NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), skdam, hitChance, DamageType::Physical);
+		NetSendCmdPvPDamage(true, target, attacker, skdam, hitChance, DamageType::Physical);
 		AddFloatingNumber(DamageType::Physical, target, attacker.getId(), skdam, hitChance);
 	}
 	StartPlrHit(target, skdam, false);
@@ -1540,10 +1540,8 @@ static bool DoSpell(Player &player)
 		CastSpell(
 		    player.getId(),
 		    player.executedSpell.spellId,
-		    player.position.tile.x,
-		    player.position.tile.y,
-		    player.position.temp.x,
-		    player.position.temp.y,
+		    player.position.tile,
+		    player.position.temp,
 		    player.executedSpell.spellLevel);
 
 		if (IsAnyOf(player.executedSpell.spellType, SpellType::Scroll, SpellType::Charges)) {
@@ -1837,7 +1835,7 @@ static void CheckNewPath(Player &player, bool pmWillBeCalled)
 				x = abs(player.position.tile.x - item->position.x);
 				y = abs(player.position.tile.y - item->position.y);
 				if (x <= 1 && y <= 1 && pcurs == CURSOR_HAND && !item->_iRequest) {
-					NetSendCmdGItem(true, CMD_REQUESTGITEM, player.getId(), targetId);
+					NetSendCmdGItem(true, CMD_REQUESTGITEM, player, targetId);
 					item->_iRequest = true;
 				}
 			}
@@ -1847,7 +1845,7 @@ static void CheckNewPath(Player &player, bool pmWillBeCalled)
 				x = abs(player.position.tile.x - item->position.x);
 				y = abs(player.position.tile.y - item->position.y);
 				if (x <= 1 && y <= 1 && pcurs == CURSOR_HAND) {
-					NetSendCmdGItem(true, CMD_REQUESTAGITEM, player.getId(), targetId);
+					NetSendCmdGItem(true, CMD_REQUESTAGITEM, player, targetId);
 				}
 			}
 			break;
@@ -2147,8 +2145,8 @@ void Player::RemoveInvItem(int iv, bool calcScrolls)
 		// Locate the first grid index containing this item and notify remote clients
 		for (size_t i = 0; i < InventoryGridCells; i++) {
 			int8_t itemIndex = InvGrid[i];
-			if (abs(itemIndex) - 1 == iv) {
-				NetSendCmdParam1(false, CMD_DELINVITEMS, i);
+			if (std::abs(itemIndex) - 1 == iv) {
+				NetSendCmdParam1(false, CMD_DELINVITEMS, static_cast<uint16_t>(i));
 				break;
 			}
 		}
@@ -2196,9 +2194,9 @@ void Player::RemoveSpdBarItem(int iv)
 	RedrawEverything();
 }
 
-[[nodiscard]] size_t Player::getId() const
+[[nodiscard]] uint8_t Player::getId() const
 {
-	return std::distance<const Player *>(&Players[0], this);
+	return static_cast<uint8_t>(std::distance<const Player *>(&Players[0], this));
 }
 
 int Player::GetBaseAttributeValue(CharacterAttribute attribute) const

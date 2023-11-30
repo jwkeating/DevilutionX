@@ -23,7 +23,6 @@ bool IsValidSpellFrom(int spellFrom);
 bool IsWallSpell(SpellID spl);
 bool TargetsMonster(SpellID id);
 int GetManaAmount(const Player &player, SpellID sn);
-void ConsumeSpell(Player &player, SpellID sn, int manaCostMultiplier = 1);
 SpellCheckResult CheckSpell(const Player &player, SpellID sn, SpellType st, bool manaonly);
 
 /**
@@ -34,7 +33,7 @@ SpellCheckResult CheckSpell(const Player &player, SpellID sn, SpellType st, bool
  * @param player The player whose readied spell is to be checked.
  */
 void EnsureValidReadiedSpell(Player &player);
-void CastSpell(int id, SpellID spl, int sx, int sy, int dx, int dy, int spllvl);
+void CastSpell(int id, SpellID spl, WorldTilePosition src, WorldTilePosition dst, int spllvl);
 
 /**
  * @param pnum player index

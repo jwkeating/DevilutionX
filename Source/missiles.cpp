@@ -1014,7 +1014,7 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
-			NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), static_cast<uint8_t>(dir), 0, damageType); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
+			NetSendCmdPvPDamage(true, target, attacker, static_cast<uint8_t>(dir), 0, damageType); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
 		}
 		StartPlrBlock(target, dir);
 		*blocked = true;
@@ -1023,7 +1023,7 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 			if (missileData.isArrow() && damageType == DamageType::Physical) {
 				attacker.DoLifeAndManaSteal(dam);
 			}
-			NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), dam, hitChance, damageType);
+			NetSendCmdPvPDamage(true, target, attacker, dam, hitChance, damageType);
 			AddFloatingNumber(damageType, target, attacker.getId(), dam, hitChance);
 		}
 		if (JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) {
@@ -1697,8 +1697,8 @@ void InitMissiles()
 
 void AddOpenNest(Missile &missile, AddMissileParameter &parameter)
 {
-	for (int x : { 80, 81 }) {
-		for (int y : { 62, 63 }) {
+	for (const WorldTileCoord x : { 80, 81 }) {
+		for (const WorldTileCoord y : { 62, 63 }) {
 			AddMissile({ x, y }, { 80, 62 }, parameter.midir, MissileID::BigExplosion, missile._miEnemyType, missile._miSourceID, missile._midam, 0);
 		}
 	}
@@ -3507,7 +3507,7 @@ void AddRedPortal(Missile &missile, AddMissileParameter & /*parameter*/)
 	PutMissile(missile);
 }
 
-Missile *AddMissile(Point src, Point dst, Direction midir, MissileID mitype,
+Missile *AddMissile(WorldTilePosition src, WorldTilePosition dst, Direction midir, MissileID mitype,
     mienemy_type micaster, int sourceID, int midam, int spllvl,
     Missile *parent, std::optional<_sfx_id> lSFX)
 {

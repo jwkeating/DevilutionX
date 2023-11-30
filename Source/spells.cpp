@@ -154,7 +154,7 @@ int GetManaAmount(const Player &player, SpellID spellID)
 	return ma;
 }
 
-void ConsumeSpell(Player &player, SpellID spellID, int spllvl, int manaCostMultiplier)
+static void ConsumeSpell(Player &player, SpellID spellID, int spllvl, int manaCostMultiplier)
 {
 	if (JWK_GOD_MODE_SPELLS_COST_NOTHING) { return; }
 
@@ -243,7 +243,7 @@ SpellCheckResult CheckSpell(const Player &player, SpellID spellID, SpellType st,
 	return SpellCheckResult::Success;
 }
 
-void CastSpell(int playerID, SpellID spellID, int sx, int sy, int dx, int dy, int spllvl)
+void CastSpell(int playerID, SpellID spellID, WorldTilePosition src, WorldTilePosition dst, int spllvl)
 {
 	Player &player = Players[playerID];
 	Direction dir = player._pdir;
@@ -275,7 +275,7 @@ void CastSpell(int playerID, SpellID spellID, int sx, int sy, int dx, int dy, in
 	if (spellID == SpellID::ChargedBolt) {
 		int numBolts = GetNumberOfChargedBolts(spllvl);
 		for (int i = numBolts; i > 0; i--) {
-			Missile *missile = AddMissile({ sx, sy }, { dx, dy }, dir, MissileID::ChargedBolt, TARGET_MONSTERS, playerID, 0, spllvl);
+			Missile *missile = AddMissile(src, dst, dir, MissileID::ChargedBolt, TARGET_MONSTERS, playerID, 0, spllvl);
 			fizzled |= (missile == nullptr);
 		}
 #if JWK_EDIT_GOLEM // Allow removing golem for free (no mana cost)
@@ -287,7 +287,7 @@ void CastSpell(int playerID, SpellID spellID, int sx, int sy, int dx, int dy, in
 		const SpellData &spellData = GetSpellData(spellID);
 		Missile* missile = nullptr;
 		for (size_t i = 0; i < sizeof(spellData.sMissiles) / sizeof(spellData.sMissiles[0]) && spellData.sMissiles[i] != MissileID::Null; i++) {
-			missile = AddMissile({ sx, sy }, { dx, dy }, dir, spellData.sMissiles[i], TARGET_MONSTERS, playerID, 0, spllvl, missile);
+			missile = AddMissile(src, dst, dir, spellData.sMissiles[i], TARGET_MONSTERS, playerID, 0, spllvl, missile);
 			fizzled |= (missile == nullptr);
 		}
 	}

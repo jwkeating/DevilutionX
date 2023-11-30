@@ -879,14 +879,14 @@ void NetSendCmdGItem2(bool usonly, _cmd_id bCmd, uint8_t mast, uint8_t pnum, con
 	tmsg_add((std::byte *)&cmd, sizeof(cmd));
 }
 
-bool NetSendCmdReq2(_cmd_id bCmd, uint8_t mast, uint8_t pnum, const TCmdGItem &item)
+bool NetSendCmdReq2(_cmd_id bCmd, const Player &player, uint8_t pnum, const TCmdGItem &item)
 {
 	TCmdGItem cmd;
 
 	memcpy(&cmd, &item, sizeof(cmd));
 	cmd.bCmd = bCmd;
 	cmd.bPnum = pnum;
-	cmd.bMaster = mast;
+	cmd.bMaster = player.getId();
 
 	int ticks = SDL_GetTicks();
 	if (cmd.dwTime == 0)
@@ -1171,7 +1171,7 @@ size_t OnRequestGetItem(const TCmd *pCmd, Player &player)
 				else
 					InvGetItem(*MyPlayer, ii);
 				SetItemRecord(dwSeed, wCI, wIndx);
-			} else if (!NetSendCmdReq2(CMD_REQUESTGITEM, MyPlayerId, message.bPnum, message)) {
+			} else if (!NetSendCmdReq2(CMD_REQUESTGITEM, *MyPlayer, message.bPnum, message)) {
 				NetSendCmdExtra(message);
 			}
 		}
@@ -1247,7 +1247,7 @@ size_t OnRequestAutoGetItem(const TCmd *pCmd, Player &player)
 				else
 					AutoGetItem(*MyPlayer, &Items[message.bCursitem], message.bCursitem);
 				SetItemRecord(dwSeed, wCI, wIndx);
-			} else if (!NetSendCmdReq2(CMD_REQUESTAGITEM, MyPlayerId, message.bPnum, message)) {
+			} else if (!NetSendCmdReq2(CMD_REQUESTAGITEM, *MyPlayer, message.bPnum, message)) {
 				NetSendCmdExtra(message);
 			}
 		}
@@ -3024,8 +3024,10 @@ void NetSendCmdQuest(bool bHiPri, const Quest &quest)
 		NetSendLoPri(MyPlayerId, (std::byte *)&cmd, sizeof(cmd));
 }
 
-void NetSendCmdGItem(bool bHiPri, _cmd_id bCmd, uint8_t pnum, uint8_t ii)
+void NetSendCmdGItem(bool bHiPri, _cmd_id bCmd, const Player &player, uint8_t ii)
 {
+	uint8_t pnum = player.getId();
+
 	TCmdGItem cmd;
 
 	cmd.bCmd = bCmd;
@@ -3136,12 +3138,12 @@ void NetSendCmdChBeltItem(bool bHiPri, int beltIndex)
 		NetSendLoPri(MyPlayerId, (std::byte *)&cmd, sizeof(cmd));
 }
 
-void NetSendCmdPvPDamage(bool bHiPri, uint8_t targetPlayer, uint8_t attackerPlayer, uint32_t dwDam, uint8_t hitChance, DamageType damageType)
+void NetSendCmdPvPDamage(bool bHiPri, const Player &target, const Player &attacker, uint32_t dwDam, uint8_t hitChance, DamageType damageType)
 {
 	TCmdDamage cmd;
 
 	cmd.bCmd = CMD_PLRDAMAGE;
-	cmd.bPlr = targetPlayer + (attackerPlayer << 4); // bit pack both player IDs into one byte (see OnPlayerDamage())
+	cmd.bPlr = target.getId() + (attacker.getId() << 4); // bit pack both player IDs into one byte (see OnPlayerDamage())
 	cmd.dwDam = dwDam;
 	cmd.hitChance = hitChance;
 	cmd.damageType = damageType;
