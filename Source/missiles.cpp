@@ -3904,72 +3904,6 @@ void ProcessSearch(Missile &missile)
 		AutoMapShowItems = false;
 }
 
-bool GrowWall(int playerId, Point position, Point target, MissileID type, int spellLevel, int damage, Missile& parent)
-{
-	int dp = dPiece[position.x][position.y];
-	assert(dp <= MAXTILES && dp >= 0);
-
-	if (TileHasAny(dp, TileProperties::BlockMissile) || !InDungeonBounds(target)) {
-		return false;
-	}
-
-#if 1 // jwk - don't allow firewall to stack more than once on the same tile
-	if (HasAnyOf(dFlags[position.x][position.y], DungeonFlag::MissileFireWall)) { return true; }
-#endif
-
-	AddMissile(position, position, Players[playerId]._pdir, type, TARGET_BOTH, playerId, damage, spellLevel, &parent);
-	return true;
-}
-
-void ProcessWallControl(Missile &missile)
-{
-	missile._ticksUntilExpiry--;
-	if (missile._ticksUntilExpiry == 0) {
-		missile._miDelFlag = true;
-		return;
-	}
-
-	int id = missile._misource;
-	MissileID missileID;
-	int damage = 0;
-	if (missile._mitype == MissileID::LightningWallControl) {
-		missileID = MissileID::LightningWallSingleTile;
-		if (missile._misource >= 0) {
-			// monsters can't cast lightning wall
-			damage = CalcLightningWallDamageShifted(Players[missile._misource], missile._mispllvl, GenerateRnd, GenerateRndSum);
-		}
-	} else {
-		missileID = MissileID::FireWallSingleTile;
-		if (missile._misource >= 0) {
-			// monsters can't cast fire wall
-			damage = CalcFireWallDamageShifted(Players[missile._misource], missile._mispllvl, GenerateRnd, GenerateRndSum);
-		}
-	}
-
-	{
-		Point position = { missile.var1, missile.var2 };
-		Point target = position + static_cast<Direction>(missile.var3);
-
-		if (!missile.limitReached && GrowWall(id, position, target, missileID, missile._mispllvl, damage, missile)) {
-			missile.var1 = target.x;
-			missile.var2 = target.y;
-		} else {
-			missile.limitReached = true;
-		}
-	}
-	{
-		Point position = { missile.var5, missile.var6 };
-		Point target = position + static_cast<Direction>(missile.var4);
-
-		if (missile.var7 == 0 && GrowWall(id, position, target, missileID, missile._mispllvl, damage, missile)) {
-			missile.var5 = target.x;
-			missile.var6 = target.y;
-		} else {
-			missile.var7 = 1; // use var7 as limitReached in the other direction
-		}
-	}
-}
-
 void ProcessNovaCommon(Missile &missile, MissileID projectileType)
 {
 	int id = missile._misource;
@@ -4622,44 +4556,134 @@ void ProcessRhino(Missile &missile)
 	PutMissile(missile);
 }
 
-// This is the entry point for casting a flame wave because the SpellsData array lists MissileID::FlameWaveControl as the missile type.
+static bool CanPlaceWall(Point position)
+{
+	if (!InDungeonBounds(position))
+		return false;
+
+	return !TileHasAny(dPiece[position.x][position.y], TileProperties::BlockMissile);
+}
+
+static Missile *PlaceWall(int id, MissileID type, Point position, Direction direction, int spellLevel, int damage)
+{
+#if 1 // jwk - don't allow walls to stack more than once on the same tile
+	if (type != MissileID::FlameWave && HasAnyOf(dFlags[position.x][position.y], DungeonFlag::MissileFireWall | DungeonFlag::MissileLightningWall))
+		return nullptr;
+#endif
+	return AddMissile(position, position + direction, direction, type, TARGET_BOTH, id, damage, spellLevel);
+}
+
+static bool TryGrowWall(int id, MissileID type, Point position, Direction direction, int spellLevel, int damage)
+{
+	if (!CanPlaceWall(position))
+		return false;
+
+	PlaceWall(id, type, position, direction, spellLevel, damage);
+	return true;
+}
+
+static std::optional<Point> MoveWallToNextPosition(Point position, Direction growDirection)
+{
+	Point nextPosition = position + growDirection;
+	if (!InDungeonBounds(nextPosition))
+		return std::nullopt;
+	return nextPosition;
+}
+
+void ProcessWallControl(Missile &missile)
+{
+	missile._ticksUntilExpiry--;
+	if (missile._ticksUntilExpiry == 0) {
+		missile._miDelFlag = true;
+		return;
+	}
+
+	MissileID type;
+	int dmg = 0;
+	Player* caster = missile.sourcePlayer();
+
+	switch (missile._mitype) {
+	case MissileID::FireWallControl:
+		type = MissileID::FireWallSingleTile;
+		if (caster) {
+			dmg = CalcFireWallDamageShifted(*caster, missile._mispllvl, GenerateRnd, GenerateRndSum);
+		}
+		break;
+	case MissileID::LightningWallControl:
+		type = MissileID::LightningWallSingleTile;
+		if (caster) {
+			dmg = CalcLightningWallDamageShifted(*caster, missile._mispllvl, GenerateRnd, GenerateRndSum);
+		}
+		break;
+	default:
+		app_fatal("ProcessWallControl: Invalid missile type for control missile");
+	}
+
+	const Point leftPosition = { missile.var1, missile.var2 };
+	const Point rightPosition = { missile.var5, missile.var6 };
+	const Direction leftDirection = static_cast<Direction>(missile.var3);
+	const Direction rightDirection = static_cast<Direction>(missile.var4);
+
+	bool isStart = leftPosition == rightPosition;
+
+	std::optional<Point> nextLeftPosition = std::nullopt;
+	std::optional<Point> nextRightPosition = std::nullopt;
+
+	if (isStart) {
+		if (!CanPlaceWall(leftPosition)) {
+			missile._miDelFlag = true;
+			return;
+		}
+		PlaceWall(missile._misource, type, leftPosition, leftDirection, missile._mispllvl, dmg);
+		nextLeftPosition = MoveWallToNextPosition(leftPosition, leftDirection);
+		nextRightPosition = MoveWallToNextPosition(rightPosition, rightDirection);
+	} else {
+		if (!missile.limitReached && TryGrowWall(missile._misource, type, leftPosition, Direction::South, missile._mispllvl, dmg)) {
+			nextLeftPosition = MoveWallToNextPosition(leftPosition, leftDirection);
+		}
+		if (missile.var7 == 0 && TryGrowWall(missile._misource, type, rightPosition, Direction::South, missile._mispllvl, dmg)) {
+			nextRightPosition = MoveWallToNextPosition(rightPosition, rightDirection);
+		}
+	}
+
+	if (nextLeftPosition) {
+		missile.var1 = nextLeftPosition->x;
+		missile.var2 = nextLeftPosition->y;
+	} else {
+		missile.limitReached = true;
+	}
+	if (nextRightPosition) {
+		missile.var5 = nextRightPosition->x;
+		missile.var6 = nextRightPosition->y;
+	} else {
+		missile.var7 = 1; // use var7 as 'limitReached' in the right direction
+	}
+}
+
 void ProcessFlameWaveControl(Missile &missile)
 {
-	bool f1 = false;
-	bool f2 = false;
-
-	int id = missile._misource;
-	Point src = missile.position.tile;
-	Direction sd = GetDirection(src, { missile.var1, missile.var2 });
-	Direction dira = Left(Left(sd));
-	Direction dirb = Right(Right(sd));
-	Point na = src + sd;
-	int pn = dPiece[na.x][na.y];
-	assert(pn >= 0 && pn <= MAXTILES);
-	if (!TileHasAny(pn, TileProperties::BlockMissile)) {
-		Direction pdir = Players[id]._pdir;
-		AddMissile(na, na + sd, pdir, MissileID::FlameWave, TARGET_MONSTERS, id, 0, missile._mispllvl, &missile);
-		na += dira;
-		Point nb = src + sd + dirb;
-		// original code: int wallWidth = (missile._mispllvl / 2) + 2;
-		int wallWidth = 2; // totalWidth is wallWidth*2 + 1
-		for (int j = 0; j < wallWidth; j++) {
-			pn = dPiece[na.x][na.y]; // BUGFIX: dPiece is accessed before check against dungeon size and 0
-			assert(pn >= 0 && pn <= MAXTILES);
-			if (TileHasAny(pn, TileProperties::BlockMissile) || f1 || !InDungeonBounds(na)) {
-				f1 = true;
-			} else {
-				AddMissile(na, na + sd, pdir, MissileID::FlameWave, TARGET_MONSTERS, id, 0, missile._mispllvl, &missile);
-				na += dira;
-			}
-			pn = dPiece[nb.x][nb.y]; // BUGFIX: dPiece is accessed before check against dungeon size and 0
-			assert(pn >= 0 && pn <= MAXTILES);
-			if (TileHasAny(pn, TileProperties::BlockMissile) || f2 || !InDungeonBounds(nb)) {
-				f2 = true;
-			} else {
-				AddMissile(nb, nb + sd, pdir, MissileID::FlameWave, TARGET_MONSTERS, id, 0, missile._mispllvl, &missile);
-				nb += dirb;
-			}
+	const int id = missile._misource;
+	const Direction pdir = Players[id]._pdir;
+	const Point src = missile.position.tile;
+	const Direction sd = GetDirection(src, { missile.var1, missile.var2 });
+	const Point start = src + sd;
+	if (CanPlaceWall(start)) {
+		PlaceWall(id, MissileID::FlameWave, start, pdir, missile._mispllvl, 0);
+		// original code: int segmentsToAdd = (missile._mispllvl / 2) + 2;
+		int segmentsToAdd = 2; // totalWidth is wallWidth*2 + 1
+		Point left = start;
+		const Direction dirLeft = Left(Left(sd));
+		for (int j = 0; j < segmentsToAdd; j++) {
+			left += dirLeft;
+			if (!TryGrowWall(id, MissileID::FlameWave, left, pdir, missile._mispllvl, 0))
+				break;
+		}
+		Point right = start;
+		const Direction dirRight = Right(Right(sd));
+		for (int j = 0; j < segmentsToAdd; j++) {
+			right += dirRight;
+			if (!TryGrowWall(id, MissileID::FlameWave, right, pdir, missile._mispllvl, 0))
+				break;
 		}
 	}
 

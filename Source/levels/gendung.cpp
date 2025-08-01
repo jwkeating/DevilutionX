@@ -414,6 +414,7 @@ void CreateDungeon(uint32_t rseed, lvl_entry entry)
 
 bool TileHasAny(int tileId, TileProperties property)
 {
+	assert(tileId >= 0 && tileId <= MAXTILES);
 	return HasAnyOf(SOLData[tileId], property);
 }
 
