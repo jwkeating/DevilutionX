@@ -1761,14 +1761,14 @@ void UpdateFlameTrap(Object &trap)
 		int mindam = damage[leveltype - 1];
 		int maxdam = mindam * 2;
 
-		int x = trap.position.x;
-		int y = trap.position.y;
 		constexpr MissileID TrapMissile = MissileID::FireWallControl;
-		if (dMonster[x][y] > 0)
-			MonsterHitByMissileFromMonsterOrTrap(dMonster[x][y] - 1, nullptr, mindam / 2, maxdam / 2, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
-		if (dPlayer[x][y] > 0) {
+		Monster *monster = FindMonsterAtPosition(trap.position, true);
+		if (monster != nullptr)
+			MonsterHitByMissileFromMonsterOrTrap(*monster, nullptr, mindam / 2, maxdam / 2, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
+		Player *player = PlayerAtPosition(trap.position, true);
+		if (player != nullptr) {
 			bool unused;
-			PlayerHitByMissile(dPlayer[x][y] - 1, nullptr, 0, trap.position, TrapMissile, mindam, maxdam, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
+			PlayerHitByMissile(*player, nullptr, 0, trap.position, TrapMissile, mindam, maxdam, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
 		}
 
 		if (trap._oAnimFrame == trap._oAnimLen)
@@ -3655,16 +3655,18 @@ void BreakBarrel(const Player &player, Object &barrel, bool forcebreak, bool sen
 		for (int yp = barrel.position.y - 1; yp <= barrel.position.y + 1; yp++) {
 			for (int xp = barrel.position.x - 1; xp <= barrel.position.x + 1; xp++) {
 				constexpr MissileID TrapMissile = MissileID::Firebolt;
-				if (dMonster[xp][yp] > 0) {
-					MonsterHitByMissileFromMonsterOrTrap(dMonster[xp][yp] - 1, nullptr, 1, 4, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
+				Monster *monster = FindMonsterAtPosition({ xp, yp }, true);
+				if (monster) {
+					MonsterHitByMissileFromMonsterOrTrap(*monster, nullptr, 1, 4, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
 				}
-				if (dPlayer[xp][yp] > 0) {
+				Player *adjacentPlayer = PlayerAtPosition({ xp, yp }, true);
+				if (adjacentPlayer) {
 					bool unused;
-					PlayerHitByMissile(dPlayer[xp][yp] - 1, nullptr, 0, barrel.position, TrapMissile, 8, 16, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
+					PlayerHitByMissile(*adjacentPlayer, nullptr, 0, barrel.position, TrapMissile, 8, 16, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
 				}
 				// don't really need to exclude large objects as explosive barrels are single tile objects, but using considerLargeObjects == false as this matches the old logic.
 				Object *adjacentObject = FindObjectAtPosition({ xp, yp }, false);
-				if (adjacentObject != nullptr && adjacentObject->isExplosive() && !adjacentObject->IsBroken()) {
+				if (adjacentObject && adjacentObject->isExplosive() && !adjacentObject->IsBroken()) {
 					BreakBarrel(player, *adjacentObject, true, sendmsg);
 				}
 			}

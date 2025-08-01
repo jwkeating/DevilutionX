@@ -204,8 +204,8 @@ int GetNumberOfChargedBolts(int spellLevel);
  * @return the direction of the p1->p2 vector
  */
 Direction16 GetDirection16(Point p1, Point p2);
-bool MonsterHitByMissileFromMonsterOrTrap(int monsterId, Monster* attacker, int mindam, int maxdam, int dist, MissileID t, DamageType damageType, bool shift);
-bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, MissileID mtype, int mind, int maxd, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked);
+bool MonsterHitByMissileFromMonsterOrTrap(Monster &monster, Monster* attacker, int mindam, int maxdam, int dist, MissileID t, DamageType damageType, bool shift);
+bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStartPos, MissileID missileID, int mind, int maxd, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked);
 
 /**
  * @brief Could the missile collide with solid objects? (like walls or closed doors)

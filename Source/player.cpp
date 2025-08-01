@@ -2530,16 +2530,16 @@ void Player::GetGolemStats(int spellLevel, uint32_t& outMaxHP, uint32_t& outArmo
 	outHitChance = GetGolemToHit();
 }
 
-Player *PlayerAtPosition(Point position)
+Player *PlayerAtPosition(Point position, bool ignoreMovingPlayers /*= false*/)
 {
 	if (!InDungeonBounds(position))
 		return nullptr;
 
 	auto playerIndex = dPlayer[position.x][position.y];
-	if (playerIndex == 0)
+	if (playerIndex == 0 || (ignoreMovingPlayers && playerIndex < 0))
 		return nullptr;
 
-	return &Players[abs(playerIndex) - 1];
+	return &Players[std::abs(playerIndex) - 1];
 }
 
 Player *FindClosestPlayerInSight(Point source, int rad) // similar to FindClosestMonsterInSight()

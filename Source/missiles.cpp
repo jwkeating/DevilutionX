@@ -434,10 +434,8 @@ static bool RecordMissleGroupHit(const Missile& missile, MissileGroupList& missi
 #endif
 
 
-bool MonsterHitByMissileFromMonsterOrTrap(int monsterId, Monster* attacker, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
+bool MonsterHitByMissileFromMonsterOrTrap(Monster& monster, Monster* attacker, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
 {
-	auto &monster = Monsters[monsterId];
-
 	if (!monster.isPossibleToHit() || monster.isImmune(missileID, damageType))
 		return false;
 
@@ -496,11 +494,8 @@ bool MonsterHitByMissileFromMonsterOrTrap(int monsterId, Monster* attacker, int 
 	return true;
 }
 
-static bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
+static bool MonsterHitByMissileFromPlayer(const Player& player, Monster& monster, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
 {
-	auto &monster = Monsters[monsterId];
-	const Player &player = Players[pnum];
-
 	if (!monster.isPossibleToHit())
 		return false;
 
@@ -629,11 +624,9 @@ static bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, i
 }
 
 // Player hit by missile from monster or trap
-bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, MissileID missileID, int mind, int maxd, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked)
+bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStartPos, MissileID missileID, int mind, int maxd, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked)
 {
 	*blocked = false;
-
-	Player &player = Players[pnum];
 
 	if (player._pHitPoints >> 6 <= 0) {
 		return false;
@@ -793,10 +786,8 @@ bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, M
 	return true;
 }
 
-static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, MissileID missileID, int mindam, int maxdam, DamageType damageType, bool shift, bool *blocked)
+static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Point mStartPos, MissileID missileID, int mindam, int maxdam, DamageType damageType, bool shift, bool *blocked)
 {
-	Player &target = Players[p];
-
 	if (sgGameInitInfo.bFriendlyFire == 0 && attacker.friendlyMode && (!JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS || missileID != MissileID::GuardianBolt))
 		return false;
 
@@ -922,13 +913,13 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
-			NetSendCmdPvPDamage(true, p, static_cast<uint8_t>(dir), 0, damageType); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
+			NetSendCmdPvPDamage(true, target.getId(), static_cast<uint8_t>(dir), 0, damageType); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
 		}
 		StartPlrBlock(target, dir);
 		*blocked = true;
 	} else { // target takes damage
 		if (&attacker == MyPlayer) {
-			NetSendCmdPvPDamage(true, p, dam, hitChance, damageType);
+			NetSendCmdPvPDamage(true, target.getId(), dam, hitChance, damageType);
 			AddFloatingNumber(damageType, target, dam, hitChance);
 		}
 		if (JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) {
@@ -946,32 +937,32 @@ static void CheckMissileCollision(Missile &missile, DamageType damageType, int m
 	if (!InDungeonBounds(position))
 		return;
 
-	int mx = position.x;
-	int my = position.y;
-
 	bool isMonsterHit = false;
-	int mid = dMonster[mx][my];
-	if (mid > 0 || (mid != 0 && Monsters[abs(mid) - 1].mode == MonsterMode::Petrified)) {
-		mid = abs(mid) - 1;
+	int mid = dMonster[position.x][position.y];
+	if (mid != 0) {
+		Monster &monster = Monsters[std::abs(mid) - 1];
+		if (mid > 0 || monster.mode == MonsterMode::Petrified) {
 #if JWK_PREVENT_DUPLICATE_MISSILE_HITS
-		if (RecordMissleGroupHit(missile, Monsters[mid]._missileGroupsToIgnoreThisTick, Monsters[mid]._missileGroupsToIgnoreForever))
+			if (RecordMissleGroupHit(missile, monster._missileGroupsToIgnoreThisTick, monster._missileGroupsToIgnoreForever))
 #endif
-		{
-			if (missile.IsTrap()) {
-				isMonsterHit = MonsterHitByMissileFromMonsterOrTrap(mid, nullptr, minDamage, maxDamage, missile._midist, missile._mitype, damageType, isDamageShifted);
-			} else if (missile._micaster == TARGET_PLAYERS) { // was fired by a monster
-				Monster* attacker = &Monsters[missile._misource];
-				if (Monsters[mid].isPlayerMinion() != Monsters[missile._misource].isPlayerMinion() //  the monsters are on opposing factions
-					|| (Monsters[missile._misource].flags & MFLAG_BERSERK) != 0                    //  or the attacker is berserked
-					|| (Monsters[mid].flags & MFLAG_BERSERK) != 0                                  //  or the target is berserked
-				) {
-					// then the monsters can attack each other
-					assert(attacker != nullptr);
-					isMonsterHit = MonsterHitByMissileFromMonsterOrTrap(mid, attacker, minDamage, maxDamage, missile._midist, missile._mitype, damageType, isDamageShifted);
+			{
+				if (missile.IsTrap()) {
+					isMonsterHit = MonsterHitByMissileFromMonsterOrTrap(monster, nullptr, minDamage, maxDamage, missile._midist, missile._mitype, damageType, isDamageShifted);
+				} else if (missile._micaster == TARGET_PLAYERS) { // was fired by a monster
+					Monster& attacker = Monsters[missile._misource];
+					assert(&attacker);
+					if (monster.isPlayerMinion() != attacker.isPlayerMinion() //  the monsters are on opposing factions
+						|| (attacker.flags & MFLAG_BERSERK) != 0              //  or the attacker is berserked
+						|| (monster.flags & MFLAG_BERSERK) != 0               //  or the target is berserked
+					) {
+						// then the monsters can attack each other
+						isMonsterHit = MonsterHitByMissileFromMonsterOrTrap(monster, &attacker, minDamage, maxDamage, missile._midist, missile._mitype, damageType, isDamageShifted);
+					}
+				} else { // fired from a player
+					Player& attacker = Players[missile._misource];
+					assert(&attacker);
+					isMonsterHit = MonsterHitByMissileFromPlayer(attacker, monster, minDamage, maxDamage, missile._midist, missile._mitype, damageType, isDamageShifted);
 				}
-			} else { // fired from a player
-				assert(IsAnyOf(missile._micaster, TARGET_BOTH, TARGET_MONSTERS));
-				isMonsterHit = MonsterHitByMissileFromPlayer(missile._misource, mid, minDamage, maxDamage, missile._midist, missile._mitype, damageType, isDamageShifted);
 			}
 		}
 	}
@@ -984,23 +975,22 @@ static void CheckMissileCollision(Missile &missile, DamageType damageType, int m
 
 	bool isPlayerHit = false;
 	bool blocked = false;
-	int8_t pid = dPlayer[mx][my];
-	if (pid > 0) {
+	Player *player = PlayerAtPosition(position, true);
+	if (player != nullptr) {
 #if JWK_PREVENT_DUPLICATE_MISSILE_HITS
-		if (RecordMissleGroupHit(missile, Players[pid - 1]._missileGroupsToIgnoreThisTick, Players[pid - 1]._missileGroupsToIgnoreForever))
+		if (RecordMissleGroupHit(missile, player->_missileGroupsToIgnoreThisTick, player->_missileGroupsToIgnoreForever))
 #endif
 		{
-			if (missile._micaster != TARGET_BOTH && !missile.IsTrap()) {
-				if (missile._micaster == TARGET_MONSTERS) {
-					if ((pid - 1) != missile._misource)
-						isPlayerHit = PvPHitByMissile(pid - 1, Players[missile._misource], missile._midist, missile.position.start, missile._mitype, minDamage, maxDamage, damageType, isDamageShifted, &blocked);
-				} else {
-					Monster &monster = Monsters[missile._misource];
-					isPlayerHit = PlayerHitByMissile(pid - 1, &monster, missile._midist, missile.position.start, missile._mitype, minDamage, maxDamage, damageType, isDamageShifted, DeathReason::MonsterOrTrap, &blocked);
-				}
-			} else {
-				DeathReason deathReason = missile.sourceType() == MissileSource::Player ? DeathReason::Player : DeathReason::MonsterOrTrap;
-				isPlayerHit = PlayerHitByMissile(pid - 1, nullptr, missile._midist, missile.position.start, missile._mitype, minDamage, maxDamage, damageType, isDamageShifted, deathReason, &blocked);
+			if (missile.IsTrap()) {
+				isPlayerHit = PlayerHitByMissile(*player, nullptr, missile._midist, missile.position.start, missile._mitype, minDamage, maxDamage, damageType, isDamageShifted, DeathReason::MonsterOrTrap, &blocked);
+			} else if (missile._micaster == TARGET_PLAYERS) { // was fired by a monster
+				Monster &monster = Monsters[missile._misource];
+				assert(&monster);
+				isPlayerHit = PlayerHitByMissile(*player, &monster, missile._midist, missile.position.start, missile._mitype, minDamage, maxDamage, damageType, isDamageShifted, DeathReason::MonsterOrTrap, &blocked);
+			} else { // fired from a player
+				Player& attacker = Players[missile._misource];
+				assert(&attacker);
+				isPlayerHit = PvPHitByMissile(*player, attacker, missile._midist, missile.position.start, missile._mitype, minDamage, maxDamage, damageType, isDamageShifted, &blocked);
 			}
 		}
 	}
@@ -1014,8 +1004,8 @@ static void CheckMissileCollision(Missile &missile, DamageType damageType, int m
 		missile._miHitFlag = true;
 	}
 
-	if (IsMissileBlockedByTile({ mx, my })) {
-		Object *object = FindObjectAtPosition({ mx, my });
+	if (IsMissileBlockedByTile(position)) {
+		Object *object = FindObjectAtPosition(position);
 		if (object != nullptr && object->IsBreakable()) {
 			BreakObjectMissile(missile.sourcePlayer(), *object);
 		}

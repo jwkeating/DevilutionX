@@ -825,7 +825,7 @@ inline bool IsInspectingPlayer()
 }
 extern bool MyPlayerIsDead;
 
-Player *PlayerAtPosition(Point position);
+Player *PlayerAtPosition(Point position, bool ignoreMovingPlayers = false);
 Player *FindClosestPlayerInSight(Point source, int rad);
 
 void LoadPlrGFX(Player &player, player_graphic graphic);
