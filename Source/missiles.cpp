@@ -788,10 +788,14 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 
 static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Point mStartPos, MissileID missileID, int mindam, int maxdam, DamageType damageType, bool shift, bool *blocked)
 {
-	if (sgGameInitInfo.bFriendlyFire == 0 && attacker.friendlyMode && (!JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS || missileID != MissileID::GuardianBolt))
-		return false;
-
 	*blocked = false;
+
+	bool canHit = sgGameInitInfo.bFriendlyFire || !attacker.friendlyMode
+		|| missileID == MissileID::FireWallSingleTile || missileID == MissileID::LightningWallSingleTile
+		|| (JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS && missileID == MissileID::GuardianBolt && !target.friendlyMode);
+
+	if (!canHit)
+		return false;
 
 	if (target.isOnArenaLevel() && target._pmode == PM_WALK_SIDEWAYS) // jwk - What is this?  Deliberate miss when walking sideways for pvp balance?
 		return false;
@@ -932,7 +936,17 @@ static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Po
 	return true;
 }
 
-static void CheckMissileCollision(Missile &missile, DamageType damageType, int minDamage, int maxDamage, bool isDamageShifted, Point position, bool dontDeleteOnCollision)
+bool CheckCanHitOnlyWalking(const Missile &missile, const ActorPosition &position, Direction wallDir)
+{
+	Point other = missile.position.tile + wallDir;
+	if (missile.position.tile == position.tile && other == position.future)
+		return true;
+	if (missile.position.tile == position.future && other == position.tile)
+		return true;
+	return false;
+}
+
+static void CheckMissileCollision(Missile &missile, DamageType damageType, int minDamage, int maxDamage, bool isDamageShifted, Point position, bool dontDeleteOnCollision, std::optional<Direction> onlyHitWalking = {})
 {
 	if (!InDungeonBounds(position))
 		return;
@@ -941,7 +955,7 @@ static void CheckMissileCollision(Missile &missile, DamageType damageType, int m
 	int mid = dMonster[position.x][position.y];
 	if (mid != 0) {
 		Monster &monster = Monsters[std::abs(mid) - 1];
-		if (mid > 0 || monster.mode == MonsterMode::Petrified) {
+		if (onlyHitWalking.has_value() ? (monster.isWalking() && CheckCanHitOnlyWalking(missile, monster.position, *onlyHitWalking)) : (mid > 0 || monster.mode == MonsterMode::Petrified)) {
 #if JWK_PREVENT_DUPLICATE_MISSILE_HITS
 			if (RecordMissleGroupHit(missile, monster._missileGroupsToIgnoreThisTick, monster._missileGroupsToIgnoreForever))
 #endif
@@ -975,8 +989,8 @@ static void CheckMissileCollision(Missile &missile, DamageType damageType, int m
 
 	bool isPlayerHit = false;
 	bool blocked = false;
-	Player *player = PlayerAtPosition(position, true);
-	if (player != nullptr) {
+	Player *player = PlayerAtPosition(position, !onlyHitWalking.has_value());
+	if (player != nullptr && (onlyHitWalking.has_value() ? (player->isWalking() && CheckCanHitOnlyWalking(missile, player->position, *onlyHitWalking)) : true)) {
 #if JWK_PREVENT_DUPLICATE_MISSILE_HITS
 		if (RecordMissleGroupHit(missile, player->_missileGroupsToIgnoreThisTick, player->_missileGroupsToIgnoreForever))
 #endif
@@ -3636,7 +3650,10 @@ void ProcessLightningWallTile(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
 	int range = missile._ticksUntilExpiry;
-	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, false);
+	std::optional<Direction> onlyHitWalking = {};
+	if (missile.var3 != 0)
+		onlyHitWalking = static_cast<Direction>(missile.var3 - 1);
+	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, false, onlyHitWalking);
 	if (missile._miHitFlag)
 		missile._ticksUntilExpiry = range;
 	if (missile._ticksUntilExpiry == 0)
@@ -3667,7 +3684,8 @@ void AddLightningWallTile(Missile &missile, AddMissileParameter &parameter)
 
 void ProcessFireWallTile(Missile &missile)
 {
-	constexpr int ExpLight[14] = { 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 12 };
+	constexpr int ExpLightLen = 12;
+	constexpr int ExpLight[ExpLightLen] = { 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12 };
 
 	missile._ticksUntilExpiry--;
 	if (missile._ticksUntilExpiry == missile.var1) {
@@ -3679,7 +3697,10 @@ void ProcessFireWallTile(Missile &missile)
 		missile._miAnimFrame = 13;
 		missile._miAnimAdd = -1;
 	}
-	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, true);
+	std::optional<Direction> onlyHitWalking = {};
+	if (missile.var3 != 0)
+		onlyHitWalking = static_cast<Direction>(missile.var3 - 1);
+	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, true, onlyHitWalking);
 	if (missile._ticksUntilExpiry == 0) {
 		missile._miDelFlag = true;
 		AddUnLight(missile._mlid);
@@ -4577,6 +4598,7 @@ static bool TryGrowWall(int id, MissileID type, Point position, Direction growDi
 				Displacement travelled = Displacement(Right(Right(growDirection))).worldToNormalScreen() * 30; // Move the wall to the edge to the next tile, but not over it
 				missile->position.traveled += travelled;
 				missile->_miDrawFlag = false;
+				missile->var3 = static_cast<int>(Left(Left(growDirection))) + 1;
 				UpdateMissilePos(*missile);
 				assert(gapPos == missile->position.tile); // Check that the tile we checked against (CanPlaceWall) didn't change
 			}
