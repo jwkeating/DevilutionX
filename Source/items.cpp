@@ -2513,8 +2513,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 // This is called after processing network packets when a remote player (or the local player) changes gear
 void CalcPlayerInventory(Player &player, bool loadgfx)
 {
-	// Determine the players current stats, this updates the statFlag on all equipped items that became unusable after
-	//  a change in equipment.
+	// Determine the players current stats, this updates the statFlag on all equipped items that became unusable after a change in equipment.
 	UnequipGearWhichCantBeWorn(player);
 
 	// Ensure we don't load graphics for players that aren't on our level

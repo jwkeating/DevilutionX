@@ -67,10 +67,6 @@ enum _cmd_id : uint8_t {
 	// attempted loot item when inventory is full).
 	// body (TCmdPItem)
 	CMD_SPAWNITEM,
-	// Attack target location.
-	//
-	// body (TCmdLoc)
-	CMD_ATTACKXY,
 	// Range attack target location.
 	//
 	// body (TCmdLoc)
