@@ -2758,6 +2758,7 @@ void LoadGameLevel(bool firstflag, lvl_entry lvldir)
 {
 	_music_id neededTrack = GetLevelMusic(leveltype);
 	ClearFloatingNumbers();
+	NaKrulTomeSequence = 0;
 
 	if (neededTrack != sgnMusicTrack)
 		music_stop();
