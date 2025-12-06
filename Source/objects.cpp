@@ -3556,7 +3556,7 @@ void OperateStoryBook(Object &storyBook)
 			NetSendCmd(false, CMD_NAKRUL);
 			return;
 		}
-	} else if (leveltype == DTYPE_CRYPT) {
+	} else if (leveltype == DTYPE_CRYPT && Quests[Q_NAKRUL]._qactive != QUEST_DONE) {
 		Quests[Q_NAKRUL]._qactive = QUEST_ACTIVE;
 		Quests[Q_NAKRUL]._qlog = true;
 		Quests[Q_NAKRUL]._qmsg = msg;
