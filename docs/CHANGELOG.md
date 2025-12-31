@@ -117,6 +117,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Some builds (like Amiga) are not ready yet and will be uploaded over the next couple of days
 
+#### Stability / Performance / System
+
+- Crashes related to player graphics rendering in death state
+
 ## DevilutionX 1.5.2
 
 ### Bug Fixes

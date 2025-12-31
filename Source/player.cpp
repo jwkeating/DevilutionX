@@ -2610,7 +2610,7 @@ void LoadPlrGFX(Player &player, player_graphic graphic)
 		szCel = "qm";
 		break;
 	case player_graphic::Death:
-		// Only one Death animation exists (unarmed characters)
+		// Only one Death animation exists (the unarmed character animation)
 		animWeaponId = PlayerWeaponGraphic::Unarmed;
 		szCel = "dt";
 		break;
