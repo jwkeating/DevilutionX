@@ -44,6 +44,8 @@
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
 
+#define JWK_MORE_TRAPS 1 // increase the chance that a chest will be trapped
+
 namespace devilution {
 
 Object Objects[MAXOBJECTS];
@@ -396,7 +398,7 @@ bool CanPlaceRandomObject(Point position, Displacement standoff)
 std::optional<Point> GetRandomObjectPosition(Displacement standoff)
 {
 	for (int i = 0; i <= 20000; i++) {
-		Point position = Point { GenerateRnd(80), GenerateRnd(80) } + Displacement { 16, 16 };
+		Point position = Point { static_cast<int32_t>(GenerateRnd(80)), static_cast<int32_t>(GenerateRnd(80)) } + Displacement { 16, 16 };
 		if (CanPlaceRandomObject(position, standoff))
 			return position;
 	}
@@ -618,12 +620,53 @@ void AddObjTraps()
 	}
 }
 
+static int ChooseRandomTrap()
+{
+	// See OperateChest()
+	//case 0: Arrow
+	//case 1: FireArrow
+	//case 2: ChainLightning
+	//case 3: BoneSpirit
+	//case 4: Acid
+	//case 5: Fireball
+	//case 6: Nova
+	//case 7: Flash
+	//case 8: ApocalypseBoom
+	//case 9: RingOfFire
+	//case 10: StealPotions
+	//case 11: StealMana
+#if 1 // jwk - include extra spells for traps
+	if (leveltype == DTYPE_CATHEDRAL) {
+		return GenerateRnd(2);
+	} else if (leveltype == DTYPE_CATACOMBS) {
+		return GenerateRnd(5);
+	} else if (leveltype == DTYPE_CAVES) {
+		return 1 + GenerateRnd(7);
+	} else if (leveltype == DTYPE_HELL) {
+		return 2 + GenerateRnd(7);
+	} else { // nest, crypt (gbIsHellfire should be true in this case)
+		return 2 + GenerateRnd(10);
+	}
+#else
+	ImplementThisIfYouCare;
+	if (leveltype == DTYPE_CATHEDRAL) { // original code had no traps at all but that's not easily supported here so we'll allow arrow traps and nothing else
+	} else if (leveltype == DTYPE_CATACOMBS) { // original code had only: arrow, fire arrow, nova
+	} else { // original code has no acid, no fireball, no chain lightning, no bone spirit, no flash, no apocalypse boom.  Ring of fire, steal potions, and steal mana are hellfire-only traps.
+	}
+#endif
+}
+
 void AddChestTraps()
 {
+#if JWK_MORE_TRAPS
+	int chanceForChestToBeTrapped = 15 + 5 * sgGameInitInfo.nDifficulty;
+#else // original code
+	int chanceForChestToBeTrapped = 10;
+#endif
 	for (int j = 0; j < MAXDUNY; j++) {
 		for (int i = 0; i < MAXDUNX; i++) { // NOLINT(modernize-loop-convert)
 			Object *chestObject = FindObjectAtPosition({ i, j }, false);
-			if (chestObject != nullptr && chestObject->IsUntrappedChest() && GenerateRnd(100) < 10) {
+			if (chestObject != nullptr && chestObject->IsUntrappedChest() && GenerateRnd(100) < chanceForChestToBeTrapped) {
 				switch (chestObject->_otype) {
 				case OBJ_CHEST1:
 					chestObject->_otype = OBJ_TCHEST1;
@@ -638,11 +681,7 @@ void AddChestTraps()
 					break;
 				}
 				chestObject->_oTrapFlag = true;
-				if (leveltype == DTYPE_CATACOMBS) {
-					chestObject->_oVar4 = GenerateRnd(2);
-				} else {
-					chestObject->_oVar4 = GenerateRnd(gbIsHellfire ? 6 : 3);
-				}
+				chestObject->_oVar4 = ChooseRandomTrap();
 			}
 		}
 	}
@@ -693,7 +732,7 @@ void AddCryptObject(Object &object, int a2)
 		Player &myPlayer = *MyPlayer;
 		switch (a2) {
 		case 6:
-			switch (myPlayer._pClass) {
+			switch (myPlayer._pHeroClass) {
 			case HeroClass::Warrior:
 			case HeroClass::Barbarian:
 				object._oVar2 = TEXT_BOOKA;
@@ -713,7 +752,7 @@ void AddCryptObject(Object &object, int a2)
 			}
 			break;
 		case 7:
-			switch (myPlayer._pClass) {
+			switch (myPlayer._pHeroClass) {
 			case HeroClass::Warrior:
 			case HeroClass::Barbarian:
 				object._oVar2 = TEXT_BOOKB;
@@ -733,7 +772,7 @@ void AddCryptObject(Object &object, int a2)
 			}
 			break;
 		case 8:
-			switch (myPlayer._pClass) {
+			switch (myPlayer._pHeroClass) {
 			case HeroClass::Warrior:
 			case HeroClass::Barbarian:
 				object._oVar2 = TEXT_BOOKC;
@@ -1728,10 +1767,10 @@ void UpdateFlameTrap(Object &trap)
 		int y = trap.position.y;
 		constexpr MissileID TrapMissile = MissileID::FireWallControl;
 		if (dMonster[x][y] > 0)
-			MonsterTrapHit(dMonster[x][y] - 1, mindam / 2, maxdam / 2, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
+			MonsterHitByMissileFromMonsterOrTrap(dMonster[x][y] - 1, nullptr, mindam / 2, maxdam / 2, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
 		if (dPlayer[x][y] > 0) {
 			bool unused;
-			PlayerMHit(dPlayer[x][y] - 1, nullptr, 0, mindam, maxdam, TrapMissile, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
+			PlayerHitByMissile(dPlayer[x][y] - 1, nullptr, 0, trap.position, TrapMissile, mindam, maxdam, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
 		}
 
 		if (trap._oAnimFrame == trap._oAnimLen)
@@ -1757,7 +1796,7 @@ void UpdateBurningCrossDamage(Object &cross)
 	if (myPlayer.position.tile != cross.position + Displacement { 0, -1 })
 		return;
 
-	ApplyPlrDamage(DamageType::Fire, myPlayer, 0, 0, damage[leveltype - 1]);
+	ApplyPlrDamage(DamageType::Fire, myPlayer, 0, 0, damage[leveltype - 1], 100, DeathReason::MonsterOrTrap);
 	if (myPlayer._pHitPoints >> 6 > 0) {
 		myPlayer.Say(HeroSpeech::Argh);
 	}
@@ -2054,7 +2093,7 @@ void OperateBookLever(Object &questBook, bool sendmsg)
 				ObjChangeMap(questBook._oVar1, questBook._oVar2, questBook._oVar3, questBook._oVar4);
 			if (questBook._otype == OBJ_BLINDBOOK) {
 				if (sendmsg)
-					SpawnUnique(UITEM_OPTAMULET, SetPiece.position.megaToWorld() + Displacement { 5, 5 }, std::nullopt, true, true);
+					CreateUniqueItem(UITEM_OPTAMULET, SetPiece.position.megaToWorld() + Displacement { 5, 5 }, std::nullopt, true, true);
 				auto tren = TransVal;
 				TransVal = 9;
 				DRLG_MRectTrans(WorldTilePosition(questBook._oVar1, questBook._oVar2), WorldTilePosition(questBook._oVar3, questBook._oVar4));
@@ -2087,7 +2126,7 @@ void OperateChamberOfBoneBook(Object &questBook, bool sendmsg)
 	}
 
 	_speech_id textdef;
-	switch (MyPlayer->_pClass) {
+	switch (MyPlayer->_pHeroClass) {
 	case HeroClass::Warrior:
 		textdef = TEXT_BONER;
 		break;
@@ -2117,56 +2156,75 @@ void OperateChamberOfBoneBook(Object &questBook, bool sendmsg)
 
 void OperateChest(const Player &player, Object &chest, bool sendLootMsg)
 {
+	// For debugging, see AddChestTraps() to make all chests trapped
+	constexpr bool debugInfiniteChests = false;
+	constexpr bool debugRandomTraps = false;
+	constexpr bool debugForceNoItemSpawn = false;
+
 	if (chest._oSelFlag == 0) {
 		return;
 	}
 
 	PlaySfxLoc(IS_CHEST, chest.position);
-	chest._oSelFlag = 0;
-	chest._oAnimFrame += 2;
-	SetRndSeed(chest._oRndSeed);
-	if (setlevel) {
-		for (int j = 0; j < chest._oVar1; j++) {
-			CreateRndItem(chest.position, true, sendLootMsg, false);
-		}
+	if (debugInfiniteChests) {
+		static Uint64 debugLastOpenTime = 0;
+		Uint64 now = SDL_GetTicks64();
+		if (now < debugLastOpenTime + 500) { return; } // otherwise it opens every tick
+		debugLastOpenTime = now;
+		if (!debugForceNoItemSpawn) { chest._oRndSeed = AdvanceRndSeed(); }
 	} else {
-		for (int j = 0; j < chest._oVar1; j++) {
-			if (chest._oVar2 != 0)
-				CreateRndItem(chest.position, false, sendLootMsg, false);
-			else
-				CreateRndUseful(chest.position, sendLootMsg);
+		chest._oSelFlag = 0;
+		chest._oAnimFrame += 2;
+	}
+	if (!debugForceNoItemSpawn) {
+		SetRndSeed(chest._oRndSeed);
+		if (setlevel) {
+			for (int j = 0; j < chest._oVar1; j++) {
+				CreateRandomItem(chest.position, true, sendLootMsg, false);
+			}
+		} else {
+			for (int j = 0; j < chest._oVar1; j++) {
+				if (chest._oVar2 != 0)
+					CreateRandomItem(chest.position, false, sendLootMsg, false);
+				else
+					CreateRandomUsefulItem(chest.position, sendLootMsg);
+			}
 		}
 	}
 	if (chest.IsTrappedChest()) {
 		Direction mdir = GetDirection(chest.position, player.position.tile);
 		MissileID mtype;
-		switch (chest._oVar4) {
-		case 0:
-			mtype = MissileID::Arrow;
-			break;
-		case 1:
-			mtype = MissileID::FireArrow;
-			break;
-		case 2:
-			mtype = MissileID::Nova;
-			break;
-		case 3:
-			mtype = MissileID::RingOfFire;
-			break;
-		case 4:
-			mtype = MissileID::StealPotions;
-			break;
-		case 5:
-			mtype = MissileID::StealMana;
-			break;
+		mienemy_type mTarget;
+		switch (chest._oVar4) { // See ChooseRandomTrap()
+		case 0:  mtype = MissileID::Arrow;          mTarget = TARGET_BOTH;    break;
+		case 1:  mtype = MissileID::FireArrow;      mTarget = TARGET_BOTH;    break;
+		case 2:  mtype = MissileID::ChainLightning; mTarget = TARGET_PLAYERS; break;
+		case 3:  mtype = MissileID::BoneSpirit;     mTarget = TARGET_PLAYERS; break;
+		case 4:  mtype = MissileID::AcidPuddleHuge; mTarget = TARGET_BOTH;    break;
+		case 5:  mtype = MissileID::Fireball;       mTarget = TARGET_BOTH;    break;
+		case 6:  mtype = MissileID::Nova;           mTarget = TARGET_BOTH;    break;
+		case 7:  mtype = MissileID::FlashTop;       mTarget = TARGET_BOTH;    break;
+		case 8:  mtype = MissileID::ApocalypseBoom; mTarget = TARGET_BOTH;    break;
+		case 9:  mtype = MissileID::RingOfFire;     mTarget = TARGET_BOTH;    break;
+		case 10: mtype = MissileID::StealPotions;   mTarget = TARGET_BOTH;    break;
+		case 11: mtype = MissileID::StealMana;      mTarget = TARGET_BOTH;    break;
 		default:
 			mtype = MissileID::Arrow;
+			mTarget = TARGET_BOTH;
 		}
-		AddMissile(chest.position, player.position.tile, mdir, mtype, TARGET_PLAYERS, -1, 0, 0);
-		chest._oTrapFlag = false;
+		AddMissile(chest.position, player.position.tile, mdir, mtype, mTarget, -1, 0, 0); // sourceID == -1 means trap
+		if (mtype == MissileID::FlashTop) {
+			AddMissile(chest.position, player.position.tile, mdir, MissileID::FlashBottom, mTarget, -1, 0, 0);
+		}
+		if (debugRandomTraps) {
+			chest._oVar4 = GenerateRnd(9);
+		} else {
+			chest._oTrapFlag = false;
+		}
 	}
-	if (&player == MyPlayer)
+	if (&player == MyPlayer && !debugInfiniteChests) {
 		NetSendCmdLoc(MyPlayerId, false, CMD_OPERATEOBJ, chest.position);
+	}
 }
 
 void OperateMushroomPatch(const Player &player, Object &mushroomPatch)
@@ -2238,18 +2296,18 @@ void OperateSlainHero(const Player &player, Object &corpse, bool sendmsg)
 
 	SetRndSeed(corpse._oRndSeed);
 
-	if (player._pClass == HeroClass::Warrior) {
-		CreateMagicArmor(corpse.position, ItemType::HeavyArmor, ICURS_BREAST_PLATE, sendmsg, false);
-	} else if (player._pClass == HeroClass::Rogue) {
-		CreateMagicWeapon(corpse.position, ItemType::Bow, ICURS_LONG_BATTLE_BOW, sendmsg, false);
-	} else if (player._pClass == HeroClass::Sorcerer) {
+	if (player._pHeroClass == HeroClass::Warrior) {
+		CreateRandomItemOfType(corpse.position, ItemType::HeavyArmor, true, sendmsg, false);
+	} else if (player._pHeroClass == HeroClass::Rogue) {
+		CreateRandomItemOfType(corpse.position, ItemType::Bow, true, sendmsg, false);
+	} else if (player._pHeroClass == HeroClass::Sorcerer) {
 		CreateSpellBook(corpse.position, SpellID::Lightning, sendmsg, false);
-	} else if (player._pClass == HeroClass::Monk) {
-		CreateMagicWeapon(corpse.position, ItemType::Staff, ICURS_WAR_STAFF, sendmsg, false);
-	} else if (player._pClass == HeroClass::Bard) {
-		CreateMagicWeapon(corpse.position, ItemType::Sword, ICURS_BASTARD_SWORD, sendmsg, false);
-	} else if (player._pClass == HeroClass::Barbarian) {
-		CreateMagicWeapon(corpse.position, ItemType::Axe, ICURS_BATTLE_AXE, sendmsg, false);
+	} else if (player._pHeroClass == HeroClass::Monk) {
+		CreateRandomItemOfType(corpse.position, ItemType::Staff, true, sendmsg, false);
+	} else if (player._pHeroClass == HeroClass::Bard) {
+		CreateRandomItemOfType(corpse.position, ItemType::Sword, true, sendmsg, false);
+	} else if (player._pHeroClass == HeroClass::Barbarian) {
+		CreateRandomItemOfType(corpse.position, ItemType::Axe, true, sendmsg, false);
 	}
 	MyPlayer->Say(HeroSpeech::RestInPeaceMyFriend);
 	if (sendmsg)
@@ -2296,7 +2354,7 @@ void OperateSarcophagus(Object &sarcophagus, bool sendMsg, bool sendLootMsg)
 	sarcophagus._oAnimDelay = 3;
 	SetRndSeed(sarcophagus._oRndSeed);
 	if (sarcophagus._oVar1 <= 2)
-		CreateRndItem(sarcophagus.position, false, sendLootMsg, false);
+		CreateRandomItem(sarcophagus.position, false, sendLootMsg, false);
 	if (sarcophagus._oVar1 >= 8 && sarcophagus._oVar2 >= 0)
 		ActivateSkeleton(Monsters[sarcophagus._oVar2], sarcophagus.position);
 	if (sendMsg)
@@ -2341,7 +2399,7 @@ void OperatePedestal(Player &player, Object &pedestal, bool sendmsg)
 		ObjChangeMap(pedestal._oVar1, pedestal._oVar2, pedestal._oVar3, pedestal._oVar4);
 		LoadMapObjects("levels\\l2data\\blood2.dun", SetPiece.position.megaToWorld());
 		if (sendmsg)
-			SpawnUnique(UITEM_ARMOFVAL, SetPiece.position.megaToWorld() + Displacement { 9, 3 }, std::nullopt, true, true);
+			CreateUniqueItem(UITEM_ARMOFVAL, SetPiece.position.megaToWorld() + Displacement { 9, 3 }, std::nullopt, true, true);
 		pedestal._oSelFlag = 0;
 	}
 }
@@ -2372,53 +2430,67 @@ void OperateShrineMysterious(Player &player)
 	}
 
 	CheckStats(player);
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 
 	InitDiabloMsg(EMSG_SHRINE_MYSTERIOUS);
 }
 
-void OperateShrineHidden(Player &player)
+// Return a random nonempty inventory slot (in the range [0,NUM_INVLOC-1]) or -1 if all slots are empty
+int PickRandomNonEmptyInventorySlot(Player &player)
+{
+	bool hasNonEmpty = false;
+	for (const auto &item : player.InvBody) {
+		if (!item.isEmpty()) {
+			hasNonEmpty = true;
+			break;
+		}
+	}
+
+	if (!hasNonEmpty) { return -1; }
+
+	// arrange the integers [0,1,2..NUM_INVLOC-1] in random order
+	int randInvLoc[NUM_INVLOC];
+	for (int i = 0; i < NUM_INVLOC; i++) {
+		randInvLoc[i] = i;
+	}
+	// Fisher–Yates shuffle
+	for (int i = NUM_INVLOC - 1; i > 0; --i) {
+		int j = GenerateRnd(i + 1);
+		std::swap(randInvLoc[i], randInvLoc[j]);
+	}
+
+	int r = 0;
+	while (player.InvBody[randInvLoc[r]].isEmpty()) { r++; assert(r < NUM_INVLOC); }
+
+	return randInvLoc[r];
+}
+
+void OperateShrineHidden(Player &player) // jwk - I rewrote this function to make items indestructible if a hidden shrine even brings durability to the limit.  Original behavior didn't handle integer overflow > 255
 {
 	if (&player != MyPlayer)
 		return;
 
-	int cnt = 0;
-	for (const auto &item : player.InvBody) {
-		if (!item.isEmpty())
-			cnt++;
-	}
-	if (cnt > 0) {
+	int randomInvSlot = PickRandomNonEmptyInventorySlot(player);
+	if (randomInvSlot >= 0) {
 		for (auto &item : player.InvBody) {
-			if (!item.isEmpty()
-			    && item._iMaxDur != DUR_INDESTRUCTIBLE
-			    && item._iMaxDur != 0) {
+			if (!item.isEmpty() && item._iMaxDur != DUR_INDESTRUCTIBLE && item._iMaxDur != 0) {
 				item._iDurability += 10;
 				item._iMaxDur += 10;
-				if (item._iDurability > item._iMaxDur)
-					item._iDurability = item._iMaxDur;
+				if (item._iMaxDur > DUR_INDESTRUCTIBLE) {
+					item._iMaxDur = DUR_INDESTRUCTIBLE;
+				}
+				item._iDurability = clamp(item._iDurability, 1, item._iMaxDur);
 			}
 		}
-		while (true) {
-			cnt = 0;
-			for (auto &item : player.InvBody) {
-				if (!item.isEmpty() && item._iMaxDur != DUR_INDESTRUCTIBLE && item._iMaxDur != 0) {
-					cnt++;
-				}
-			}
-			if (cnt == 0)
-				break;
-			int r = GenerateRnd(NUM_INVLOC);
-			if (player.InvBody[r].isEmpty() || player.InvBody[r]._iMaxDur == DUR_INDESTRUCTIBLE || player.InvBody[r]._iMaxDur == 0)
-				continue;
 
-			player.InvBody[r]._iDurability -= 20;
-			player.InvBody[r]._iMaxDur -= 20;
-			if (player.InvBody[r]._iDurability <= 0)
-				player.InvBody[r]._iDurability = 1;
-			if (player.InvBody[r]._iMaxDur <= 0)
-				player.InvBody[r]._iMaxDur = 1;
-			break;
+		Item& item = player.InvBody[randomInvSlot];
+		if (item._iMaxDur != DUR_INDESTRUCTIBLE && item._iMaxDur != 0) {
+			item._iDurability -= 20;
+			item._iMaxDur -= 20;
+			if (item._iMaxDur <= 0)
+				item._iMaxDur = 1;
+			item._iDurability = clamp(item._iDurability, 1, item._iMaxDur);
 		}
 	}
 
@@ -2454,7 +2526,7 @@ void OperateShrineGloomy(Player &player)
 		}
 	}
 
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 
 	InitDiabloMsg(EMSG_SHRINE_GLOOMY);
 }
@@ -2483,7 +2555,7 @@ void OperateShrineWeird(Player &player)
 		}
 	}
 
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 
 	InitDiabloMsg(EMSG_SHRINE_WEIRD);
 }
@@ -2516,7 +2588,7 @@ void OperateShrineStone(Player &player)
 			item._iCharges = item._iMaxCharges;
 	}
 
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 
 	RedrawEverything();
 
@@ -2681,7 +2753,7 @@ void OperateShrineEldritch(Player &player)
 			// Reinitializing the item zeroes out the seed, we save and restore here to avoid triggering false
 			// positives on duplicated item checks (e.g. when picking up the item).
 			auto seed = item._iSeed;
-			InitializeItem(item, ItemMiscIdIdx(IMISC_REJUV));
+			InitializeItemToDefaultValues(item, ItemMiscIdIdx(IMISC_REJUV));
 			item._iSeed = seed;
 			item._iStatFlag = true;
 			continue;
@@ -2689,7 +2761,7 @@ void OperateShrineEldritch(Player &player)
 		if (IsAnyOf(item._iMiscId, IMISC_FULLHEAL, IMISC_FULLMANA)) {
 			// As above.
 			auto seed = item._iSeed;
-			InitializeItem(item, ItemMiscIdIdx(IMISC_FULLREJUV));
+			InitializeItemToDefaultValues(item, ItemMiscIdIdx(IMISC_FULLREJUV));
 			item._iSeed = seed;
 			item._iStatFlag = true;
 			continue;
@@ -2708,7 +2780,7 @@ void OperateShrineEerie(Player &player)
 
 	ModifyPlrMag(player, 2);
 	CheckStats(player);
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 
 	InitDiabloMsg(EMSG_SHRINE_EERIE);
@@ -2726,11 +2798,11 @@ void OperateShrineDivine(Player &player, Point spawnPosition)
 		return;
 
 	if (currlevel < 4) {
-		CreateTypeItem(spawnPosition, false, ItemType::Misc, IMISC_FULLMANA, false, false, true);
-		CreateTypeItem(spawnPosition, false, ItemType::Misc, IMISC_FULLHEAL, false, false, true);
+		CreateRandomItemOfTypeOrMisc(spawnPosition, ItemType::Misc, IMISC_FULLMANA, false, false, false, true);
+		CreateRandomItemOfTypeOrMisc(spawnPosition, ItemType::Misc, IMISC_FULLHEAL, false, false, false, true);
 	} else {
-		CreateTypeItem(spawnPosition, false, ItemType::Misc, IMISC_FULLREJUV, false, false, true);
-		CreateTypeItem(spawnPosition, false, ItemType::Misc, IMISC_FULLREJUV, false, false, true);
+		CreateRandomItemOfTypeOrMisc(spawnPosition, ItemType::Misc, IMISC_FULLREJUV, false, false, false, true);
+		CreateRandomItemOfTypeOrMisc(spawnPosition, ItemType::Misc, IMISC_FULLREJUV, false, false, false, true);
 	}
 
 	player._pMana = player._pMaxMana;
@@ -2761,7 +2833,7 @@ void OperateShrineSpiritual(Player &player)
 	for (int8_t &itemIndex : player.InvGrid) {
 		if (itemIndex == 0) {
 			Item &goldItem = player.InvList[player._pNumInv];
-			MakeGoldStack(goldItem, 5 * leveltype + GenerateRnd(10 * leveltype));
+			MakeGoldStackForInventory(goldItem, 5 * leveltype + GenerateRnd(10 * leveltype));
 			player._pNumInv++;
 			itemIndex = player._pNumInv;
 
@@ -2798,7 +2870,7 @@ void OperateShrineAbandoned(Player &player)
 
 	ModifyPlrDex(player, 2);
 	CheckStats(player);
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 
 	InitDiabloMsg(EMSG_SHRINE_ABANDONED);
@@ -2811,7 +2883,7 @@ void OperateShrineCreepy(Player &player)
 
 	ModifyPlrStr(player, 2);
 	CheckStats(player);
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 
 	InitDiabloMsg(EMSG_SHRINE_CREEPY);
@@ -2824,7 +2896,7 @@ void OperateShrineQuiet(Player &player)
 
 	ModifyPlrVit(player, 2);
 	CheckStats(player);
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 
 	InitDiabloMsg(EMSG_SHRINE_QUIET);
@@ -2853,7 +2925,7 @@ void OperateShrineGlimmering(Player &player)
 		}
 	}
 
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 
 	InitDiabloMsg(EMSG_SHRINE_GLIMMERING);
@@ -2881,7 +2953,7 @@ void OperateShrineTainted(const Player &player)
 	ModifyPlrVit(myPlayer, v4);
 
 	CheckStats(myPlayer);
-	CalcPlrInv(myPlayer, true);
+	CalcPlayerInventory(myPlayer, true);
 	RedrawEverything();
 
 	InitDiabloMsg(EMSG_SHRINE_TAINTED2);
@@ -2898,7 +2970,7 @@ void OperateShrineOily(Player &player, Point spawnPosition)
 	if (&player != MyPlayer)
 		return;
 
-	switch (player._pClass) {
+	switch (player._pHeroClass) {
 	case HeroClass::Warrior:
 		ModifyPlrStr(player, 2);
 		break;
@@ -2922,14 +2994,14 @@ void OperateShrineOily(Player &player, Point spawnPosition)
 	}
 
 	CheckStats(player);
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 
 	AddMissile(
 	    spawnPosition,
 	    player.position.tile,
 	    player._pdir,
-	    MissileID::FireWall,
+	    MissileID::FireWallSingleTile,
 	    TARGET_PLAYERS,
 	    -1,
 	    2 * currlevel + 2,
@@ -3058,7 +3130,7 @@ void OperateShrineSolar(Player &player)
 	}
 
 	CheckStats(player);
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	RedrawEverything();
 }
 
@@ -3220,9 +3292,9 @@ void OperateBookStand(Object &bookStand, bool sendmsg, bool sendLootMsg)
 	bookStand._oAnimFrame += 2;
 	SetRndSeed(bookStand._oRndSeed);
 	if (FlipCoin(5))
-		CreateTypeItem(bookStand.position, false, ItemType::Misc, IMISC_BOOK, sendLootMsg, false);
+		CreateRandomItemOfTypeOrMisc(bookStand.position, ItemType::Misc, IMISC_BOOK, false, sendLootMsg, false, false);
 	else
-		CreateTypeItem(bookStand.position, false, ItemType::Misc, IMISC_SCROLL, sendLootMsg, false);
+		CreateRandomItemOfTypeOrMisc(bookStand.position, ItemType::Misc, IMISC_SCROLL, false, sendLootMsg, false, false);
 	if (sendmsg)
 		NetSendCmdLoc(MyPlayerId, false, CMD_OPERATEOBJ, bookStand.position);
 }
@@ -3237,16 +3309,16 @@ void OperateBookcase(Object &bookcase, bool sendmsg, bool sendLootMsg)
 	bookcase._oSelFlag = 0;
 	bookcase._oAnimFrame -= 2;
 	SetRndSeed(bookcase._oRndSeed);
-	CreateTypeItem(bookcase.position, false, ItemType::Misc, IMISC_BOOK, sendLootMsg, false);
+	CreateRandomItemOfTypeOrMisc(bookcase.position, ItemType::Misc, IMISC_BOOK, false, sendLootMsg, false, false);
 
 	if (Quests[Q_ZHAR].IsAvailable()) {
-		auto &zhar = Monsters[MAX_PLRS];
+		auto &zhar = Monsters[MAX_PLAYERS];
 		if (zhar.mode == MonsterMode::Stand // prevents playing the "angry" message for the second time if zhar got aggroed by losing vision and talking again
 		    && zhar.uniqueType == UniqueMonsterType::Zhar
 		    && zhar.activeForTicks == UINT8_MAX
 		    && zhar.hitPoints > 0) {
 			zhar.talkMsg = TEXT_ZHAR2;
-			M_StartStand(zhar, zhar.direction); // BUGFIX: first parameter in call to M_StartStand should be MAX_PLRS, not 0. (fixed)
+			M_StartStand(zhar, zhar.direction); // BUGFIX: first parameter in call to M_StartStand should be MAX_PLAYERS, not 0. (fixed)
 			zhar.goal = MonsterGoal::Attack;
 			if (sendmsg)
 				zhar.mode = MonsterMode::Talk;
@@ -3263,7 +3335,7 @@ void OperateDecapitatedBody(Object &corpse, bool sendmsg, bool sendLootMsg)
 	}
 	corpse._oSelFlag = 0;
 	SetRndSeed(corpse._oRndSeed);
-	CreateRndItem(corpse.position, false, sendLootMsg, false);
+	CreateRandomItem(corpse.position, false, sendLootMsg, false);
 	if (sendmsg)
 		NetSendCmdLoc(MyPlayerId, false, CMD_OPERATEOBJ, corpse.position);
 }
@@ -3276,15 +3348,15 @@ void OperateArmorStand(Object &armorStand, bool sendmsg, bool sendLootMsg)
 	armorStand._oSelFlag = 0;
 	armorStand._oAnimFrame++;
 	SetRndSeed(armorStand._oRndSeed);
-	bool uniqueRnd = !FlipCoin();
+	bool uniqueRnd = FlipCoin();
 	if (currlevel <= 5) {
-		CreateTypeItem(armorStand.position, true, ItemType::LightArmor, IMISC_NONE, sendLootMsg, false);
+		CreateRandomItemOfTypeOrMisc(armorStand.position, ItemType::LightArmor, IMISC_NONE, uniqueRnd, sendLootMsg, false, false);
 	} else if (currlevel >= 6 && currlevel <= 9) {
-		CreateTypeItem(armorStand.position, uniqueRnd, ItemType::MediumArmor, IMISC_NONE, sendLootMsg, false);
+		CreateRandomItemOfTypeOrMisc(armorStand.position, ItemType::MediumArmor, IMISC_NONE, uniqueRnd, sendLootMsg, false, false);
 	} else if (currlevel >= 10 && currlevel <= 12) {
-		CreateTypeItem(armorStand.position, false, ItemType::HeavyArmor, IMISC_NONE, sendLootMsg, false);
+		CreateRandomItemOfTypeOrMisc(armorStand.position, ItemType::HeavyArmor, IMISC_NONE, uniqueRnd, sendLootMsg, false, false);
 	} else if (currlevel >= 13) {
-		CreateTypeItem(armorStand.position, true, ItemType::HeavyArmor, IMISC_NONE, sendLootMsg, false);
+		CreateRandomItemOfTypeOrMisc(armorStand.position, ItemType::HeavyArmor, IMISC_NONE, uniqueRnd, sendLootMsg, false, false);
 	}
 	if (sendmsg)
 		NetSendCmdLoc(MyPlayerId, false, CMD_OPERATEOBJ, armorStand.position);
@@ -3433,8 +3505,8 @@ void OperateWeaponRack(Object &weaponRack, bool sendmsg, bool sendLootMsg)
 
 	weaponRack._oSelFlag = 0;
 	weaponRack._oAnimFrame++;
-
-	CreateTypeItem(weaponRack.position, leveltype != DTYPE_CATHEDRAL, weaponType, IMISC_NONE, sendLootMsg, false);
+	bool uniqueRnd = FlipCoin();
+	CreateRandomItemOfTypeOrMisc(weaponRack.position, weaponType, IMISC_NONE, uniqueRnd, sendLootMsg, false, false);
 
 	if (sendmsg)
 		NetSendCmdLoc(MyPlayerId, false, CMD_OPERATEOBJ, weaponRack.position);
@@ -3588,11 +3660,11 @@ void BreakBarrel(const Player &player, Object &barrel, bool forcebreak, bool sen
 			for (int xp = barrel.position.x - 1; xp <= barrel.position.x + 1; xp++) {
 				constexpr MissileID TrapMissile = MissileID::Firebolt;
 				if (dMonster[xp][yp] > 0) {
-					MonsterTrapHit(dMonster[xp][yp] - 1, 1, 4, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
+					MonsterHitByMissileFromMonsterOrTrap(dMonster[xp][yp] - 1, nullptr, 1, 4, 0, TrapMissile, GetMissileData(TrapMissile).damageType(), false);
 				}
 				if (dPlayer[xp][yp] > 0) {
 					bool unused;
-					PlayerMHit(dPlayer[xp][yp] - 1, nullptr, 0, 8, 16, TrapMissile, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
+					PlayerHitByMissile(dPlayer[xp][yp] - 1, nullptr, 0, barrel.position, TrapMissile, 8, 16, GetMissileData(TrapMissile).damageType(), false, DeathReason::MonsterOrTrap, &unused);
 				}
 				// don't really need to exclude large objects as explosive barrels are single tile objects, but using considerLargeObjects == false as this matches the old logic.
 				Object *adjacentObject = FindObjectAtPosition({ xp, yp }, false);
@@ -3611,9 +3683,9 @@ void BreakBarrel(const Player &player, Object &barrel, bool forcebreak, bool sen
 		SetRndSeed(barrel._oRndSeed);
 		if (barrel._oVar2 <= 1) {
 			if (barrel._oVar3 == 0)
-				CreateRndUseful(barrel.position, sendmsg);
+				CreateRandomUsefulItem(barrel.position, sendmsg);
 			else
-				CreateRndItem(barrel.position, false, sendmsg, false);
+				CreateRandomItem(barrel.position, false, sendmsg, false);
 		}
 		if (barrel._oVar2 >= 8 && barrel._oVar4 >= 0)
 			ActivateSkeleton(Monsters[barrel._oVar4], barrel.position);
@@ -3735,7 +3807,9 @@ bool Object::IsDisabled() const
 	if (!IsShrine()) {
 		return false;
 	}
-	return IsAnyOf(static_cast<shrine_type>(_oVar1), shrine_type::ShrineFascinating, shrine_type::ShrineOrnate, shrine_type::ShrineSacred, shrine_type::ShrineMurphys);
+	//return IsAnyOf(static_cast<shrine_type>(_oVar1), shrine_type::ShrineFascinating, shrine_type::ShrineOrnate, shrine_type::ShrineSacred, shrine_type::ShrineMurphys);
+	// jwk - disable Tainted shrine in multiplayer (increasing your stats at the expense of your party's stats is not cool)
+	return IsAnyOf(static_cast<shrine_type>(_oVar1), shrine_type::ShrineFascinating, shrine_type::ShrineOrnate, shrine_type::ShrineSacred, shrine_type::ShrineMurphys, shrine_type::ShrineTainted);
 }
 
 Object *FindObjectAtPosition(Point position, bool considerLargeObjects)
@@ -3952,7 +4026,7 @@ void InitObjects()
 			AddL2Torches();
 			if (Quests[Q_BLIND].IsAvailable()) {
 				_speech_id spId;
-				switch (MyPlayer->_pClass) {
+				switch (MyPlayer->_pHeroClass) {
 				case HeroClass::Warrior:
 					spId = TEXT_BLINDING;
 					break;
@@ -3978,7 +4052,7 @@ void InitObjects()
 			}
 			if (Quests[Q_BLOOD].IsAvailable()) {
 				_speech_id spId;
-				switch (MyPlayer->_pClass) {
+				switch (MyPlayer->_pHeroClass) {
 				case HeroClass::Warrior:
 					spId = TEXT_BLOODY;
 					break;
@@ -4011,7 +4085,7 @@ void InitObjects()
 		if (leveltype == DTYPE_HELL) {
 			if (Quests[Q_WARLORD].IsAvailable()) {
 				_speech_id spId;
-				switch (MyPlayer->_pClass) {
+				switch (MyPlayer->_pHeroClass) {
 				case HeroClass::Warrior:
 					spId = TEXT_BLOODWAR;
 					break;
@@ -4053,8 +4127,13 @@ void InitObjects()
 		InitRndLocObj(1, 5, OBJ_CHEST3);
 		if (leveltype != DTYPE_HELL)
 			AddObjTraps();
+#if 1 // jwk - include traps in cathedral
+		if (IsAnyOf(leveltype, DTYPE_CATHEDRAL, DTYPE_CATACOMBS, DTYPE_CAVES, DTYPE_HELL, DTYPE_NEST))
+			AddChestTraps();
+#else // original code:
 		if (IsAnyOf(leveltype, DTYPE_CATACOMBS, DTYPE_CAVES, DTYPE_HELL, DTYPE_NEST))
 			AddChestTraps();
+#endif
 	}
 }
 
@@ -4132,11 +4211,7 @@ Object *AddObject(_object_id objType, Point objPos)
 	case OBJ_TCHEST3:
 		AddChest(object);
 		object._oTrapFlag = true;
-		if (leveltype == DTYPE_CATACOMBS) {
-			object._oVar4 = GenerateRnd(2);
-		} else {
-			object._oVar4 = GenerateRnd(3);
-		}
+		object._oVar4 = ChooseRandomTrap();
 		break;
 	case OBJ_SARC:
 	case OBJ_L5SARC:
@@ -4382,7 +4457,7 @@ void RedoPlayerVision()
 {
 	for (const Player &player : Players) {
 		if (player.plractive && player.isOnActiveLevel()) {
-			ChangeVisionXY(player.getId(), player.position.tile);
+			ChangeVisionXY(player.getId(), player.position.tile, player.position.future);
 		}
 	}
 }
@@ -4455,14 +4530,14 @@ void ObjChangeMapResync(int x1, int y1, int x2, int y2)
 	ResyncDoors(world1, world2, false);
 }
 
-_item_indexes ItemMiscIdIdx(item_misc_id imiscid)
+BaseItemIdx ItemMiscIdIdx(item_misc_id imiscid)
 {
-	std::underlying_type_t<_item_indexes> i = IDI_GOLD;
+	std::underlying_type_t<BaseItemIdx> i = IDI_GOLD;
 	while (AllItemsList[i].iRnd == IDROP_NEVER || AllItemsList[i].iMiscId != imiscid) {
 		i++;
 	}
 
-	return static_cast<_item_indexes>(i);
+	return static_cast<BaseItemIdx>(i);
 }
 
 void OperateObject(Player &player, Object &object)
@@ -4995,7 +5070,7 @@ StringOrView Object::name() const
 void GetObjectStr(const Object &object)
 {
 	InfoString = object.name();
-	if (MyPlayer->_pClass == HeroClass::Rogue) {
+	if (MyPlayer->_pHeroClass == HeroClass::Rogue) {
 		if (object._oTrapFlag) {
 			InfoString = fmt::format(fmt::runtime(_(/* TRANSLATORS: {:s} will either be a chest or a door */ "Trapped {:s}")), InfoString.str());
 			InfoColor = UiFlags::ColorRed;

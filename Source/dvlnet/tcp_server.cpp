@@ -140,7 +140,7 @@ void tcp_server::SendPacket(packet &pkt)
 			if (i != pkt.Source() && connections[i])
 				StartSend(connections[i], pkt);
 	} else {
-		if (pkt.Destination() >= MAX_PLRS)
+		if (pkt.Destination() >= MAX_PLAYERS)
 			throw server_exception();
 		if ((pkt.Destination() != pkt.Source()) && connections[pkt.Destination()])
 			StartSend(connections[pkt.Destination()], pkt);

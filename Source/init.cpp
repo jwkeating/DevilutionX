@@ -46,7 +46,7 @@ namespace devilution {
 /** True if the game is the current active window */
 bool gbActive;
 /** Indicate if we only have access to demo data */
-bool gbIsSpawn;
+bool gbIsDemoGame;
 /** Indicate if we have loaded the Hellfire expansion data */
 bool gbIsHellfire;
 /** Indicate if we want vanilla savefiles */
@@ -288,7 +288,7 @@ void LoadGameArchives()
 	if (!diabdat_data_path) {
 		spawn_data_path = FindUnpackedMpqData(paths, "spawn");
 		if (spawn_data_path)
-			gbIsSpawn = true;
+			gbIsDemoGame = true;
 	}
 	if (!HeadlessMode) {
 		AssetRef ref = FindAsset("ui_art\\title.clx");
@@ -328,7 +328,7 @@ void LoadGameArchives()
 	if (!diabdat_mpq) {
 		spawn_mpq = LoadMPQ(paths, "spawn.mpq");
 		if (spawn_mpq)
-			gbIsSpawn = true;
+			gbIsDemoGame = true;
 	}
 	if (!HeadlessMode) {
 		AssetRef ref = FindAsset("ui_art\\title.pcx");

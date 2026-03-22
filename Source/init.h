@@ -19,7 +19,7 @@
 namespace devilution {
 
 extern bool gbActive;
-extern DVL_API_FOR_TEST bool gbIsSpawn;
+extern DVL_API_FOR_TEST bool gbIsDemoGame;
 extern DVL_API_FOR_TEST bool gbIsHellfire;
 extern DVL_API_FOR_TEST bool gbVanilla;
 extern bool forceHellfire;

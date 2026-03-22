@@ -24,6 +24,7 @@
 #include "levels/gendung.h"
 #include "multi.h"
 #include "spelldat.h"
+#include "misdat.h"
 #include "utils/attributes.h"
 #include "utils/enum_traits.h"
 #include "utils/stdcompat/algorithm.hpp"
@@ -38,7 +39,7 @@ constexpr uint8_t MaxSpellLevel = 15;
 constexpr int PlayerNameLength = 32;
 
 constexpr size_t NumHotkeys = 12;
-constexpr int BaseHitChance = 50;
+constexpr int BaseHitChance = JWK_USE_CONSISTENT_HIT_CHANCE ? 30 : 50;
 
 /** Walking directions */
 enum {
@@ -231,14 +232,19 @@ struct Player {
 	Player(Player &&) noexcept = default;
 	Player &operator=(Player &&) noexcept = default;
 
+#if JWK_PREVENT_DUPLICATE_MISSILE_HITS
+	MissileGroupList _missileGroupsToIgnoreThisTick;
+	MissileGroupRingBuffer _missileGroupsToIgnoreForever;
+#endif
+
 	char _pName[PlayerNameLength];
 	Item InvBody[NUM_INVLOC];
 	Item InvList[InventoryGridCells];
 	Item SpdList[MaxBeltItems];
 	Item HoldItem;
-
+#if !JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
 	int lightId;
-
+#endif
 	int _pNumInv;
 	int _pStrength;
 	int _pBaseStr;
@@ -249,33 +255,37 @@ struct Player {
 	int _pVitality;
 	int _pBaseVit;
 	int _pStatPts;
-	int _pDamageMod;
+	int _pDamageMod; // unarmed character damage from str/dex
 	int _pBaseToBlk;
-	int _pHPBase;
-	int _pMaxHPBase;
-	int _pHitPoints;
-	int _pMaxHP;
+	int _pHPBase;      // shifted value.
+	int _pMaxHPBase;   // shifted value.
+	int _pHitPoints;   // shifted value.  current health of player
+	int _pMaxHP;       // shifted value.  maximum health as shown in game (includes all bonuses from items) 
 	int _pHPPer;
-	int _pManaBase;
-	int _pMaxManaBase;
-	int _pMana;
-	int _pMaxMana;
+	int _pManaBase;    // shifted value.
+	int _pMaxManaBase; // shifted value.  your maximum mana without items
+	int _pMana;        // shifted value.  you current mana as displayed in game
+	int _pMaxMana;     // shifted value.  your maximum mana as displayed in game
 	int _pManaPer;
-	int _pIMinDam;
-	int _pIMaxDam;
+	int _pIMinDam; // min base damage of item
+	int _pIMaxDam; // max base damage of item
 	int _pIAC;
-	int _pIBonusDam;
+	int _pIBonusDam; // items that have stats like "+58% damage"
 	int _pIBonusToHit;
 	int _pIBonusAC;
-	int _pIBonusDamMod;
+	int _pIBonusDamMod; // items that have stats like "+7 damage"
 	int _pIGetHit;
-	int _pIEnAc;
+	int _pArmorPierce; // Also called "enhanced accuracy"
 	int _pIFMinDam;
 	int _pIFMaxDam;
 	int _pILMinDam;
 	int _pILMaxDam;
 	uint32_t _pExperience;
 	uint32_t _pNextExper;
+#if JWK_EDIT_PLAYER_SKILLS
+	Uint64 _timeOfMostRecentSkillUse; // in milliseconds
+	Uint64 GetSkillCooldownMilliseconds();
+#endif
 	PLR_MODE _pmode;
 	int8_t walkpath[MaxPathLength];
 	bool plractive;
@@ -304,26 +314,27 @@ struct Player {
 	 * @brief Contains Data (Sprites) for the different Animations
 	 */
 	std::array<PlayerAnimationData, enum_size<player_graphic>::value> AnimationData;
-	int8_t _pNFrames;
-	int8_t _pWFrames;
-	int8_t _pAFrames;
-	int8_t _pAFNum;
-	int8_t _pSFrames;
-	int8_t _pSFNum;
-	int8_t _pHFrames;
-	int8_t _pDFrames;
-	int8_t _pBFrames;
+	int8_t _pNFrames; // num frames for standing idle
+	int8_t _pWFrames; // num frames for walking
+	int8_t _pAFrames; // num frames for attacking (depends on weapon type equipped)
+	int8_t _pAFNum;   // which frame the attack action occurs
+	int8_t _pSFrames; // num frames for spellcasting
+	int8_t _pSFNum;   // which frame the spellcast action occurs
+	int8_t _pHFrames; // num hit recovery frames
+	int8_t _pDFrames; // num death frames
+	int8_t _pBFrames; // num blocking frames
 	int8_t InvGrid[InventoryGridCells];
 
-	uint8_t plrlevel;
+	uint8_t currentDungeonLevel;
 	bool plrIsOnSetLevel;
 	ActorPosition position;
 	Direction _pdir; // Direction faced by player (direction enum)
-	HeroClass _pClass;
+	HeroClass _pHeroClass;
 	int8_t _pLevel;
 	int8_t _pMaxLvl;
 	uint8_t _pgfxnum; // Bitmask indicating what variant of the sprite the player is using. The 3 lower bits define weapon (PlayerWeaponGraphic) and the higher bits define armour (starting with PlayerArmorGraphic)
 	int8_t _pISplLvlAdd;
+	int8_t _pManaCostMod; // JWK_ALLOW_MANA_COST_MODIFIER - This is a % chance to have free or costly spell (- means free, + means costly)
 	/** @brief Specifies whether players are in non-PvP mode. */
 	bool friendlyMode = true;
 
@@ -343,6 +354,9 @@ struct Player {
 	uint64_t _pISpells;
 	/** @brief Bitmask of learned spells */
 	uint64_t _pMemSpells;
+#if JWK_GOD_MODE_MAX_SPELLS
+	uint64_t _pMemSpellsDebug;
+#endif
 	/** @brief Bitmask of abilities */
 	uint64_t _pAblSpells;
 	/** @brief Bitmask of spells available via scrolls */
@@ -352,7 +366,7 @@ struct Player {
 	SpellType _pSplTHotKey[NumHotkeys];
 	bool _pBlockFlag;
 	bool _pInvincible;
-	int8_t _pLightRad;
+	int8_t _pLightRad; // light radius.  Must be <= 15 because the VisionCrawlTable only contains precomputed values for radius <= 15
 	/** @brief True when the player is transitioning between levels */
 	bool _pLvlChanging;
 
@@ -372,6 +386,7 @@ struct Player {
 	uint8_t pDungMsgs;
 	uint8_t pLvlLoad;
 	bool pManaShield;
+	bool pSneak; // added for sneak skill (JWK_EDIT_PLAYER_SKILLS)
 	uint8_t pDungMsgs2;
 	bool pOriginalCathedral;
 	uint8_t pDiabloKillLevel;
@@ -490,7 +505,7 @@ struct Player {
 	 */
 	item_equip_type GetItemLocation(const Item &item) const
 	{
-		if (_pClass == HeroClass::Barbarian && item._iLoc == ILOC_TWOHAND && IsAnyOf(item._itype, ItemType::Sword, ItemType::Mace))
+		if (_pHeroClass == HeroClass::Barbarian && item._iLoc == ILOC_TWOHAND && IsAnyOf(item._itype, ItemType::Sword, ItemType::Mace))
 			return ILOC_ONEHAND;
 		return item._iLoc;
 	}
@@ -508,10 +523,18 @@ struct Player {
 	 */
 	int GetMeleeToHit() const
 	{
-		int hper = _pLevel + _pDexterity / 2 + _pIBonusToHit + BaseHitChance;
-		if (_pClass == HeroClass::Warrior)
-			hper += 20;
-		return hper;
+#if JWK_USE_CONSISTENT_HIT_CHANCE // use the same formula for melee and range (melee uses str, ranged uses dex)
+		// Note: Hit chance is modified by: hitChance += 2 * (attacker.level - target.level)
+		// See MonsterAttackPlayer(), PlayerAttackPlayer(), and PlayerAttackMonster
+		int hitChance = _pStrength + _pIBonusToHit + BaseHitChance;
+		//int hitChance = _pLevel + _pStrength + _pIBonusToHit + BaseHitChance;
+#else // original code:
+		int hitChance = _pLevel + _pDexterity / 2 + _pIBonusToHit + BaseHitChance;
+		if (_pHeroClass == HeroClass::Warrior) {
+			hitChance += 20;
+		}
+#endif
+		return hitChance;
 	}
 
 	/**
@@ -519,11 +542,11 @@ struct Player {
 	 */
 	int GetMeleePiercingToHit() const
 	{
-		int hper = GetMeleeToHit();
+		int hitChance = GetMeleeToHit();
 		// in hellfire armor piercing ignores % of enemy armor instead, no way to include it here
-		if (!gbIsHellfire)
-			hper += _pIEnAc;
-		return hper;
+		if (!JWK_USE_HELLFIRE_ARMOR_PIERCE && !gbIsHellfire)
+			hitChance += _pArmorPierce;
+		return hitChance;
 	}
 
 	/**
@@ -531,21 +554,27 @@ struct Player {
 	 */
 	int GetRangedToHit() const
 	{
-		int hper = _pLevel + _pDexterity + _pIBonusToHit + BaseHitChance;
-		if (_pClass == HeroClass::Rogue)
-			hper += 20;
-		else if (_pClass == HeroClass::Warrior || _pClass == HeroClass::Bard)
-			hper += 10;
-		return hper;
+#if JWK_USE_CONSISTENT_HIT_CHANCE // use the same formula for melee and range (melee uses str, ranged uses dex)
+		// See hit chance formulas in MonsterHitByMissileFromPlayer(), MonsterHitByMissileFromMonsterOrTrap(), PlayerHitByMissle(), and PvPHitByMissile()
+		int hitChance = _pDexterity + _pIBonusToHit + BaseHitChance;
+		//int hitChance = _pLevel + _pDexterity + _pIBonusToHit + BaseHitChance;
+#else // original code:
+		int hitChance = _pLevel + _pDexterity + _pIBonusToHit + BaseHitChance;
+		if (_pHeroClass == HeroClass::Rogue) {
+			hitChance += 20;
+		} else if (_pHeroClass == HeroClass::Warrior || _pHeroClass == HeroClass::Bard)
+			hitChance += 10;
+#endif
+		return hitChance;
 	}
 
 	int GetRangedPiercingToHit() const
 	{
-		int hper = GetRangedToHit();
+		int hitChance = GetRangedToHit();
 		// in hellfire armor piercing ignores % of enemy armor instead, no way to include it here
-		if (!gbIsHellfire)
-			hper += _pIEnAc;
-		return hper;
+		if (!JWK_USE_HELLFIRE_ARMOR_PIERCE && !gbIsHellfire)
+			hitChance += _pArmorPierce;
+		return hitChance;
 	}
 
 	/**
@@ -553,32 +582,29 @@ struct Player {
 	 */
 	int GetMagicToHit() const
 	{
-		int hper = _pMagic + BaseHitChance;
-		if (_pClass == HeroClass::Sorcerer)
-			hper += 20;
-		else if (_pClass == HeroClass::Bard)
-			hper += 10;
-		return hper;
+#if JWK_USE_CONSISTENT_HIT_CHANCE
+		int hitChance = _pMagic + BaseHitChance;
+#else // original code:
+		int hitChance = _pMagic + BaseHitChance;
+		if (_pHeroClass == HeroClass::Sorcerer)
+			hitChance += 20;
+		else if (_pHeroClass == HeroClass::Bard)
+			hitChance += 10;
+#endif
+		return hitChance;
 	}
 
-	/**
-	 * @brief Return block chance
-	 * @param useLevel - indicate if player's level should be added to block chance (the only case where it isn't is blocking a trap)
-	 */
-	int GetBlockChance(bool useLevel = true) const
+#if JWK_EDIT_BLOCK_CHANCE
+	int GetBlockChance(int attackerLevel) const
 	{
-		int blkper = _pDexterity + _pBaseToBlk;
-		if (useLevel)
-			blkper += _pLevel * 2;
-		return blkper;
+		return clamp(std::min<int>(_pDexterity, _pStrength) + 2 * (_pLevel - attackerLevel), 0, 100);
 	}
-
-	/**
-	 * @brief Return reciprocal of the factor for calculating damage reduction due to Mana Shield.
-	 *
-	 * Valid only for players with Mana Shield spell level greater than zero.
-	 */
-	int GetManaShieldDamageReduction();
+#else // original code
+	int GetBlockChance(int attackerLevel) const
+	{
+		return clamp(_pDexterity + _pBaseToBlk + 2 * (_pLevel - attackerLevel), 0, 100);
+	}
+#endif
 
 	/**
 	 * @brief Gets the effective spell level for the player, considering item bonuses
@@ -591,6 +617,9 @@ struct Player {
 			return 0;
 		}
 
+		if (JWK_GOD_MODE_MAX_SPELLS && spell != SpellID::Apocalypse) {
+			return std::max<int>(_pISplLvlAdd + 15, 0);
+		}
 		return std::max<int>(_pISplLvlAdd + _pSplLvl[static_cast<std::size_t>(spell)], 0);
 	}
 
@@ -599,18 +628,18 @@ struct Player {
 	 * @param monsterArmor - monster armor before applying % armor pierce
 	 * @param isMelee - indicates if it's melee or ranged combat
 	 */
-	int CalculateArmorPierce(int monsterArmor, bool isMelee) const
+	int CalculateArmorAfterPierce(int monsterArmor, bool isMelee) const
 	{
 		int tmac = monsterArmor;
-		if (_pIEnAc > 0) {
-			if (gbIsHellfire) {
-				int pIEnAc = _pIEnAc - 1;
+		if (_pArmorPierce > 0) {
+			if (JWK_USE_HELLFIRE_ARMOR_PIERCE || gbIsHellfire) {
+				int pIEnAc = _pArmorPierce - 1;
 				if (pIEnAc > 0)
 					tmac >>= pIEnAc;
 				else
 					tmac -= tmac / 4;
 			}
-			if (isMelee && _pClass == HeroClass::Barbarian) {
+			if (isMelee && _pHeroClass == HeroClass::Barbarian) {
 				tmac -= monsterArmor / 8;
 			}
 		}
@@ -746,26 +775,26 @@ struct Player {
 	/** @brief Checks if the player is on the corresponding level. */
 	bool isOnLevel(uint8_t level) const
 	{
-		return !this->plrIsOnSetLevel && this->plrlevel == level;
+		return !this->plrIsOnSetLevel && this->currentDungeonLevel == level;
 	}
 	/** @brief Checks if the player is on the corresponding level. */
 	bool isOnLevel(_setlevels level) const
 	{
-		return this->plrIsOnSetLevel && this->plrlevel == static_cast<uint8_t>(level);
+		return this->plrIsOnSetLevel && this->currentDungeonLevel == static_cast<uint8_t>(level);
 	}
 	/** @brief Checks if the player is on a arena level. */
 	bool isOnArenaLevel() const
 	{
-		return plrIsOnSetLevel && IsArenaLevel(static_cast<_setlevels>(plrlevel));
+		return plrIsOnSetLevel && IsArenaLevel(static_cast<_setlevels>(currentDungeonLevel));
 	}
 	void setLevel(uint8_t level)
 	{
-		this->plrlevel = level;
+		this->currentDungeonLevel = level;
 		this->plrIsOnSetLevel = false;
 	}
 	void setLevel(_setlevels level)
 	{
-		this->plrlevel = static_cast<uint8_t>(level);
+		this->currentDungeonLevel = static_cast<uint8_t>(level);
 		this->plrIsOnSetLevel = true;
 	}
 
@@ -774,6 +803,9 @@ struct Player {
 
 	/** @brief Returns a character's mana based on starting mana, character level, and base magic. */
 	int32_t calculateBaseMana() const;
+
+	void GetGolemStats(int spellLevel, uint32_t& outMaxHP, uint32_t& outArmor, uint32_t& outHitChance, uint32_t& outMinDamage, uint32_t& outMaxDamage) const;
+	uint32_t GetGolemToHit() const;
 };
 
 extern DVL_API_FOR_TEST size_t MyPlayerId;
@@ -789,6 +821,7 @@ inline bool IsInspectingPlayer()
 extern bool MyPlayerIsDead;
 
 Player *PlayerAtPosition(Point position);
+Player *FindClosestPlayerInSight(Point source, int rad);
 
 void LoadPlrGFX(Player &player, player_graphic graphic);
 void InitPlayerGFX(Player &player);
@@ -807,14 +840,14 @@ void ResetPlayerGFX(Player &player);
  */
 void NewPlrAnim(Player &player, player_graphic graphic, Direction dir, AnimationDistributionFlags flags = AnimationDistributionFlags::None, int8_t numSkippedFrames = 0, int8_t distributeFramesBeforeFrame = 0);
 void SetPlrAnims(Player &player);
-void CreatePlayer(Player &player, HeroClass c);
+void CreateNewPlayer(Player &player, HeroClass c);
 int CalcStatDiff(Player &player);
 #ifdef _DEBUG
 void NextPlrLevel(Player &player);
 #endif
 void AddPlrExperience(Player &player, int lvl, int exp);
-void AddPlrMonstExper(int lvl, int exp, char pmask);
-void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP = 0, int frac = 0, DeathReason deathReason = DeathReason::MonsterOrTrap);
+void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags, WorldTilePosition monsterLocation);
+void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*=0*/, int frac /*=0*/, int hitChanceForUI, DeathReason deathReason);
 void InitPlayer(Player &player, bool FirstTime);
 void InitMultiView();
 void PlrClrTrans(Point position);
@@ -840,7 +873,7 @@ void ClrPlrPath(Player &player);
 bool PosOkPlayer(const Player &player, Point position);
 void MakePlrPath(Player &player, Point targetPosition, bool endspace);
 void CalcPlrStaff(Player &player);
-void CheckPlrSpell(bool isShiftHeld, SpellID spellID = MyPlayer->_pRSpell, SpellType spellType = MyPlayer->_pRSplType);
+void CheckSpellAndSendCmd(bool isShiftHeld, SpellID spellID = MyPlayer->_pRSpell, SpellType spellType = MyPlayer->_pRSplType);
 void SyncPlrAnim(Player &player);
 void SyncInitPlrPos(Player &player);
 void SyncInitPlr(Player &player);

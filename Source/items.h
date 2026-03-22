@@ -18,7 +18,7 @@
 
 namespace devilution {
 
-#define MAXITEMS 127
+#define MAXITEMS 127 // Max number of items per zone.  No new items will be created in the zone once this cap is reached (but you can create more items in another zone).  I tried increasing MAXITEMS to 250 and placing stacks of gold in town.  After 127 stacks, the game still deleted the next stack I dropped so the original value of 127 seems to be hard-coded somewhere else as well.
 #define ITEMTYPES 43
 
 #define GOLD_SMALL_LIMIT 1000
@@ -28,9 +28,9 @@ namespace devilution {
 // Item indestructible durability
 #define DUR_INDESTRUCTIBLE 255
 
-constexpr int MaxVendorValue = 140000;
+constexpr int MaxVendorValue = 500000; // jwk - original code: 140000;
 constexpr int MaxVendorValueHf = 200000;
-constexpr int MaxBoyValue = 90000;
+constexpr int MaxBoyValue = 500000; // jwk - original code: 90000;
 constexpr int MaxBoyValueHf = 200000;
 
 enum item_quality : uint8_t {
@@ -39,132 +39,38 @@ enum item_quality : uint8_t {
 	ITEM_QUALITY_UNIQUE,
 };
 
-enum _unique_items : int8_t {
-	UITEM_CLEAVER,
-	UITEM_SKCROWN,
-	UITEM_INFRARING,
-	UITEM_OPTAMULET,
-	UITEM_TRING,
-	UITEM_HARCREST,
-	UITEM_STEELVEIL,
-	UITEM_ARMOFVAL,
-	UITEM_GRISWOLD,
-	UITEM_BOVINE,
-	UITEM_RIFTBOW,
-	UITEM_NEEDLER,
-	UITEM_CELESTBOW,
-	UITEM_DEADLYHUNT,
-	UITEM_BOWOFDEAD,
-	UITEM_BLKOAKBOW,
-	UITEM_FLAMEDART,
-	UITEM_FLESHSTING,
-	UITEM_WINDFORCE,
-	UITEM_EAGLEHORN,
-	UITEM_GONNAGALDIRK,
-	UITEM_DEFENDER,
-	UITEM_GRYPHONCLAW,
-	UITEM_BLACKRAZOR,
-	UITEM_GIBBOUSMOON,
-	UITEM_ICESHANK,
-	UITEM_EXECUTIONER,
-	UITEM_BONESAW,
-	UITEM_SHADHAWK,
-	UITEM_WIZSPIKE,
-	UITEM_LGTSABRE,
-	UITEM_FALCONTALON,
-	UITEM_INFERNO,
-	UITEM_DOOMBRINGER,
-	UITEM_GRIZZLY,
-	UITEM_GRANDFATHER,
-	UITEM_MANGLER,
-	UITEM_SHARPBEAK,
-	UITEM_BLOODLSLAYER,
-	UITEM_CELESTAXE,
-	UITEM_WICKEDAXE,
-	UITEM_STONECLEAV,
-	UITEM_AGUHATCHET,
-	UITEM_HELLSLAYER,
-	UITEM_MESSERREAVER,
-	UITEM_CRACKRUST,
-	UITEM_JHOLMHAMM,
-	UITEM_CIVERBS,
-	UITEM_CELESTSTAR,
-	UITEM_BARANSTAR,
-	UITEM_GNARLROOT,
-	UITEM_CRANBASH,
-	UITEM_SCHAEFHAMM,
-	UITEM_DREAMFLANGE,
-	UITEM_STAFFOFSHAD,
-	UITEM_IMMOLATOR,
-	UITEM_STORMSPIRE,
-	UITEM_GLEAMSONG,
-	UITEM_THUNDERCALL,
-	UITEM_PROTECTOR,
-	UITEM_NAJPUZZLE,
-	UITEM_MINDCRY,
-	UITEM_RODOFONAN,
-	UITEM_SPIRITSHELM,
-	UITEM_THINKINGCAP,
-	UITEM_OVERLORDHELM,
-	UITEM_FOOLSCREST,
-	UITEM_GOTTERDAM,
-	UITEM_ROYCIRCLET,
-	UITEM_TORNFLESH,
-	UITEM_GLADBANE,
-	UITEM_RAINCLOAK,
-	UITEM_LEATHAUT,
-	UITEM_WISDWRAP,
-	UITEM_SPARKMAIL,
-	UITEM_SCAVCARAP,
-	UITEM_NIGHTSCAPE,
-	UITEM_NAJPLATE,
-	UITEM_DEMONSPIKE,
-	UITEM_DEFLECTOR,
-	UITEM_SKULLSHLD,
-	UITEM_DRAGONBRCH,
-	UITEM_BLKOAKSHLD,
-	UITEM_HOLYDEF,
-	UITEM_STORMSHLD,
-	UITEM_BRAMBLE,
-	UITEM_REGHA,
-	UITEM_BLEEDER,
-	UITEM_CONSTRICT,
-	UITEM_ENGAGE,
-	UITEM_INVALID = -1,
-};
-
 /*
 CF_LEVEL: Item Level (6 bits; value ranges from 0-63)
 CF_ONLYGOOD: Item is not able to have affixes with PLOK set to false
 CF_UPER15: Item is from a Unique Monster and has 15% chance of being a Unique Item
 CF_UPER1: Item is from the dungeon and has a 1% chance of being a Unique Item
 CF_UNIQUE: Item is a Unique Item
-CF_SMITH: Item is from Griswold (Basic)
-CF_SMITHPREMIUM: Item is from Griswold (Premium)
+CF_SMITH_BASIC: Item is from Griswold (Basic)
+CF_SMITH_PREMIUM: Item is from Griswold (Premium)
 CF_BOY: Item is from Wirt
 CF_WITCH: Item is from Adria
 CF_HEALER: Item is from Pepin
 CF_PREGEN: Item is pre-generated, mostly associated with Quest items found in the dungeon or potions on the dungeon floor
 
 Items that have both CF_UPER15 and CF_UPER1 are CF_USEFUL, which is used to generate Potions and Town Portal scrolls on the dungeon floor
-Items that have any of CF_SMITH, CF_SMITHPREMIUM, CF_BOY, CF_WICTH, and CF_HEALER are CF_TOWN, indicating the item is sourced from an NPC
+Items that have any of CF_SMITH_BASIC, CF_SMITH_PREMIUM, CF_BOY, CF_WICTH, and CF_HEALER are CF_TOWN, indicating the item is sourced from an NPC
 */
 enum icreateinfo_flag {
 	// clang-format off
-	CF_LEVEL        = (1 << 6) - 1,
-	CF_ONLYGOOD     = 1 << 6,
-	CF_UPER15       = 1 << 7,
-	CF_UPER1        = 1 << 8,
-	CF_UNIQUE       = 1 << 9,
-	CF_SMITH        = 1 << 10,
-	CF_SMITHPREMIUM = 1 << 11,
-	CF_BOY          = 1 << 12,
-	CF_WITCH        = 1 << 13,
-	CF_HEALER       = 1 << 14,
-	CF_PREGEN       = 1 << 15,
+	CF_LEVEL         = (1 << 6) - 1,
+	CF_ONLYGOOD      = 1 << 6,
+	CF_UPER15        = 1 << 7,
+	CF_UPER1         = 1 << 8,
+	CF_UNIQUE        = 1 << 9,
+	CF_SMITH_BASIC   = 1 << 10,
+	CF_SMITH_PREMIUM = 1 << 11,
+	CF_BOY           = 1 << 12,
+	CF_WITCH         = 1 << 13,
+	CF_HEALER        = 1 << 14,
+	CF_PREGEN        = 1 << 15,
 
 	CF_USEFUL = CF_UPER15 | CF_UPER1,
-	CF_TOWN   = CF_SMITH | CF_SMITHPREMIUM | CF_BOY | CF_WITCH | CF_HEALER,
+	CF_TOWN   = CF_SMITH_BASIC | CF_SMITH_PREMIUM | CF_BOY | CF_WITCH | CF_HEALER,
 	// clang-format on
 };
 
@@ -194,28 +100,28 @@ struct Item {
 	bool _iDelFlag = false; // set when item is flagged for deletion, deprecated in 1.02
 	uint8_t _iSelFlag = 0;
 	bool _iPostDraw = false;
-	bool _iIdentified = false;
+	bool _iIdentified = false;  // whether or not the item has been identified
 	item_quality _iMagical = ITEM_QUALITY_NORMAL;
-	char _iName[64] = {};
-	char _iIName[64] = {};
+	char _iName[64] = {}; // name of the base item "Field plate"
+	char _iIName[64] = {}; // name of the full item "Godly plate of the whale"
 	item_equip_type _iLoc = ILOC_NONE;
 	item_class _iClass = ICLASS_NONE;
 	uint8_t _iCurs = 0;
 	int _ivalue = 0;
 	int _iIvalue = 0;
 	uint8_t _iMinDam = 0;
-	uint8_t _iMaxDam = 0;
+	uint8_t _iMaxDam = 0; // can be modified by hellfire oils
 	int16_t _iAC = 0;
 	ItemSpecialEffect _iFlags = ItemSpecialEffect::None;
 	item_misc_id _iMiscId = IMISC_NONE;
 	SpellID _iSpell = SpellID::Null;
-	_item_indexes IDidx = IDI_NONE;
+	BaseItemIdx IDidx = IDI_NONE; // index of this item in the data table AllItemsList[]
 	int _iCharges = 0;
 	int _iMaxCharges = 0;
 	int _iDurability = 0;
 	int _iMaxDur = 0;
 	int16_t _iPLDam = 0;
-	int16_t _iPLToHit = 0;
+	int16_t _iPLToHit = 0; // can be modified by hellfire oils
 	int16_t _iPLAC = 0;
 	int16_t _iPLStr = 0;
 	int16_t _iPLMag = 0;
@@ -229,6 +135,7 @@ struct Item {
 	int16_t _iPLDamMod = 0;
 	int16_t _iPLGetHit = 0;
 	int16_t _iPLLight = 0;
+	int8_t _iPLManaCostMod = 0; // JWK_ALLOW_MANA_COST_MODIFIER (negative value means cost reduction, positive value means cost increase)
 	int8_t _iSplLvlAdd = 0;
 	bool _iRequest = false;
 	/** Unique item ID, used as an index into UniqueItemList */
@@ -237,17 +144,17 @@ struct Item {
 	int16_t _iFMaxDam = 0;
 	int16_t _iLMinDam = 0;
 	int16_t _iLMaxDam = 0;
-	int16_t _iPLEnAc = 0;
-	enum item_effect_type _iPrePower = IPL_INVALID;
-	enum item_effect_type _iSufPower = IPL_INVALID;
+	int16_t _iPLArmorPierce = 0;
+	enum item_effect_type _iPrefixPower = IPL_INVALID;
+	enum item_effect_type _iSuffixPower = IPL_INVALID;
 	int _iVAdd1 = 0;
 	int _iVMult1 = 0;
 	int _iVAdd2 = 0;
 	int _iVMult2 = 0;
-	int8_t _iMinStr = 0;
+	uint8_t _iMinStr = 0;
 	uint8_t _iMinMag = 0;
-	int8_t _iMinDex = 0;
-	bool _iStatFlag = false;
+	uint8_t _iMinDex = 0;
+	bool _iStatFlag = false; // true if player can wear this item (meets stat requirements)
 	ItemSpecialEffectHf _iDamAcFlags = ItemSpecialEffectHf::None;
 	uint32_t dwBuff = 0;
 
@@ -421,7 +328,7 @@ struct Item {
 
 	[[nodiscard]] bool isUsable() const;
 
-	[[nodiscard]] bool keyAttributesMatch(uint32_t seed, _item_indexes itemIndex, uint16_t createInfo) const
+	[[nodiscard]] bool keyAttributesMatch(uint32_t seed, BaseItemIdx itemIndex, uint16_t createInfo) const
 	{
 		return _iSeed == seed && IDidx == itemIndex && _iCreateInfo == createInfo;
 	}
@@ -483,7 +390,7 @@ extern uint8_t ActiveItemCount;
 extern int8_t dItem[MAXDUNX][MAXDUNY];
 extern bool ShowUniqueItemInfoBox;
 extern CornerStoneStruct CornerStone;
-extern bool UniqueItemFlags[128];
+extern std::array<bool, 256> UniqueItemFlags; // Which unique items currently exist in game?  Ideally, we don't want duplicates.
 
 uint8_t GetOutlineColor(const Item &item, bool checkReq);
 bool IsItemAvailable(int i);
@@ -491,9 +398,9 @@ bool IsUniqueAvailable(int i);
 void ClearUniqueItemFlags();
 void InitItemGFX();
 void InitItems();
-void CalcPlrItemVals(Player &player, bool Loadgfx);
-void CalcPlrInv(Player &player, bool Loadgfx);
-void InitializeItem(Item &item, _item_indexes itemData);
+void CalcPlayerPowerFromItems(Player &player, bool Loadgfx);
+void CalcPlayerInventory(Player &player, bool Loadgfx);
+void InitializeItemToDefaultValues(Item &item, BaseItemIdx itemData);
 void GenerateNewSeed(Item &h);
 int GetGoldCursor(int value);
 
@@ -502,8 +409,8 @@ int GetGoldCursor(int value);
  * @param gold The item to update
  */
 void SetPlrHandGoldCurs(Item &gold);
-void CreatePlrItems(Player &player);
-bool ItemSpaceOk(Point position);
+void CreateNewPlayerItems(Player &player);
+bool IsItemSpaceOk(Point position);
 int AllocateItem();
 /**
  * @brief Moves the item onto the floor of the current dungeon level
@@ -513,19 +420,30 @@ int AllocateItem();
  */
 uint8_t PlaceItemInWorld(Item &&item, WorldTilePosition position);
 Point GetSuperItemLoc(Point position);
-void GetItemAttrs(Item &item, _item_indexes itemData, int lvl);
+void GenerateRandomPropertiesForBaseItem(Item &item, BaseItemIdx itemIndex, int lvl);
 void SetupItem(Item &item);
-Item *SpawnUnique(_unique_items uid, Point position, std::optional<int> level = std::nullopt, bool sendmsg = true, bool exactPosition = false);
-void SpawnItem(Monster &monster, Point position, bool sendmsg, bool spawn = false);
-void CreateRndItem(Point position, bool onlygood, bool sendmsg, bool delta);
-void CreateRndUseful(Point position, bool sendmsg);
-void CreateTypeItem(Point position, bool onlygood, ItemType itemType, int imisc, bool sendmsg, bool delta, bool spawn = false);
-void RecreateItem(const Player &player, Item &item, _item_indexes idx, uint16_t icreateinfo, uint32_t iseed, int ivalue, bool isHellfire);
+// Create item functions - these functions create an item and drop it on the floor.
+// position - item will be dropped on a floor tile nearest to this (x,y) coord
+// onlygood - if true, bad affixes will be avoided and the item will have a small bonus iLevel
+// sendmsg - should be true if you want network players to see the drop and have the item persist on the floor when you leave the zone.  If sendmsg=false then the item will disappear when you leave the zone unless you either identify the item or you leave the zone with the item in your inventory.  Once you ID the item or leave with it in your inventory, the item won't be deleted if you re-drop it in any zone.
+// delta - ??
+// spawn - ??
+Item *CreateUniqueItem(UniqueItemIdx uid, Point position, std::optional<int> ilevel = std::nullopt, bool sendmsg = true, bool exactPosition = false);
+void CreateItemFromMonster(Monster &monster, Point position, bool sendmsg, bool spawn);
+void CreateRandomItem(Point position, bool onlygood, bool sendmsg, bool delta); // completely random item (based on dungeon/difficulty level)
+void CreateRandomUsefulItem(Point position, bool sendmsg); // random potion or scroll, etc (based on dungeon/difficulty level)
+void CreateRandomItemOfType(Point position, ItemType itemType, bool onlygood, bool sendmsg, bool delta); // (based on dungeon/difficulty level)
+void CreateRandomItemOfTypeOrMisc(Point position, ItemType itemType, int iMiscId, bool onlygood, bool sendmsg, bool delta, bool spawn); // (based on dungeon/difficulty level)
+void CreateRandomItemSpecificBase(Point position, BaseItemIdx idx, bool onlygood, bool sendmsg, bool delta, bool spawn); // (based on dungeon/difficulty level)
+void CreateSpellBook(Point position, SpellID spellID, bool sendmsg, bool delta); // pass SpellID::Null to select a random spell for loot drops (based on dungeon/difficulty level)
+void CreateGold(Point position, int value, bool sendmsg, bool delta, bool spawn); // pass value=0 to select a random value for loot drops (based on dungeon/difficulty level)
+
+void RecreateItem(Item &item, BaseItemIdx idx, uint16_t icreateinfo, uint32_t iseed, int ivalue, bool isHellfire);
 void RecreateEar(Item &item, uint16_t ic, uint32_t iseed, uint8_t bCursval, string_view heroName);
 void CornerstoneSave();
 void CornerstoneLoad(Point position);
-void SpawnQuestItem(_item_indexes itemid, Point position, int randarea, int selflag, bool sendmsg);
-void SpawnRewardItem(_item_indexes itemid, Point position, bool sendmsg);
+void SpawnQuestItem(BaseItemIdx itemid, Point position, int randarea, int selflag, bool sendmsg);
+void SpawnRewardItem(BaseItemIdx itemid, Point position, bool sendmsg);
 void SpawnMapOfDoom(Point position, bool sendmsg);
 void SpawnRuneBomb(Point position, bool sendmsg);
 void SpawnTheodore(Point position, bool sendmsg);
@@ -546,17 +464,13 @@ void PrintItemDur(const Item &item);
 void UseItem(size_t pnum, item_misc_id Mid, SpellID spellID, int spellFrom);
 bool UseItemOpensHive(const Item &item, Point position);
 bool UseItemOpensGrave(const Item &item, Point position);
-void SpawnSmith(int lvl);
-void SpawnPremium(const Player &player);
-void SpawnWitch(int lvl);
-void SpawnBoy(int lvl);
-void SpawnHealer(int lvl);
-void MakeGoldStack(Item &goldItem, int value);
+void SpawnBasicItemsForSmith(int dungeonLevelUpTo16);
+void SpawnPremiumItemsForSmith(const Player &player);
+void SpawnItemsForWitch(int dungeonLevelUpTo16);
+void SpawnItemsForBoy(int playerLevel);
+void SpawnItemsForHealer(int dungeonLevelUpTo16);
+void MakeGoldStackForInventory(Item &goldItem, int value);
 int ItemNoFlippy();
-void CreateSpellBook(Point position, SpellID ispell, bool sendmsg, bool delta);
-void CreateMagicArmor(Point position, ItemType itemType, int icurs, bool sendmsg, bool delta);
-void CreateAmulet(Point position, int lvl, bool sendmsg, bool delta, bool spawn = false);
-void CreateMagicWeapon(Point position, ItemType itemType, int icurs, bool sendmsg, bool delta);
 bool GetItemRecord(uint32_t nSeed, uint16_t wCI, int nIndex);
 void SetItemRecord(uint32_t nSeed, uint16_t wCI, int nIndex);
 void PutItemRecord(uint32_t nSeed, uint16_t wCI, int nIndex);
@@ -566,7 +480,7 @@ void PutItemRecord(uint32_t nSeed, uint16_t wCI, int nIndex);
  */
 void initItemGetRecords();
 
-void RepairItem(Item &item, int lvl);
+void RepairItem(Item &item, Player &player);
 void RechargeItem(Item &item, Player &player);
 bool ApplyOilToItem(Item &item, Player &player);
 /**

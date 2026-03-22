@@ -34,7 +34,7 @@ struct PlayerPack {
 	int8_t destAction;
 	int8_t destParam1;
 	int8_t destParam2;
-	uint8_t plrlevel;
+	uint8_t currentDungeonLevel;
 	uint8_t px;
 	uint8_t py;
 	uint8_t targx;
@@ -86,9 +86,10 @@ union ItemNetPack {
 };
 
 struct PlayerNetPack {
-	uint8_t plrlevel;
+	uint8_t currentDungeonLevel;
 	uint8_t px;
 	uint8_t py;
+	uint8_t pdir;
 	char pName[PlayerNameLength];
 	uint8_t pClass;
 	uint8_t pBaseStr;
@@ -110,6 +111,7 @@ struct PlayerNetPack {
 	uint8_t _pNumInv;
 	ItemNetPack SpdList[MaxBeltItems];
 	uint8_t pManaShield;
+	uint8_t pSneak;
 	uint16_t wReflections;
 	uint8_t pDiabloKillLevel;
 	uint8_t friendlyMode;
@@ -164,7 +166,7 @@ void PackItem(ItemPack &packedItem, const Item &item, bool isHellfire);
  * @param item The destination item
  * @param isHellfire Whether the item is from Hellfire or not
  */
-void UnPackItem(const ItemPack &packedItem, const Player &player, Item &item, bool isHellfire);
+void UnPackItem(const ItemPack &packedItem, Item &item, bool isHellfire);
 
 /**
  * @brief Save the attributes needed to recreate this item into an ItemNetPack struct

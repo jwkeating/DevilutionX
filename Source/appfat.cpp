@@ -4,8 +4,12 @@
  * Implementation of error dialogs.
  */
 
-#include <config.h>
+#if JWK_LOG_ASSERTIONS
+#include <stdio.h>
+#include <ctime>
+#endif
 
+#include <config.h>
 #include <fmt/format.h>
 
 #include "diablo.h"
@@ -53,10 +57,21 @@ void app_fatal(string_view str)
 	diablo_quit(1);
 }
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALWAYS_LOG_ASSERTION_FAILURES
 void assert_fail(int nLineNo, const char *pszFile, const char *pszFail)
 {
-	app_fatal(StrCat("assertion failed (", pszFile, ":", nLineNo, ")\n", pszFail));
+	std::string msg = StrCat("assertion failed (", pszFile, ":", nLineNo, ")\n", pszFail);
+	__debugbreak();
+#if JWK_ALWAYS_LOG_ASSERTION_FAILURES
+	std::time_t currentTime = std::time(nullptr);
+	std::string timeStr = std::ctime(&currentTime); // includes newline
+	FILE* file = fopen("jwk_assertion_failures.txt", "a");
+	if (file) {
+		fprintf(file, "%s%s\n\n", timeStr.c_str(), msg.c_str());
+		fclose(file);
+	}
+#endif
+	app_fatal(msg);
 }
 #endif
 

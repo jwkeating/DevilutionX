@@ -44,7 +44,7 @@ void MainmenuLoad(const char *name)
 	vecMenuItems.push_back(std::make_unique<UiListItem>(gbIsHellfire ? _("Exit Hellfire") : _("Exit Diablo"), MAINMENU_EXIT_DIABLO));
 #endif
 
-	if (!gbIsSpawn || gbIsHellfire) {
+	if (!gbIsDemoGame || gbIsHellfire) {
 		if (gbIsHellfire)
 			ArtBackgroundWidescreen = LoadOptionalClx("ui_art\\mainmenuw.clx");
 		LoadBackgroundArt("ui_art\\mainmenu");
@@ -57,7 +57,7 @@ void MainmenuLoad(const char *name)
 
 	const Point uiPosition = GetUIRectangle().position;
 
-	if (gbIsSpawn && gbIsHellfire) {
+	if (gbIsDemoGame && gbIsHellfire) {
 		SDL_Rect rect1 = { (Sint16)(uiPosition.x), (Sint16)(uiPosition.y + 145), 640, 30 };
 		vecMainMenuDialog.push_back(std::make_unique<UiArtText>(_("Shareware").data(), rect1, UiFlags::FontSize30 | UiFlags::ColorUiSilver | UiFlags::AlignCenter, 8));
 	}

@@ -32,6 +32,9 @@ bool IsTileWalkable(Point position, bool ignoreDoors = false);
  */
 bool IsTileOccupied(Point position);
 
+// returns true if anything blocks the most direct route
+bool IsDirectPathBlocked(Point from, Point to);
+
 /**
  * @brief Find the shortest path from startPosition to destinationPosition, using PosOk(Point) to check that each step is a valid position.
  * Store the step directions (corresponds to an index in PathDirs) in path, which must have room for 24 steps

@@ -158,13 +158,13 @@ std::string DebugCmdGiveGoldCheat(const string_view parameter)
 			continue;
 
 		Item &goldItem = myPlayer.InvList[myPlayer._pNumInv];
-		MakeGoldStack(goldItem, GOLD_MAX_LIMIT);
+		MakeGoldStackForInventory(goldItem, GOLD_MAX_LIMIT);
 		myPlayer._pNumInv++;
 		itemIndex = myPlayer._pNumInv;
 
 		myPlayer._pGold += goldItem._ivalue;
 	}
-	CalcPlrInv(myPlayer, true);
+	CalcPlayerInventory(myPlayer, true);
 
 	return "You are now rich! If only this was as easy in real life...";
 }
@@ -506,7 +506,7 @@ std::string DebugCmdQuest(const string_view parameter)
 
 std::string DebugCmdLevelUp(const string_view parameter)
 {
-	int levels = std::max(1, atoi(parameter.data()));
+	int levels = clamp(atoi(parameter.data()), 1, MaxCharacterLevel);
 	for (int i = 0; i < levels; i++)
 		NetSendCmd(true, CMD_CHEAT_EXPERIENCE);
 	return "New experience leads to new insights.";
@@ -536,7 +536,7 @@ std::string DebugCmdSetSpellsLevel(const string_view parameter)
 {
 	uint8_t level = static_cast<uint8_t>(std::max(0, atoi(parameter.data())));
 	for (uint8_t i = static_cast<uint8_t>(SpellID::Firebolt); i < MAX_SPELLS; i++) {
-		if (GetSpellBookLevel(static_cast<SpellID>(i)) != -1) {
+		if (GetSpellBookLevel(static_cast<SpellID>(i), true) != -1) {
 			NetSendCmdParam2(true, CMD_CHANGE_SPELL_LEVEL, i, level);
 		}
 	}
@@ -702,7 +702,7 @@ std::string DebugCmdSpawnUniqueMonster(const string_view parameter)
 
 	if (!found) {
 		CMonster &monsterType = LevelMonsterTypes[id];
-		monsterType.type = static_cast<_monster_id>(mtype);
+		monsterType.type = static_cast<MonsterID>(mtype);
 		InitMonsterGFX(monsterType);
 		InitMonsterSND(monsterType);
 		monsterType.placeFlags |= PLACE_SCATTER;
@@ -788,7 +788,7 @@ std::string DebugCmdSpawnMonster(const string_view parameter)
 
 	if (!found) {
 		CMonster &monsterType = LevelMonsterTypes[id];
-		monsterType.type = static_cast<_monster_id>(mtype);
+		monsterType.type = static_cast<MonsterID>(mtype);
 		InitMonsterGFX(monsterType);
 		InitMonsterSND(monsterType);
 		monsterType.placeFlags |= PLACE_SCATTER;
@@ -919,8 +919,8 @@ std::string DebugCmdItemInfo(const string_view parameter)
 		    "\nUnique Monster: ", ((pItem->_iCreateInfo & CF_UPER15) == 0) ? "False" : "True",
 		    "\nDungeon Item: ", ((pItem->_iCreateInfo & CF_UPER1) == 0) ? "False" : "True",
 		    "\nUnique Item: ", ((pItem->_iCreateInfo & CF_UNIQUE) == 0) ? "False" : "True",
-		    "\nSmith: ", ((pItem->_iCreateInfo & CF_SMITH) == 0) ? "False" : "True",
-		    "\nSmith Premium: ", ((pItem->_iCreateInfo & CF_SMITHPREMIUM) == 0) ? "False" : "True",
+		    "\nSmith: ", ((pItem->_iCreateInfo & CF_SMITH_BASIC) == 0) ? "False" : "True",
+		    "\nSmith Premium: ", ((pItem->_iCreateInfo & CF_SMITH_PREMIUM) == 0) ? "False" : "True",
 		    "\nBoy: ", ((pItem->_iCreateInfo & CF_BOY) == 0) ? "False" : "True",
 		    "\nWitch: ", ((pItem->_iCreateInfo & CF_WITCH) == 0) ? "False" : "True",
 		    "\nHealer: ", ((pItem->_iCreateInfo & CF_HEALER) == 0) ? "False" : "True",
@@ -961,7 +961,7 @@ std::string DebugCmdPlayerInfo(const string_view parameter)
 
 	const Point target = player.GetTargetPosition();
 	return StrCat("Plr ", playerId, " is ", player._pName,
-	    "\nLvl: ", player.plrlevel, " Changing: ", player._pLvlChanging,
+	    "\nLvl: ", player.currentDungeonLevel, " Changing: ", player._pLvlChanging,
 	    "\nTile.x: ", player.position.tile.x, " Tile.y: ", player.position.tile.y, " Target.x: ", target.x, " Target.y: ", target.y,
 	    "\nMode: ", player._pmode, " destAction: ", player.destAction, " walkpath[0]: ", player.walkpath[0],
 	    "\nInvincible:", player._pInvincible ? 1 : 0, " HitPoints:", player._pHitPoints);

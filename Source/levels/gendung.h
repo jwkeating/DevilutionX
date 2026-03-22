@@ -86,12 +86,12 @@ enum class DungeonFlag : uint8_t {
 	// clang-format off
 	None                  = 0, // Only used by lighting/automap
 	Missile               = 1 << 0,
-	Visible               = 1 << 1,
+	Visible               = 1 << 1, // Visible means at least one player can see, but not necessarily the local player.  This is what's used in multiplayer games.
 	DeadPlayer            = 1 << 2,
 	Populated             = 1 << 3,
 	MissileFireWall       = 1 << 4,
 	MissileLightningWall  = 1 << 5,
-	Lit                   = 1 << 6,
+	Lit                   = 1 << 6, // Lit means visible to the local player (only relevant on the client).  See ProcessVisionList() which calls DoVision(..., &player == MyPlayer)
 	Explored              = 1 << 7,
 	SavedFlags            = (Populated | Lit | Explored), // ~(Missile | Visible | DeadPlayer)
 	LoadedFlags           = (Missile | Visible | DeadPlayer | Populated | Lit | Explored)
@@ -114,9 +114,9 @@ enum class TileProperties : uint8_t {
 use_enum_as_flags(TileProperties);
 
 enum _difficulty : uint8_t {
-	DIFF_NORMAL,
-	DIFF_NIGHTMARE,
-	DIFF_HELL,
+	DIFF_NORMAL = 0,
+	DIFF_NIGHTMARE = 1,
+	DIFF_HELL = 2,
 
 	DIFF_LAST = DIFF_HELL,
 };
@@ -199,13 +199,13 @@ extern uint8_t dLight[MAXDUNX][MAXDUNY];
 extern uint8_t dPreLight[MAXDUNX][MAXDUNY];
 /** Holds various information about dungeon tiles, @see DungeonFlag */
 extern DungeonFlag dFlags[MAXDUNX][MAXDUNY];
-/** Contains the player numbers (players array indices) of the map. negative id indicates player moving. */
+/** Contains the player numbers (players array indices) of the map. Negative id indicates player moving: The same monster can be in the array twice (once with negative Id and once with positive ID). */
 extern int8_t dPlayer[MAXDUNX][MAXDUNY];
 /**
  * Contains the NPC numbers of the map. The NPC number represents a
  * towner number (towners array index) in Tristram and a monster number
  * (monsters array index) in the dungeon.
- * Negative id indicates monsters moving.
+ * Negative id indicates monsters moving: The same monster can be in the array twice (once with negative Id and once with positive ID)
  */
 extern int16_t dMonster[MAXDUNX][MAXDUNY];
 /**

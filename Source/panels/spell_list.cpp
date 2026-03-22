@@ -55,7 +55,7 @@ bool GetSpellListSelection(SpellID &pSpell, SpellType &pSplType)
 		if (spellListItem.isSelected) {
 			pSpell = spellListItem.id;
 			pSplType = spellListItem.type;
-			if (myPlayer._pClass == HeroClass::Monk && spellListItem.id == SpellID::Search)
+			if (myPlayer._pHeroClass == HeroClass::Monk && spellListItem.id == SpellID::Search)
 				pSplType = SpellType::Skill;
 			return true;
 		}
@@ -80,6 +80,7 @@ std::optional<string_view> GetHotkeyName(SpellID spellId, SpellType spellType, b
 
 } // namespace
 
+// This function is used to draw the quickbar spell icons (not icons in the actual spellbook)
 void DrawSpell(const Surface &out)
 {
 	Player &myPlayer = *MyPlayer;
@@ -213,6 +214,9 @@ std::vector<SpellListItem> GetSpellListItems()
 			break;
 		case SpellType::Spell:
 			mask = myPlayer._pMemSpells;
+#if JWK_GOD_MODE_MAX_SPELLS
+			mask = myPlayer._pMemSpellsDebug;
+#endif
 			break;
 		case SpellType::Scroll:
 			mask = myPlayer._pScrlSpells;
@@ -306,6 +310,9 @@ void ToggleSpell(size_t slot)
 		break;
 	case SpellType::Spell:
 		spells = myPlayer._pMemSpells;
+#if JWK_GOD_MODE_MAX_SPELLS
+		spells = myPlayer._pMemSpellsDebug;
+#endif
 		break;
 	case SpellType::Scroll:
 		spells = myPlayer._pScrlSpells;
@@ -344,6 +351,9 @@ void DoSpeedBook()
 				break;
 			case SpellType::Spell:
 				spells = myPlayer._pMemSpells;
+#if JWK_GOD_MODE_MAX_SPELLS
+				spells = myPlayer._pMemSpellsDebug;
+#endif
 				break;
 			case SpellType::Scroll:
 				spells = myPlayer._pScrlSpells;

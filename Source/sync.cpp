@@ -210,11 +210,11 @@ bool IsEnemyIdValid(const Monster &monster, int enemyId)
 		return false;
 	}
 
-	if (enemyId < MAX_PLRS) {
+	if (enemyId < MAX_PLAYERS) {
 		return Players[enemyId].plractive;
 	}
 
-	enemyId -= MAX_PLRS;
+	enemyId -= MAX_PLAYERS;
 	if (static_cast<size_t>(enemyId) >= MaxMonsters) {
 		return false;
 	}

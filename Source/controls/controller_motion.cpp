@@ -41,7 +41,7 @@ void ScaleJoystickAxes(float *x, float *y, float deadzone)
 	float analogY = *y;
 	float deadZone = deadzone * maximum;
 
-	float magnitude = std::sqrt(analogX * analogX + analogY * analogY);
+	float magnitude = std::sqrtf(analogX * analogX + analogY * analogY);
 	if (magnitude >= deadZone) {
 		// find scaled axis values with magnitudes between zero and maximum
 		float scalingFactor = 1.F / magnitude * (magnitude - deadZone) / (maximum - deadZone);

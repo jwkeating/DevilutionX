@@ -437,6 +437,18 @@ bool path_solid_pieces(Point startPosition, Point destinationPosition)
 	return rv;
 }
 
+bool IsDirectPathBlocked(Point from, Point to)
+{
+	while (from != to) {
+		from += GetDirection(from, to);
+		if (TileHasAny(dPiece[from.x][from.y], TileProperties::Solid))
+			return true;
+	}
+
+	return false;
+}
+
+// See also: FindClosestMonster() and FindClosestPlayer()
 std::optional<Point> FindClosestValidPosition(tl::function_ref<bool(Point)> posOk, Point startingPosition, unsigned int minimumRadius, unsigned int maximumRadius)
 {
 	return Crawl(minimumRadius, maximumRadius, [&](Displacement displacement) -> std::optional<Point> {

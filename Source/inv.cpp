@@ -201,7 +201,7 @@ bool CanWield(Player &player, const Item &item)
 
 	// Bard can dual wield swords and maces, so we allow equiping one-handed weapons in her free slot as long as her occupied
 	// slot is another one-handed weapon.
-	if (player._pClass == HeroClass::Bard) {
+	if (player._pHeroClass == HeroClass::Bard) {
 		bool occupiedHandIsOneHandedSwordOrMace = player.GetItemLocation(occupiedHand) == ILOC_ONEHAND
 		    && IsAnyOf(occupiedHand._itype, ItemType::Sword, ItemType::Mace);
 
@@ -277,7 +277,7 @@ bool AutoEquip(Player &player, const Item &item, inv_body_loc bodyLocation, bool
 			PlaySFX(ItemInvSnds[ItemCAnimTbl[item._iCurs]]);
 		}
 
-		CalcPlrInv(player, true);
+		CalcPlayerInventory(player, true);
 	}
 
 	return true;
@@ -436,7 +436,7 @@ void CheckInvPaste(Player &player, Point cursorPosition)
 		inv_body_loc otherHand = slot == SLOTXY_HAND_LEFT ? INVLOC_HAND_RIGHT : INVLOC_HAND_LEFT;
 
 		bool pasteIntoSelectedHand = (player.InvBody[otherHand].isEmpty() || player.InvBody[otherHand]._iClass != player.HoldItem._iClass)
-		    || (player._pClass == HeroClass::Bard && player.InvBody[otherHand]._iClass == ICLASS_WEAPON && player.HoldItem._iClass == ICLASS_WEAPON);
+		    || (player._pHeroClass == HeroClass::Bard && player.InvBody[otherHand]._iClass == ICLASS_WEAPON && player.HoldItem._iClass == ICLASS_WEAPON);
 
 		bool dequipTwoHandedWeapon = (!player.InvBody[otherHand].isEmpty() && player.GetItemLocation(player.InvBody[otherHand]) == ILOC_TWOHAND);
 
@@ -553,7 +553,7 @@ void CheckInvPaste(Player &player, Point cursorPosition)
 	case ILOC_INVALID:
 		break;
 	}
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 	if (&player == MyPlayer) {
 		NewCursor(player.HoldItem);
 	}
@@ -795,7 +795,7 @@ void CheckInvCut(Player &player, Point cursorPosition, bool automaticMove, bool 
 			player._pGold = CalculateGold(player);
 		}
 
-		CalcPlrInv(player, true);
+		CalcPlayerInventory(player, true);
 		holdItem._iStatFlag = player.CanUseItem(holdItem);
 
 		if (&player == MyPlayer) {
@@ -829,13 +829,13 @@ void CheckInvCut(Player &player, Point cursorPosition, bool automaticMove, bool 
 void TryCombineNaKrulNotes(Player &player, Item &noteItem)
 {
 	int idx = noteItem.IDidx;
-	_item_indexes notes[] = { IDI_NOTE1, IDI_NOTE2, IDI_NOTE3 };
+	BaseItemIdx notes[] = { IDI_NOTE1, IDI_NOTE2, IDI_NOTE3 };
 
 	if (IsNoneOf(idx, IDI_NOTE1, IDI_NOTE2, IDI_NOTE3)) {
 		return;
 	}
 
-	for (_item_indexes note : notes) {
+	for (BaseItemIdx note : notes) {
 		if (idx != note && !HasInventoryItemWithId(player, note)) {
 			return; // the player doesn't have all notes
 		}
@@ -843,7 +843,7 @@ void TryCombineNaKrulNotes(Player &player, Item &noteItem)
 
 	MyPlayer->Say(HeroSpeech::JustWhatIWasLookingFor, 10);
 
-	for (_item_indexes note : notes) {
+	for (BaseItemIdx note : notes) {
 		if (idx != note) {
 			RemoveInventoryItemById(player, note);
 		}
@@ -851,7 +851,7 @@ void TryCombineNaKrulNotes(Player &player, Item &noteItem)
 
 	Point position = noteItem.position; // copy the position to restore it after re-initialising the item
 	noteItem = {};
-	GetItemAttrs(noteItem, IDI_FULLNOTE, 16);
+	GenerateRandomPropertiesForBaseItem(noteItem, IDI_FULLNOTE, 16);
 	SetupItem(noteItem);
 	noteItem.position = position; // this ensures CleanupItem removes the entry in the dropped items lookup table
 }
@@ -979,7 +979,7 @@ int CreateGoldItemInInventorySlot(Player &player, int slotIndex, int value)
 	}
 
 	Item &goldItem = player.InvList[player._pNumInv];
-	MakeGoldStack(goldItem, std::min(value, MaxGold));
+	MakeGoldStackForInventory(goldItem, std::min(value, MaxGold));
 	player._pNumInv++;
 	player.InvGrid[slotIndex] = player._pNumInv;
 	if (&player == MyPlayer) {
@@ -1039,7 +1039,7 @@ void FreeInvGFX()
 
 void InitInv()
 {
-	switch (MyPlayer->_pClass) {
+	switch (MyPlayer->_pHeroClass) {
 	case HeroClass::Warrior:
 	case HeroClass::Barbarian:
 		pInvCels = LoadCel("data\\inv\\inv", static_cast<uint16_t>(SidePanelSize.width));
@@ -1052,7 +1052,7 @@ void InitInv()
 		pInvCels = LoadCel("data\\inv\\inv_sor", static_cast<uint16_t>(SidePanelSize.width));
 		break;
 	case HeroClass::Monk:
-		pInvCels = LoadCel(!gbIsSpawn ? "data\\inv\\inv_sor" : "data\\inv\\inv", static_cast<uint16_t>(SidePanelSize.width));
+		pInvCels = LoadCel(!gbIsDemoGame ? "data\\inv\\inv_sor" : "data\\inv\\inv", static_cast<uint16_t>(SidePanelSize.width));
 		break;
 	}
 }
@@ -1237,7 +1237,7 @@ bool AutoEquipEnabled(const Player &player, const Item &item)
 	if (item.isWeapon()) {
 		// Monk can use unarmed attack as an encouraged option, thus we do not automatically equip weapons on him so as to not
 		// annoy players who prefer that playstyle.
-		return player._pClass != HeroClass::Monk && *sgOptions.Gameplay.autoEquipWeapons;
+		return player._pHeroClass != HeroClass::Monk && *sgOptions.Gameplay.autoEquipWeapons;
 	}
 
 	if (item.isArmor()) {
@@ -1428,14 +1428,14 @@ void CheckInvSwap(Player &player, inv_body_loc bLoc)
 		player.InvBody[INVLOC_HAND_LEFT].clear();
 	}
 
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 }
 
 void inv_update_rem_item(Player &player, inv_body_loc iv)
 {
 	player.InvBody[iv].clear();
 
-	CalcPlrInv(player, player._pmode != PM_DEATH);
+	CalcPlayerInventory(player, player._pmode != PM_DEATH);
 }
 
 void CheckInvSwap(Player &player, const Item &item, int invGridIndex)
@@ -1477,7 +1477,7 @@ void CheckInvSwap(Player &player, const Item &item, int invGridIndex)
 		}
 	}
 
-	CalcPlrInv(player, true);
+	CalcPlayerInventory(player, true);
 }
 
 void CheckInvRemove(Player &player, int invGridIndex)
@@ -1505,7 +1505,7 @@ void TransferItemToStash(Player &player, int location)
 
 	if (location < INVITEM_INV_FIRST) {
 		RemoveEquipment(player, static_cast<inv_body_loc>(location), false);
-		CalcPlrInv(player, true);
+		CalcPlayerInventory(player, true);
 	} else if (location <= INVITEM_INV_LAST)
 		player.RemoveInvItem(location - INVITEM_INV_FIRST);
 	else
@@ -1659,7 +1659,7 @@ void AutoGetItem(Player &player, Item *itemPointer, int ii)
 	NetSendCmdPItem(true, CMD_SPAWNITEM, item.position, item);
 }
 
-int FindGetItem(uint32_t iseed, _item_indexes idx, uint16_t createInfo)
+int FindGetItem(uint32_t iseed, BaseItemIdx idx, uint16_t createInfo)
 {
 	for (uint8_t i = 0; i < ActiveItemCount; i++) {
 		auto &item = Items[ActiveItems[i]];
@@ -1671,7 +1671,7 @@ int FindGetItem(uint32_t iseed, _item_indexes idx, uint16_t createInfo)
 	return -1;
 }
 
-void SyncGetItem(Point position, uint32_t iseed, _item_indexes idx, uint16_t ci)
+void SyncGetItem(Point position, uint32_t iseed, BaseItemIdx idx, uint16_t ci)
 {
 	// Check what the local client has at the target position
 	int ii = dItem[position.x][position.y] - 1;
@@ -1756,14 +1756,14 @@ uint8_t ClampMaxDam(const Item &item, uint8_t maxDam)
 	return maxDam;
 }
 
-int SyncDropItem(Point position, _item_indexes idx, uint16_t icreateinfo, int iseed, int id, int dur, int mdur, int ch, int mch, int ivalue, uint32_t ibuff, int toHit, int maxDam)
+int SyncDropItem(Point position, BaseItemIdx idx, uint16_t icreateinfo, int iseed, int id, int dur, int mdur, int ch, int mch, int ivalue, uint32_t ibuff, int toHit, int maxDam)
 {
 	if (ActiveItemCount >= MAXITEMS)
 		return -1;
 
 	Item item;
 
-	RecreateItem(*MyPlayer, item, idx, icreateinfo, iseed, ivalue, (ibuff & CF_HELLFIRE) != 0);
+	RecreateItem(item, idx, icreateinfo, iseed, ivalue, (ibuff & CF_HELLFIRE) != 0);
 	if (id != 0)
 		item._iIdentified = true;
 	item._iMaxDur = mdur;

@@ -82,10 +82,10 @@ void VerifyGoldSeeds(Player &player)
 bool RecreateHellfireSpellBook(const Player &player, const TItem &packedItem, Item *item)
 {
 	Item spellBook {};
-	RecreateItem(player, packedItem, spellBook);
+	RecreateItem(packedItem, spellBook);
 
 	// Hellfire uses the spell book level when generating items via CreateSpellBook()
-	int spellBookLevel = GetSpellBookLevel(spellBook._iSpell);
+	int spellBookLevel = GetSpellBookLevel(spellBook._iSpell, true);
 
 	// CreateSpellBook() adds 1 to the spell level for ilvl
 	spellBookLevel++;
@@ -114,7 +114,7 @@ void PackItem(ItemPack &packedItem, const Item &item, bool isHellfire)
 		if (!isHellfire) {
 			idx = RemapItemIdxToDiablo(idx);
 		}
-		if (gbIsSpawn) {
+		if (gbIsDemoGame) {
 			idx = RemapItemIdxToSpawn(idx);
 		}
 		packedItem.idx = SDL_SwapLE16(idx);
@@ -153,7 +153,7 @@ void PackPlayer(PlayerPack &packed, const Player &player)
 	packed.destAction = player.destAction;
 	packed.destParam1 = player.destParam1;
 	packed.destParam2 = player.destParam2;
-	packed.plrlevel = player.plrlevel;
+	packed.currentDungeonLevel = player.currentDungeonLevel;
 	packed.px = player.position.tile.x;
 	packed.py = player.position.tile.y;
 	if (gbVanilla) {
@@ -161,7 +161,7 @@ void PackPlayer(PlayerPack &packed, const Player &player)
 		packed.targy = player.position.tile.y;
 	}
 	CopyUtf8(packed.pName, player._pName, sizeof(packed.pName));
-	packed.pClass = static_cast<uint8_t>(player._pClass);
+	packed.pClass = static_cast<uint8_t>(player._pHeroClass);
 	packed.pBaseStr = player._pBaseStr;
 	packed.pBaseMag = player._pBaseMag;
 	packed.pBaseDex = player._pBaseDex;
@@ -198,15 +198,23 @@ void PackPlayer(PlayerPack &packed, const Player &player)
 	packed.pDamAcFlags = SDL_SwapLE32(static_cast<uint32_t>(player.pDamAcFlags));
 	packed.pDiabloKillLevel = SDL_SwapLE32(player.pDiabloKillLevel);
 	packed.bIsHellfire = gbIsHellfire ? 1 : 0;
+	
+	// jwk - To avoid changing the safe file format, pack sneak and mana shield flags into the same byte.
+	// The original code had pManaShield in the packed struct but it didn't actually read/write that byte.
+	packed.pManaShield = 0;
+	if (player.pManaShield)
+		packed.pManaShield |= 1;
+	if (player.pSneak)
+		packed.pManaShield |= 2;
 }
 
 void PackNetItem(const Item &item, ItemNetPack &packedItem)
 {
 	if (item.isEmpty()) {
-		packedItem.def.wIndx = static_cast<_item_indexes>(0xFFFF);
+		packedItem.def.wIndx = static_cast<BaseItemIdx>(0xFFFF);
 		return;
 	}
-	packedItem.def.wIndx = static_cast<_item_indexes>(SDL_SwapLE16(item.IDidx));
+	packedItem.def.wIndx = static_cast<BaseItemIdx>(SDL_SwapLE16(item.IDidx));
 	packedItem.def.wCI = SDL_SwapLE16(item._iCreateInfo);
 	packedItem.def.dwSeed = SDL_SwapLE32(item._iSeed);
 	if (item.IDidx != IDI_EAR)
@@ -217,11 +225,12 @@ void PackNetItem(const Item &item, ItemNetPack &packedItem)
 
 void PackNetPlayer(PlayerNetPack &packed, const Player &player)
 {
-	packed.plrlevel = player.plrlevel;
+	packed.currentDungeonLevel = player.currentDungeonLevel;
 	packed.px = player.position.tile.x;
 	packed.py = player.position.tile.y;
+	packed.pdir = static_cast<uint8_t>(player._pdir);
 	CopyUtf8(packed.pName, player._pName, sizeof(packed.pName));
-	packed.pClass = static_cast<uint8_t>(player._pClass);
+	packed.pClass = static_cast<uint8_t>(player._pHeroClass);
 	packed.pBaseStr = player._pBaseStr;
 	packed.pBaseMag = player._pBaseMag;
 	packed.pBaseDex = player._pBaseDex;
@@ -254,6 +263,7 @@ void PackNetPlayer(PlayerNetPack &packed, const Player &player)
 	packed.wReflections = SDL_SwapLE16(player.wReflections);
 	packed.pDiabloKillLevel = player.pDiabloKillLevel;
 	packed.pManaShield = player.pManaShield;
+	packed.pSneak = player.pSneak; // jwk added
 	packed.friendlyMode = player.friendlyMode ? 1 : 0;
 	packed.isOnSetLevel = player.plrIsOnSetLevel;
 
@@ -275,23 +285,23 @@ void PackNetPlayer(PlayerNetPack &packed, const Player &player)
 	packed.pIBonusAC = SDL_SwapLE32(player._pIBonusAC);
 	packed.pIBonusDamMod = SDL_SwapLE32(player._pIBonusDamMod);
 	packed.pIGetHit = SDL_SwapLE32(player._pIGetHit);
-	packed.pIEnAc = SDL_SwapLE32(player._pIEnAc);
+	packed.pIEnAc = SDL_SwapLE32(player._pArmorPierce);
 	packed.pIFMinDam = SDL_SwapLE32(player._pIFMinDam);
 	packed.pIFMaxDam = SDL_SwapLE32(player._pIFMaxDam);
 	packed.pILMinDam = SDL_SwapLE32(player._pILMinDam);
 	packed.pILMaxDam = SDL_SwapLE32(player._pILMaxDam);
 }
 
-void UnPackItem(const ItemPack &packedItem, const Player &player, Item &item, bool isHellfire)
+void UnPackItem(const ItemPack &packedItem, Item &item, bool isHellfire)
 {
 	if (packedItem.idx == 0xFFFF) {
 		item.clear();
 		return;
 	}
 
-	auto idx = static_cast<_item_indexes>(SDL_SwapLE16(packedItem.idx));
+	auto idx = static_cast<BaseItemIdx>(SDL_SwapLE16(packedItem.idx));
 
-	if (gbIsSpawn) {
+	if (gbIsDemoGame) {
 		idx = RemapItemIdxFromSpawn(idx);
 	}
 	if (!isHellfire) {
@@ -331,7 +341,7 @@ void UnPackItem(const ItemPack &packedItem, const Player &player, Item &item, bo
 		RecreateEar(item, ic, iseed, ivalue & 0xFF, heroName);
 	} else {
 		item = {};
-		RecreateItem(player, item, idx, SDL_SwapLE16(packedItem.iCreateInfo), SDL_SwapLE32(packedItem.iSeed), SDL_SwapLE16(packedItem.wValue), isHellfire);
+		RecreateItem(item, idx, SDL_SwapLE16(packedItem.iCreateInfo), SDL_SwapLE32(packedItem.iSeed), SDL_SwapLE16(packedItem.wValue), isHellfire);
 		item._iIdentified = (packedItem.bId & 1) != 0;
 		item._iMaxDur = packedItem.bMDur;
 		item._iDurability = ClampDurability(item, packedItem.bDur);
@@ -353,9 +363,9 @@ void UnPackPlayer(const PlayerPack &packed, Player &player)
 	player._pHitPoints = player._pHPBase;
 	player.position.tile = position;
 	player.position.future = position;
-	player.setLevel(clamp<int8_t>(packed.plrlevel, 0, NUMLEVELS));
+	player.setLevel(clamp<int8_t>(packed.currentDungeonLevel, 0, NUMLEVELS));
 
-	player._pClass = static_cast<HeroClass>(clamp<uint8_t>(packed.pClass, 0, enum_size<HeroClass>::value - 1));
+	player._pHeroClass = static_cast<HeroClass>(clamp<uint8_t>(packed.pClass, 0, enum_size<HeroClass>::value - 1));
 
 	ClrPlrPath(player);
 	player.destAction = ACTION_NONE;
@@ -376,7 +386,7 @@ void UnPackPlayer(const PlayerPack &packed, Player &player)
 
 	player._pExperience = SDL_SwapLE32(packed.pExperience);
 	player._pGold = SDL_SwapLE32(packed.pGold);
-	player._pBaseToBlk = PlayersData[static_cast<std::size_t>(player._pClass)].blockBonus;
+	player._pBaseToBlk = PlayersData[static_cast<std::size_t>(player._pHeroClass)].blockBonus;
 	if ((int)(player._pHPBase & 0xFFFFFFC0) < 64)
 		player._pHPBase = 64;
 
@@ -393,11 +403,11 @@ void UnPackPlayer(const PlayerPack &packed, Player &player)
 	bool isHellfire = packed.bIsHellfire != 0;
 
 	for (int i = 0; i < NUM_INVLOC; i++)
-		UnPackItem(packed.InvBody[i], player, player.InvBody[i], isHellfire);
+		UnPackItem(packed.InvBody[i], player.InvBody[i], isHellfire);
 
 	player._pNumInv = packed._pNumInv;
 	for (int i = 0; i < player._pNumInv; i++)
-		UnPackItem(packed.InvList[i], player, player.InvList[i], isHellfire);
+		UnPackItem(packed.InvList[i], player.InvList[i], isHellfire);
 
 	for (int i = 0; i < InventoryGridCells; i++)
 		player.InvGrid[i] = packed.InvGrid[i];
@@ -405,9 +415,11 @@ void UnPackPlayer(const PlayerPack &packed, Player &player)
 	VerifyGoldSeeds(player);
 
 	for (int i = 0; i < MaxBeltItems; i++)
-		UnPackItem(packed.SpdList[i], player, player.SpdList[i], isHellfire);
+		UnPackItem(packed.SpdList[i], player.SpdList[i], isHellfire);
 
-	CalcPlrInv(player, false);
+	player.pManaShield = (packed.pManaShield & 1) != 0; // jwk added
+	player.pSneak = (packed.pManaShield & 2) != 0; // jwk added
+	CalcPlayerInventory(player, false);
 	player.wReflections = SDL_SwapLE16(packed.wReflections);
 	player.pDiabloKillLevel = SDL_SwapLE32(packed.pDiabloKillLevel);
 }
@@ -415,7 +427,7 @@ void UnPackPlayer(const PlayerPack &packed, Player &player)
 bool UnPackNetItem(const Player &player, const ItemNetPack &packedItem, Item &item)
 {
 	item = {};
-	_item_indexes idx = static_cast<_item_indexes>(SDL_SwapLE16(packedItem.def.wIndx));
+	BaseItemIdx idx = static_cast<BaseItemIdx>(SDL_SwapLE16(packedItem.def.wIndx));
 	if (idx < 0 || idx > IDI_LAST)
 		return true;
 	if (idx == IDI_EAR) {
@@ -436,7 +448,7 @@ bool UnPackNetItem(const Player &player, const ItemNetPack &packedItem, Item &it
 	else
 		ValidateFields(creationFlags, dwBuff, IsDungeonItemValid(creationFlags, dwBuff));
 
-	RecreateItem(player, packedItem.item, item);
+	RecreateItem(packedItem.item, item);
 	return true;
 }
 
@@ -446,11 +458,11 @@ bool UnPackNetPlayer(const PlayerNetPack &packed, Player &player)
 	ValidateField(packed.pName, UiValidPlayerName(player._pName));
 
 	ValidateField(packed.pClass, packed.pClass < enum_size<HeroClass>::value);
-	player._pClass = static_cast<HeroClass>(packed.pClass);
+	player._pHeroClass = static_cast<HeroClass>(packed.pClass);
 
 	Point position { packed.px, packed.py };
 	ValidateFields(position.x, position.y, InDungeonBounds(position));
-	ValidateField(packed.plrlevel, packed.plrlevel < NUMLEVELS);
+	ValidateField(packed.currentDungeonLevel, packed.currentDungeonLevel < NUMLEVELS);
 	ValidateField(packed.pLevel, packed.pLevel >= 1 && packed.pLevel <= MaxCharacterLevel);
 
 	int32_t baseHpMax = SDL_SwapLE32(packed.pMaxHPBase);
@@ -472,7 +484,9 @@ bool UnPackNetPlayer(const PlayerNetPack &packed, Player &player)
 	player._pLevel = packed.pLevel;
 	player.position.tile = position;
 	player.position.future = position;
-	player.plrlevel = packed.plrlevel;
+	ValidateField(packed.pdir, packed.pdir <= static_cast<uint8_t>(Direction::SouthEast));
+	player._pdir = static_cast<Direction>(packed.pdir);
+	player.currentDungeonLevel = packed.currentDungeonLevel;
 	player.plrIsOnSetLevel = packed.isOnSetLevel != 0;
 	player._pMaxHPBase = baseHpMax;
 	player._pHPBase = baseHp;
@@ -495,13 +509,14 @@ bool UnPackNetPlayer(const PlayerNetPack &packed, Player &player)
 	player._pStatPts = packed.pStatPts;
 
 	player._pExperience = SDL_SwapLE32(packed.pExperience);
-	player._pBaseToBlk = PlayersData[static_cast<std::size_t>(player._pClass)].blockBonus;
+	player._pBaseToBlk = PlayersData[static_cast<std::size_t>(player._pHeroClass)].blockBonus;
 	player._pMaxManaBase = baseManaMax;
 	player._pManaBase = baseMana;
 	player._pMemSpells = SDL_SwapLE64(packed.pMemSpells);
 	player.wReflections = SDL_SwapLE16(packed.wReflections);
 	player.pDiabloKillLevel = packed.pDiabloKillLevel;
 	player.pManaShield = packed.pManaShield != 0;
+	player.pSneak = packed.pSneak != 0; // jwk added
 	player.friendlyMode = packed.friendlyMode != 0;
 
 	for (int i = 0; i < MAX_SPELLS; i++)
@@ -557,7 +572,7 @@ bool UnPackNetPlayer(const PlayerNetPack &packed, Player &player)
 		ValidateField(beltItemUsable, beltItemUsable);
 	}
 
-	CalcPlrInv(player, false);
+	CalcPlayerInventory(player, false);
 	player._pGold = CalculateGold(player);
 
 	ValidateFields(player._pStrength, SDL_SwapLE32(packed.pStrength), player._pStrength == SDL_SwapLE32(packed.pStrength));
@@ -578,7 +593,7 @@ bool UnPackNetPlayer(const PlayerNetPack &packed, Player &player)
 	ValidateFields(player._pIBonusAC, SDL_SwapLE32(packed.pIBonusAC), player._pIBonusAC == SDL_SwapLE32(packed.pIBonusAC));
 	ValidateFields(player._pIBonusDamMod, SDL_SwapLE32(packed.pIBonusDamMod), player._pIBonusDamMod == SDL_SwapLE32(packed.pIBonusDamMod));
 	ValidateFields(player._pIGetHit, SDL_SwapLE32(packed.pIGetHit), player._pIGetHit == SDL_SwapLE32(packed.pIGetHit));
-	ValidateFields(player._pIEnAc, SDL_SwapLE32(packed.pIEnAc), player._pIEnAc == SDL_SwapLE32(packed.pIEnAc));
+	ValidateFields(player._pArmorPierce, SDL_SwapLE32(packed.pIEnAc), player._pArmorPierce == SDL_SwapLE32(packed.pIEnAc));
 	ValidateFields(player._pIFMinDam, SDL_SwapLE32(packed.pIFMinDam), player._pIFMinDam == SDL_SwapLE32(packed.pIFMinDam));
 	ValidateFields(player._pIFMaxDam, SDL_SwapLE32(packed.pIFMaxDam), player._pIFMaxDam == SDL_SwapLE32(packed.pIFMaxDam));
 	ValidateFields(player._pILMinDam, SDL_SwapLE32(packed.pILMinDam), player._pILMinDam == SDL_SwapLE32(packed.pILMinDam));

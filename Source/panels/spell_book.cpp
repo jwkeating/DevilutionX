@@ -45,7 +45,7 @@ SpellID GetSpellFromSpellPage(size_t page, size_t entry)
 {
 	assert(page <= SpellBookPages && entry <= SpellBookPageEntries);
 	if (page == 0 && entry == 0) {
-		switch (InspectPlayer->_pClass) {
+		switch (InspectPlayer->_pHeroClass) {
 		case HeroClass::Warrior:
 			return SpellID::ItemRepair;
 		case HeroClass::Rogue:
@@ -75,10 +75,11 @@ void PrintSBookStr(const Surface &out, Point position, string_view text, UiFlags
 	    { UiFlags::ColorWhite | flags });
 }
 
+// This function is used to color-code castable/not castable spells in the UI (when spellbook is open)
 SpellType GetSBookTrans(SpellID ii, bool townok)
 {
 	Player &player = *InspectPlayer;
-	if ((player._pClass == HeroClass::Monk) && (ii == SpellID::Search))
+	if ((player._pHeroClass == HeroClass::Monk) && (ii == SpellID::Search))
 		return SpellType::Skill;
 	SpellType st = SpellType::Spell;
 	if ((player._pISpells & GetSpellBitmask(ii)) != 0) {
@@ -133,54 +134,109 @@ void DrawSpellBook(const Surface &out)
 	}
 	Player &player = *InspectPlayer;
 	uint64_t spl = player._pMemSpells | player._pISpells | player._pAblSpells;
-
+#if JWK_GOD_MODE_MAX_SPELLS
+	spl |= player._pMemSpellsDebug;
+#endif
 	const int lineHeight = 18;
 
 	int yp = 12;
 	const int textPaddingTop = 7;
 	for (size_t pageEntry = 0; pageEntry < SpellBookPageEntries; pageEntry++) {
-		SpellID sn = GetSpellFromSpellPage(sbooktab, pageEntry);
-		if (IsValidSpell(sn) && (spl & GetSpellBitmask(sn)) != 0) {
-			SpellType st = GetSBookTrans(sn, true);
-			SetSpellTrans(st);
+		SpellID spellID = GetSpellFromSpellPage(sbooktab, pageEntry);
+		if (IsValidSpell(spellID) && (spl & GetSpellBitmask(spellID)) != 0) {
+			SpellType spellType = GetSBookTrans(spellID, true);
+			SetSpellTrans(spellType);
 			const Point spellCellPosition = GetPanelPosition(UiPanels::Spell, { 11, yp + SpellBookDescription.height });
-			DrawSmallSpellIcon(out, spellCellPosition, sn);
-			if (sn == player._pRSpell && st == player._pRSplType && !IsInspectingPlayer()) {
+			DrawSmallSpellIcon(out, spellCellPosition, spellID);
+			if (spellID == player._pRSpell && spellType == player._pRSplType && !IsInspectingPlayer()) {
 				SetSpellTrans(SpellType::Skill);
 				DrawSmallSpellIconBorder(out, spellCellPosition);
 			}
 
 			const Point line0 { 0, yp + textPaddingTop };
 			const Point line1 { 0, yp + textPaddingTop + lineHeight };
-			PrintSBookStr(out, line0, pgettext("spell", GetSpellData(sn).sNameText));
-			switch (GetSBookTrans(sn, false)) {
+			PrintSBookStr(out, line0, pgettext("spell", GetSpellData(spellID).sNameText));
+			switch (GetSBookTrans(spellID, false)) {
 			case SpellType::Skill:
+#if JWK_EDIT_PLAYER_SKILLS
+				if (spellID == SpellID::Etherealize) {
+					PrintSBookStr(out, line1, _("Skill"));
+					if (player.pSneak) {
+						PrintSBookStr(out, line0, _("Active"), UiFlags::AlignRight);
+					} else {
+						PrintSBookStr(out, line0, _("Inactive"), UiFlags::AlignRight);
+					}
+					if (player._pHeroClass == HeroClass::Rogue) {
+						PrintSBookStr(out, line1, _("-80% light radius"), UiFlags::AlignRight);
+					} else {
+						PrintSBookStr(out, line1, _("-40% light radius"), UiFlags::AlignRight);
+					}
+				} else {
+					Uint64 cooldown = player.GetSkillCooldownMilliseconds();
+					if (cooldown == 0) {
+						PrintSBookStr(out, line1, _("Skill"));
+					} else {
+						Uint64 now = SDL_GetTicks64(); // This is a real-time tick that doesn't pause during debugger breaks
+						Uint64 timeSkillIsAvailable = player._timeOfMostRecentSkillUse + cooldown;
+						if (now >= timeSkillIsAvailable) {
+							PrintSBookStr(out, line1, _("Skill is ready"));
+						} else {
+							Uint64 minutesRemaining = (timeSkillIsAvailable - now + 1000*60 - 1) / (1000*60); // round up to nearest minute
+							if (minutesRemaining > 1) {
+								PrintSBookStr(out, line1, fmt::format(fmt::runtime(ngettext("Resting for {:d} minutes", "Resting for {:d} minutes", minutesRemaining)), minutesRemaining));
+							} else {
+								PrintSBookStr(out, line1, _("Resting for 1 minute"));
+							}
+						}
+					}
+				}
+#else // original code
 				PrintSBookStr(out, line1, _("Skill"));
+#endif
 				break;
 			case SpellType::Charges: {
 				int charges = player.InvBody[INVLOC_HAND_LEFT]._iCharges;
+#if 1 // jwk - add more info for staff spells
+				int spellLevel = player.GetSpellLevel(spellID);
+				PrintSBookStr(out, line0, fmt::format(fmt::runtime(pgettext(/* TRANSLATORS: UI constraints, keep short please.*/ "spellbook", "Level {:d}")), spellLevel), UiFlags::AlignRight);
+				PrintSBookStr(out, line1, fmt::format(fmt::runtime(ngettext("{:d} charge", "{:d} charges", charges)), charges));
+				SpellID staffSpell = player.InvBody[INVLOC_HAND_LEFT]._iSpell;
+				int min, max;
+				GetSpellStatsForUI(player, staffSpell, spellLevel, &min, &max);
+				if (min != -1) {
+					if (staffSpell == SpellID::Healing || staffSpell == SpellID::HealOther) {
+						PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "Heals: {:d} - {:d}")), min, max), UiFlags::AlignRight);
+					} else {
+						PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "Damage: {:d} - {:d}")), min, max), UiFlags::AlignRight);
+					}
+				}
+#else // original code
 				PrintSBookStr(out, line1, fmt::format(fmt::runtime(ngettext("Staff ({:d} charge)", "Staff ({:d} charges)", charges)), charges));
+#endif
 			} break;
 			default: {
-				int mana = GetManaAmount(player, sn) >> 6;
-				int lvl = player.GetSpellLevel(sn);
-				PrintSBookStr(out, line0, fmt::format(fmt::runtime(pgettext(/* TRANSLATORS: UI constraints, keep short please.*/ "spellbook", "Level {:d}")), lvl), UiFlags::AlignRight);
-				if (lvl == 0) {
+				int mana = GetManaAmount(player, spellID) >> 6;
+				int spellLevel = player.GetSpellLevel(spellID);
+				PrintSBookStr(out, line0, fmt::format(fmt::runtime(pgettext(/* TRANSLATORS: UI constraints, keep short please.*/ "spellbook", "Level {:d}")), spellLevel), UiFlags::AlignRight);
+				if (spellLevel == 0) {
 					PrintSBookStr(out, line1, _("Unusable"), UiFlags::AlignRight);
 				} else {
-					if (sn != SpellID::BoneSpirit) {
-						int min;
-						int max;
-						GetDamageAmt(sn, &min, &max);
+					if (spellID == SpellID::Golem) {
+						uint32_t golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage;
+						player.GetGolemStats(spellLevel, golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage);
+						PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "{:d} Hp, {:d}-{:d} Dmg")), golemMaxHP >> 6, golemMinDamage, golemMaxDamage), UiFlags::AlignRight);
+					} else if (spellID == SpellID::BoneSpirit) {
+						PrintSBookStr(out, line1, _(/* TRANSLATORS: UI constraints, keep short please.*/ "Dmg: 1/3 target hp"), UiFlags::AlignRight);
+					} else {
+						int min, max;
+						GetSpellStatsForUI(player, spellID, spellLevel, &min, &max);
 						if (min != -1) {
-							if (sn == SpellID::Healing || sn == SpellID::HealOther) {
+							if (spellID == SpellID::Healing || spellID == SpellID::HealOther) {
 								PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "Heals: {:d} - {:d}")), min, max), UiFlags::AlignRight);
 							} else {
 								PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "Damage: {:d} - {:d}")), min, max), UiFlags::AlignRight);
 							}
 						}
-					} else {
-						PrintSBookStr(out, line1, _(/* TRANSLATORS: UI constraints, keep short please.*/ "Dmg: 1/3 target hp"), UiFlags::AlignRight);
 					}
 					PrintSBookStr(out, line1, fmt::format(fmt::runtime(pgettext(/* TRANSLATORS: UI constraints, keep short please.*/ "spellbook", "Mana: {:d}")), mana));
 				}
@@ -202,6 +258,9 @@ void CheckSBook()
 		SpellID sn = GetSpellFromSpellPage(sbooktab, (MousePosition.y - iconArea.position.y) / SpellBookDescription.height);
 		Player &player = *InspectPlayer;
 		uint64_t spl = player._pMemSpells | player._pISpells | player._pAblSpells;
+#if JWK_GOD_MODE_MAX_SPELLS
+		spl |= player._pMemSpellsDebug;
+#endif
 		if (IsValidSpell(sn) && (spl & GetSpellBitmask(sn)) != 0) {
 			SpellType st = SpellType::Spell;
 			if ((player._pISpells & GetSpellBitmask(sn)) != 0) {

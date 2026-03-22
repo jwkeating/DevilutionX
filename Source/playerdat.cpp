@@ -26,7 +26,7 @@ const uint32_t ExpLvlsTbl[MaxCharacterLevel] = {
 	25712,
 	35309,
 	47622,
-	63364,
+	63364, // level 10
 	83419,
 	108879,
 	141086,
@@ -36,7 +36,7 @@ const uint32_t ExpLvlsTbl[MaxCharacterLevel] = {
 	424067,
 	571190,
 	766569,
-	1025154,
+	1025154, // level 20
 	1366227,
 	1814568,
 	2401895,
@@ -46,7 +46,7 @@ const uint32_t ExpLvlsTbl[MaxCharacterLevel] = {
 	7130496,
 	9281874,
 	12042092,
-	15571031,
+	15571031, // level 30
 	20066900,
 	25774405,
 	32994399,
@@ -56,7 +56,7 @@ const uint32_t ExpLvlsTbl[MaxCharacterLevel] = {
 	85670061,
 	107834823,
 	135274799,
-	169122009,
+	169122009, // level 40
 	210720231,
 	261657253,
 	323800420,
@@ -66,7 +66,7 @@ const uint32_t ExpLvlsTbl[MaxCharacterLevel] = {
 	733825617,
 	892680222,
 	1082908612,
-	1310707109
+	1310707109 // level 50
 };
 
 const _sfx_id herosounds[enum_size<HeroClass>::value][enum_size<HeroSpeech>::value] = {
@@ -86,12 +86,21 @@ const PlayerData PlayersData[] = {
 // HeroClass                 className,       classPath,   baseStr, baseMag,    baseDex,   baseVit,    maxStr, maxMag,     maxDex,    maxVit, blockBonus,   adjLife,                      adjMana,   lvlLife,   lvlMana,  chrLife,                     chrMana,                     itmLife,                      itmMana, skill,
 
 // TRANSLATORS: Player Block start
+#if JWK_EDIT_PLAYER_STAT_CAPS
+/* HeroClass::Warrior */   { N_("Warrior"),   "warrior",        30,      10,         20,        25,       200,     60,         80,       120,         30, (18 << 6),                    -(1 << 6),  (2 << 6),  (1 << 6), (2 << 6),                    (1 << 6),                    (2 << 6),                     (1 << 6), SpellID::ItemRepair    },
+/* HeroClass::Rogue */     { N_("Rogue"),     "rogue",          20,      15,         30,        20,        80,     80,        200,       100,         20, (23 << 6),  static_cast<int>(5.5F * 64),  (2 << 6),  (2 << 6), (1 << 6),                    (1 << 6), static_cast<int>(1.5F * 64),  static_cast<int>(1.5F * 64), SpellID::TrapDisarm    },
+/* HeroClass::Sorcerer */  { N_("Sorcerer"),  "sorceror",       15,      35,         15,        20,        50,    250,         80,        80,         10,  (9 << 6),                    -(2 << 6),  (1 << 6),  (2 << 6), (1 << 6),                    (2 << 6),                    (1 << 6),                     (2 << 6), SpellID::StaffRecharge },
+/* HeroClass::Monk */      { N_("Monk"),      "monk",           25,      15,         25,        20,       150,     80,        150,        80,         25, (23 << 6),  static_cast<int>(5.5F * 64),  (2 << 6),  (2 << 6), (1 << 6),                    (1 << 6), static_cast<int>(1.5F * 64),  static_cast<int>(1.5F * 64), SpellID::Search,       },
+/* HeroClass::Bard */      { N_("Bard"),      "rogue",          20,      20,         25,        20,       120,    120,        120,       100,         25, (23 << 6),                     (3 << 6),  (2 << 6),  (2 << 6), (1 << 6), static_cast<int>(1.5F * 64), static_cast<int>(1.5F * 64), static_cast<int>(1.75F * 64), SpellID::Identify      },
+/* HeroClass::Barbarian */ { N_("Barbarian"), "warrior",        40,       0,         20,        25,       250,      0,         60,       150,         30, (18 << 6),                     (0 << 6),  (2 << 6),  (0 << 6), (2 << 6),                    (1 << 6), static_cast<int>(2.5F * 64),                     (1 << 6), SpellID::Rage          },
+#else // original code
 /* HeroClass::Warrior */   { N_("Warrior"),   "warrior",        30,      10,         20,        25,       250,     50,         60,       100,         30, (18 << 6),                    -(1 << 6),  (2 << 6),  (1 << 6), (2 << 6),                    (1 << 6),                    (2 << 6),                     (1 << 6), SpellID::ItemRepair    },
 /* HeroClass::Rogue */     { N_("Rogue"),     "rogue",          20,      15,         30,        20,        55,     70,        250,        80,         20, (23 << 6),  static_cast<int>(5.5F * 64),  (2 << 6),  (2 << 6), (1 << 6),                    (1 << 6), static_cast<int>(1.5F * 64),  static_cast<int>(1.5F * 64), SpellID::TrapDisarm    },
 /* HeroClass::Sorcerer */  { N_("Sorcerer"),  "sorceror",       15,      35,         15,        20,        45,    250,         85,        80,         10,  (9 << 6),                    -(2 << 6),  (1 << 6),  (2 << 6), (1 << 6),                    (2 << 6),                    (1 << 6),                     (2 << 6), SpellID::StaffRecharge },
 /* HeroClass::Monk */      { N_("Monk"),      "monk",           25,      15,         25,        20,       150,     80,        150,        80,         25, (23 << 6),  static_cast<int>(5.5F * 64),  (2 << 6),  (2 << 6), (1 << 6),                    (1 << 6), static_cast<int>(1.5F * 64),  static_cast<int>(1.5F * 64), SpellID::Search,       },
 /* HeroClass::Bard */      { N_("Bard"),      "rogue",          20,      20,         25,        20,       120,    120,        120,       100,         25, (23 << 6),                     (3 << 6),  (2 << 6),  (2 << 6), (1 << 6), static_cast<int>(1.5F * 64), static_cast<int>(1.5F * 64), static_cast<int>(1.75F * 64), SpellID::Identify      },
 /* HeroClass::Barbarian */ { N_("Barbarian"), "warrior",        40,       0,         20,        25,       255,      0,         55,       150,         30, (18 << 6),                     (0 << 6),  (2 << 6),  (0 << 6), (2 << 6),                    (1 << 6), static_cast<int>(2.5F * 64),                     (1 << 6), SpellID::Rage          },
+#endif
 	// clang-format on
 };
 

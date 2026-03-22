@@ -15,7 +15,7 @@
 namespace devilution {
 
 // must be unsigned to generate unsigned comparisons with pnum
-#define MAX_PLRS 4
+#define MAX_PLAYERS 4
 
 struct GameData {
 	int32_t size;
@@ -25,7 +25,7 @@ struct GameData {
 	uint8_t versionMajor;
 	uint8_t versionMinor;
 	uint8_t versionPatch;
-	_difficulty nDifficulty;
+	_difficulty nDifficulty; // normal=0, nightmare=1, hell=2
 	uint8_t nTickRate;
 	uint8_t bRunInTown;
 	uint8_t bTheoQuest;
@@ -44,8 +44,10 @@ struct GameInfo {
 };
 
 extern bool gbSomebodyWonGameKludge;
-extern uint16_t sgwPackPlrOffsetTbl[MAX_PLRS];
-extern uint8_t gbActivePlayers;
+extern uint16_t sgwPackPlrOffsetTbl[MAX_PLAYERS];
+extern uint8_t GetNumActivePlayers();
+extern bool IncreaseNumActivePlayers();
+extern bool DecreaseNumActivePlayers();
 extern bool gbGameDestroyed;
 extern DVL_API_FOR_TEST GameData sgGameInitInfo;
 extern bool gbSelectProvider;
@@ -54,7 +56,7 @@ extern std::string GameName;
 extern std::string GamePassword;
 extern bool PublicGame;
 extern uint8_t gbDeltaSender;
-extern uint32_t player_state[MAX_PLRS];
+extern uint32_t player_state[MAX_PLAYERS];
 extern bool IsLoopback;
 
 void InitGameInfo();

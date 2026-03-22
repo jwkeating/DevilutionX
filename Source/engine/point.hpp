@@ -194,8 +194,14 @@ constexpr PointOf<PointCoordT> operator+(PointOf<PointCoordT> a, Direction direc
 template <typename PointCoordT, typename OtherPointCoordT>
 constexpr DisplacementOf<PointCoordT> operator-(PointOf<PointCoordT> a, PointOf<OtherPointCoordT> b)
 {
+#if 1 // jwk - prevent subtracting 1-byte types or unsigned types which are likely to overflow and yield nonsense.  Types can be promoted like this:  Displacement d = Point(lowPrecisionPoint1) - Point(lowPrecisionPoint2);
+	static_assert(std::is_signed<PointCoordT>::value, "result must be signed to perform subtraction");
+	static_assert(sizeof(PointCoordT) > sizeof(OtherPointCoordT) || (sizeof(PointCoordT) == sizeof(OtherPointCoordT) && sizeof(PointCoordT) >= 2), "result type must be large enough to hold the difference when performing a typical subtraction");
+	return { a.x - static_cast<PointCoordT>(b.x), a.y - static_cast<PointCoordT>(b.y) };
+#else
 	static_assert(std::is_signed<PointCoordT>::value == std::is_signed<OtherPointCoordT>::value, "points must have the same signedness");
 	return { static_cast<PointCoordT>(a.x - b.x), static_cast<PointCoordT>(a.y - b.y) };
+#endif
 }
 
 template <typename PointCoordT, typename DisplacementDeltaT>

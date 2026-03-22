@@ -429,9 +429,25 @@ void DrawPlayerIcons(const Surface &out, const Player &player, Point position, b
  */
 void DrawPlayer(const Surface &out, const Player &player, Point tilePosition, Point targetBufferPosition)
 {
-	if (!IsTileLit(tilePosition) && !MyPlayer->_pInfraFlag && !MyPlayer->isOnArenaLevel() && leveltype != DTYPE_TOWN) {
+	if (MyPlayer->_pLvlChanging || player._pLvlChanging || !player.isOnActiveLevel()) // jwk - This fixes a crash due to referencing null player.AnimInfo.sprites (player.AnimInfo.sprites.has_value() == false)
 		return;
-	}
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER // always draw players.  See CanSeePlayerLight()
+	// TODO: Revisi this.  Maybe we don't want to draw players who aren't friendly?  At what range do they become visible?  Maybe the average of the two player light radii?  Should sneak have any effect or just light radius?
+	//if (&player != MyPlayer && !MyPlayer->_pInfraFlag && !MyPlayer->isOnArenaLevel() && leveltype != DTYPE_TOWN) {
+	//	if (!player.friendlyMode && player.pSneak) {
+	//		Displacement d = MyPlayer->position.future - player.position.future;
+	//		int distance = static_cast<int>(sqrtf(d.deltaX * d.deltaX + d.deltaY * d.deltaY));
+	//		if (distance <= (MyPlayer->_pLightRad + player._pLightRad + 1) / 2);
+	//		return;
+	//	}
+	//}
+#elif JWK_FIX_LIGHTING // fix bug with light radius=2 in caves, player would sometimes not be drawn while walking south
+	if (&player != MyPlayer && !IsTileLit(tilePosition) && !MyPlayer->_pInfraFlag && !MyPlayer->isOnArenaLevel() && leveltype != DTYPE_TOWN)
+		return;
+#else // original code
+	if (!IsTileLit(tilePosition) && !MyPlayer->_pInfraFlag && !MyPlayer->isOnArenaLevel() && leveltype != DTYPE_TOWN)
+		return;
+#endif
 
 	const ClxSprite sprite = player.previewCelSprite ? *player.previewCelSprite : player.AnimInfo.currentSprite();
 
@@ -728,9 +744,6 @@ void DrawMonsterHelper(const Surface &out, Point tilePosition, Point targetBuffe
 		return;
 	}
 
-	if (!IsTileLit(tilePosition) && !MyPlayer->_pInfraFlag)
-		return;
-
 	if (static_cast<size_t>(mi) >= MaxMonsters) {
 		Log("Draw Monster: tried to draw illegal monster {}", mi);
 		return;
@@ -739,6 +752,21 @@ void DrawMonsterHelper(const Surface &out, Point tilePosition, Point targetBuffe
 	const auto &monster = Monsters[mi];
 	if ((monster.flags & MFLAG_HIDDEN) != 0) {
 		return;
+	}
+
+	if (!JWK_EDIT_GOLEM || mi != MyPlayerId) { // if mi == MyPlayerId then monster is local player's golem.  Should always draw it.
+		bool sneakInfravision = false;
+		if (MyPlayer->pSneak) {
+			int a = tilePosition.x - MyPlayer->position.future.x;
+			int b = tilePosition.y - MyPlayer->position.future.y;
+			// Grant infravision at close range.  If players want to see farther in the darkness, they should use an infravision scroll.
+			int maxDist = std::max(abs(a), abs(b));
+			if (maxDist <= 2) {
+				sneakInfravision = true;
+			}
+		}
+		if (!IsTileLit(tilePosition) && !MyPlayer->_pInfraFlag && !sneakInfravision)
+			return;
 	}
 
 	const ClxSprite sprite = monster.animInfo.currentSprite();
@@ -1303,19 +1331,33 @@ void DrawFPS(const Surface &out)
 		return;
 	}
 
-	framesSinceLastUpdate++;
 	uint32_t runtimeInMs = SDL_GetTicks();
+
+	// Method 1: per-frame timing with smoothing filter applied
+	//static double msPerUpdateSmoothed = 0.0;
+	//static uint32_t timeOfLastFrame = SDL_GetTicks();
+	//uint32_t timeSinceLastFrame = runtimeInMs - timeOfLastFrame;
+	//timeOfLastFrame = runtimeInMs;
+	//if (timeSinceLastFrame < 500) // ignore big hitches
+	//	msPerUpdateSmoothed = 0.999 * msPerUpdateSmoothed + 0.001 * timeSinceLastFrame;
+
+	// Method 2: average frame time over one second
+	framesSinceLastUpdate++;
 	uint32_t msSinceLastUpdate = runtimeInMs - lastFpsUpdateInMs;
 	if (msSinceLastUpdate >= 1000) {
 		lastFpsUpdateInMs = runtimeInMs;
-		constexpr int FpsPow10 = 10;
-		const int fps = 1000 * FpsPow10 * framesSinceLastUpdate / msSinceLastUpdate;
+		constexpr int FixedPoint10 = 10;
+		const int fps = 1000 * FixedPoint10 * framesSinceLastUpdate / msSinceLastUpdate;
 		framesSinceLastUpdate = 0;
 
 		static char buf[15] {};
-		const char *end = fps >= 100 * FpsPow10
-		    ? BufCopy(buf, fps / FpsPow10, " FPS")
-		    : BufCopy(buf, fps / FpsPow10, ".", fps % FpsPow10, " FPS");
+		const char *end = fps >= 100 * FixedPoint10
+		    ? BufCopy(buf, fps / FixedPoint10, " FPS")
+		    : BufCopy(buf, fps / FixedPoint10, ".", fps % FixedPoint10, " FPS");
+		//static char buf[64] {};
+		//int smoothedFPSx10 = (int)(1000 * FixedPoint10 / msPerUpdateSmoothed);
+		//const char *end = BufCopy(buf, smoothedFPSx10 / FixedPoint10, ".", smoothedFPSx10 % FixedPoint10, " FPS ", fps / FixedPoint10, ".", fps % FixedPoint10);
+
 		formatted = { buf, static_cast<string_view::size_type>(end - buf) };
 	};
 	DrawString(out, formatted, Point { 8, 68 }, { UiFlags::ColorRed });

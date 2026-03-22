@@ -11,6 +11,7 @@
 
 #include <function_ref.hpp>
 
+#include "player.h"
 #include "automap.h"
 #include "engine.h"
 #include "engine/point.hpp"
@@ -21,7 +22,6 @@
 namespace devilution {
 
 #define MAXLIGHTS 32
-#define MAXVISION 4
 /** @brief Number of supported light levels */
 constexpr size_t NumLightingLevels = 16;
 #define NO_LIGHT -1
@@ -42,11 +42,14 @@ struct Light {
 	bool hasChanged;
 };
 
-extern Light VisionList[MAXVISION];
-extern std::array<bool, MAXVISION> VisionActive;
-extern Light Lights[MAXLIGHTS];
+extern std::array<Light, MAX_PLAYERS> VisionList;
+extern std::array<bool, MAX_PLAYERS> VisionActive;
+extern std::array<Light, MAXLIGHTS> Lights;
 extern std::array<uint8_t, MAXLIGHTS> ActiveLights;
 extern int ActiveLightCount;
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+extern std::array<Light, MAX_PLAYERS> PlayerLights;
+#endif
 constexpr char LightsMax = 15;
 extern std::array<std::array<uint8_t, 256>, NumLightingLevels> LightTables;
 extern std::array<uint8_t, 256> InfravisionTable;
@@ -56,16 +59,25 @@ extern std::array<uint8_t, 256> PauseTable;
 extern bool DisableLighting;
 #endif
 extern bool UpdateLighting;
+extern bool UpdateVision;
 
 void DoUnLight(Point position, uint8_t radius);
-void DoLighting(Point position, uint8_t radius, DisplacementOf<int8_t> offset);
+void DoLighting(Point position, uint8_t radius, DisplacementOf<int8_t> eighthOffset);
 void DoUnVision(Point position, uint8_t radius);
-void DoVision(Point position, uint8_t radius, MapExplorationType doAutomap, bool visible);
+void DoVision(Point position, uint8_t radius, MapExplorationType doAutomap, bool visibleToLocalPlayer);
 void MakeLightTable();
 #ifdef _DEBUG
 void ToggleLighting();
 #endif
 void InitLighting();
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+void AddPlayerLight(const Player& player, Point position, uint8_t radius);
+void AddPlayerUnLight(const Player& player);
+//void ChangePlayerLightRadius(const Player& player, uint8_t radius);
+void ChangePlayerLightXY(const Player& player, Point position);
+void ChangePlayerLightOffset(const Player& player, DisplacementOf<int8_t> offset);
+void ChangePlayerLightFriendly(const Player& player);
+#endif
 int AddLight(Point position, uint8_t radius);
 void AddUnLight(int i);
 void ChangeLightRadius(int i, uint8_t radius);
@@ -74,9 +86,9 @@ void ChangeLightOffset(int i, DisplacementOf<int8_t> offset);
 void ChangeLight(int i, Point position, uint8_t radius);
 void ProcessLightList();
 void SavePreLighting();
-void ActivateVision(Point position, int r, int id);
-void ChangeVisionRadius(int id, int r);
-void ChangeVisionXY(int id, Point position);
+void ActivateVision(int playerId, Point position, int r);
+void ChangeVisionRadius(int playerId, int r);
+void ChangeVisionXY(int playerId, Point position, Point futurePosition);
 void ProcessVisionList();
 void lighting_color_cycling();
 

@@ -131,7 +131,7 @@ struct MonsterData {
 	uint16_t exp;
 };
 
-enum _monster_id : int16_t {
+enum MonsterID : int16_t { // undex into MonstersData[] array
 	MT_NZOMBIE,
 	MT_BZOMBIE,
 	MT_GZOMBIE,
@@ -229,10 +229,6 @@ enum _monster_id : int16_t {
 	MT_RTBLACK,
 	MT_BTBLACK,
 	MT_RBLACK,
-	MT_UNRAV,
-	MT_HOLOWONE,
-	MT_PAINMSTR,
-	MT_REALWEAV,
 	MT_SUCCUBUS,
 	MT_SNOWWICH,
 	MT_HLSPWN,
@@ -243,6 +239,10 @@ enum _monster_id : int16_t {
 	MT_ADVOCATE,
 	MT_GOLEM,
 	MT_DIABLO,
+	MT_UNRAV,
+	MT_HOLOWONE,
+	MT_PAINMSTR,
+	MT_REALWEAV,
 	MT_DARKMAGE,
 	MT_HELLBOAR,
 	MT_STINGER,
@@ -293,7 +293,7 @@ enum class UniqueMonsterPack : uint8_t {
 };
 
 struct UniqueMonsterData {
-	_monster_id mtype;
+	MonsterID mtype;
 	const char *mName;
 	const char *mTrnName;
 	uint8_t mlevel;
@@ -315,7 +315,7 @@ struct UniqueMonsterData {
 };
 
 extern const MonsterData MonstersData[];
-extern const _monster_id MonstConvTbl[];
+extern const MonsterID MonstConvTbl[];
 extern const UniqueMonsterData UniqueMonstersData[];
 
 } // namespace devilution

@@ -108,6 +108,8 @@ void base::HandleDisconnect(packet &pkt)
 			playerState.turnQueue.clear();
 		}
 	} else {
+		// jwk - master branch fixes this
+		assert(false);
 		ABORT(); // we were dropped by the owner?!?
 	}
 }
@@ -154,7 +156,7 @@ bool base::IsConnected(plr_t player) const
 
 void base::RecvLocal(packet &pkt)
 {
-	if (pkt.Source() < MAX_PLRS) {
+	if (pkt.Source() < MAX_PLAYERS) {
 		Connect(pkt.Source());
 	}
 	switch (pkt.Type()) {
@@ -201,7 +203,7 @@ bool base::SNetReceiveMessage(uint8_t *sender, void **data, uint32_t *size)
 bool base::SNetSendMessage(int playerId, void *data, unsigned int size)
 {
 	if (playerId != SNPLAYER_ALL && playerId != SNPLAYER_OTHERS
-	    && (playerId < 0 || playerId >= MAX_PLRS))
+	    && (playerId < 0 || playerId >= MAX_PLAYERS))
 		abort();
 	auto *rawMessage = reinterpret_cast<unsigned char *>(data);
 	buffer_t message(rawMessage, rawMessage + size);
@@ -370,7 +372,7 @@ void base::SNetGetProviderCaps(struct _SNETCAPS *caps)
 	caps->flags = 0;                 // unused
 	caps->maxmessagesize = 512;      // capped to 512; underflow if < 24
 	caps->maxqueuesize = 0;          // unused
-	caps->maxplayers = MAX_PLRS;     // capped to 4
+	caps->maxplayers = MAX_PLAYERS;     // capped to 4
 	caps->bytessec = 1000000;        // ?
 	caps->latencyms = 0;             // unused
 	caps->defaultturnssec = 10;      // ?

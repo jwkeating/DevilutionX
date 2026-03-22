@@ -316,7 +316,7 @@ void OptionGameModeChanged()
 
 void OptionSharewareChanged()
 {
-	gbIsSpawn = *sgOptions.GameMode.shareware;
+	gbIsDemoGame = *sgOptions.GameMode.shareware;
 }
 
 void OptionAudioChanged()

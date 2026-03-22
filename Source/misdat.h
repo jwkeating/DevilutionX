@@ -17,6 +17,8 @@
 #include "utils/stdcompat/cstddef.hpp"
 #include "utils/stdcompat/string_view.hpp"
 
+#define JWK_PREVENT_DUPLICATE_MISSILE_HITS 1 // prevent multiple hits per tick from the same spell effect.  This makes damage more consistent instead of randomly doing double damage depending on micro-differences in character position.
+
 namespace devilution {
 
 enum mienemy_type : uint8_t {
@@ -26,11 +28,11 @@ enum mienemy_type : uint8_t {
 };
 
 enum class DamageType : uint8_t {
-	Physical,
-	Fire,
-	Lightning,
-	Magic,
-	Acid,
+	Physical = 0,
+	Fire = 1,
+	Lightning = 2,
+	Magic = 3,
+	Acid = 4,
 };
 
 enum class MissileGraphicID : uint8_t {
@@ -212,5 +214,61 @@ inline MissileFileData &GetMissileSpriteData(MissileGraphicID graphicId)
 
 void InitMissileGFX(bool loadHellfireGraphics = false);
 void FreeMissileGFX();
+
+#if JWK_PREVENT_DUPLICATE_MISSILE_HITS
+extern uint32_t gnTotalGameLogicStepsExecuted;
+// Note: For the purpose of estimating required array sizes, spells like chain lightning are considered one missile group even though it contains many missiles.
+struct MissileGroupList {
+	// Array size should be the max number of spells (missile groups) a player could take damage from on a single tick.
+	std::array<uint16_t, 16> entries;
+	int numEntries = 0;
+	void AddEntry(uint16_t missileGroupID) {
+		if (numEntries < entries.size()) {
+			entries[numEntries++] = missileGroupID;
+		}
+	}
+	bool DoesEntryExist(uint16_t missileGroupID) {
+		for (int i = 0; i < numEntries; i++) {
+			if (missileGroupID == entries[i]) {
+				return true; 
+			}
+		}
+		return false;
+	}
+};
+struct MissileGroupRingBuffer {
+	// Array size should be the max number of spells (missile groups) a player could be hit with before these spells disappear from the world.
+	std::array<std::pair<uint32_t, uint32_t>, 32> entries;
+	int numEntries = 0;
+	int oldestEntry = 0;
+	void RemoveExpiredEntries() {
+		while (numEntries > 0) {
+			if (entries[oldestEntry].second < gnTotalGameLogicStepsExecuted) {
+				oldestEntry = (oldestEntry + 1) % entries.size();
+				numEntries--;
+			} else {
+				break;
+			}
+		}
+	}
+	void AddEntry(uint16_t missileGroupID) {
+		if (numEntries < entries.size()) {
+			uint32_t expiryTick = gnTotalGameLogicStepsExecuted + 100; // 20 ticks is 1 second at normal game speed.  All non-damage-over-time spells should be completed after 5 seconds
+			int index = (oldestEntry + numEntries) % entries.size();
+			entries[index] = std::pair<uint32_t, uint32_t>(missileGroupID, expiryTick);
+			numEntries++;
+		}
+	}
+	bool DoesEntryExist(uint16_t missileGroupID) {
+		for (int i = 0; i < numEntries; i++) {
+			int index = (oldestEntry + i) % entries.size();
+			if (missileGroupID == entries[index].first) {
+				return true; 
+			}
+		}
+		return false;
+	}
+};
+#endif // JWK_PREVENT_DUPLICATE_MISSILE_HITS
 
 } // namespace devilution

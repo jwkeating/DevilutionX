@@ -39,17 +39,17 @@ int storenumh;
 int8_t storehidx[48];
 Item storehold[48];
 
-Item smithitem[SMITH_ITEMS];
-int numpremium;
-int premiumlevel;
-Item premiumitems[SMITH_PREMIUM_ITEMS];
+Item gSmithBasicItems[SMITH_ITEMS];
+int gNumSmithPremiumItems;
+int gSmithPremiumItemLevel;
+Item gSmithPremiumItems[SMITH_PREMIUM_ITEMS];
 
-Item healitem[20];
+Item gHealerItems[20];
 
-Item witchitem[WITCH_ITEMS];
+Item gWitchItems[WITCH_ITEMS];
 
-int boylevel;
-Item boyitem;
+int gPlayerLevelForBoyItem;
+Item gBoyItem;
 
 namespace {
 
@@ -284,14 +284,14 @@ void PrintStoreItem(const Item &item, int l, UiFlags flags, bool cursIndent = fa
 
 	if (item._iIdentified) {
 		if (item._iMagical != ITEM_QUALITY_UNIQUE) {
-			if (item._iPrePower != -1) {
-				AppendStrView(productLine, PrintItemPower(item._iPrePower, item));
+			if (item._iPrefixPower != -1) {
+				AppendStrView(productLine, PrintItemPower(item._iPrefixPower, item));
 			}
 		}
-		if (item._iSufPower != -1) {
+		if (item._iSuffixPower != -1) {
 			if (!productLine.empty())
 				AppendStrView(productLine, _(",  "));
-			AppendStrView(productLine, PrintItemPower(item._iSufPower, item));
+			AppendStrView(productLine, PrintItemPower(item._iSuffixPower, item));
 		}
 	}
 	if (item._iMiscId == IMISC_STAFF && item._iMaxCharges != 0) {
@@ -316,9 +316,9 @@ void PrintStoreItem(const Item &item, int l, UiFlags flags, bool cursIndent = fa
 			AppendStrView(productLine, _("Indestructible,  "));
 	}
 
-	int8_t str = item._iMinStr;
+	uint8_t str = item._iMinStr;
 	uint8_t mag = item._iMinMag;
-	int8_t dex = item._iMinDex;
+	uint8_t dex = item._iMinDex;
 
 	if (str == 0 && mag == 0 && dex == 0) {
 		AppendStrView(productLine, _("No required attributes"));
@@ -372,11 +372,11 @@ void ScrollSmithBuy(int idx)
 	stextup = 5;
 
 	for (int l = 5; l < 20; l += 4) {
-		if (!smithitem[idx].isEmpty()) {
-			UiFlags itemColor = smithitem[idx].getTextColorWithStatCheck();
-			AddSText(20, l, smithitem[idx].getName(), itemColor, true, smithitem[idx]._iCurs, true);
-			AddSTextVal(l, smithitem[idx]._iIvalue);
-			PrintStoreItem(smithitem[idx], l + 1, itemColor, true);
+		if (!gSmithBasicItems[idx].isEmpty()) {
+			UiFlags itemColor = gSmithBasicItems[idx].getTextColorWithStatCheck();
+			AddSText(20, l, gSmithBasicItems[idx].getName(), itemColor, true, gSmithBasicItems[idx]._iCurs, true);
+			AddSTextVal(l, gSmithBasicItems[idx]._iIvalue);
+			PrintStoreItem(gSmithBasicItems[idx], l + 1, itemColor, true);
 			stextdown = l;
 			idx++;
 		}
@@ -410,7 +410,7 @@ void StartSmithBuy()
 	AddItemListBackButton();
 
 	storenumh = 0;
-	for (Item &item : smithitem) {
+	for (Item &item : gSmithBasicItems) {
 		if (item.isEmpty())
 			continue;
 
@@ -428,16 +428,16 @@ void ScrollSmithPremiumBuy(int boughtitems)
 
 	int idx = 0;
 	for (; boughtitems != 0; idx++) {
-		if (!premiumitems[idx].isEmpty())
+		if (!gSmithPremiumItems[idx].isEmpty())
 			boughtitems--;
 	}
 
 	for (int l = 5; l < 20 && idx < SMITH_PREMIUM_ITEMS; l += 4) {
-		if (!premiumitems[idx].isEmpty()) {
-			UiFlags itemColor = premiumitems[idx].getTextColorWithStatCheck();
-			AddSText(20, l, premiumitems[idx].getName(), itemColor, true, premiumitems[idx]._iCurs, true);
-			AddSTextVal(l, premiumitems[idx]._iIvalue);
-			PrintStoreItem(premiumitems[idx], l + 1, itemColor, true);
+		if (!gSmithPremiumItems[idx].isEmpty()) {
+			UiFlags itemColor = gSmithPremiumItems[idx].getTextColorWithStatCheck();
+			AddSText(20, l, gSmithPremiumItems[idx].getName(), itemColor, true, gSmithPremiumItems[idx]._iCurs, true);
+			AddSTextVal(l, gSmithPremiumItems[idx]._iIvalue);
+			PrintStoreItem(gSmithPremiumItems[idx], l + 1, itemColor, true);
 			stextdown = l;
 		} else {
 			l -= 4;
@@ -451,7 +451,7 @@ void ScrollSmithPremiumBuy(int boughtitems)
 bool StartSmithPremiumBuy()
 {
 	storenumh = 0;
-	for (Item &item : premiumitems) {
+	for (Item &item : gSmithPremiumItems) {
 		if (item.isEmpty())
 			continue;
 
@@ -538,6 +538,73 @@ void ScrollSmithSell(int idx)
 	stextsmax = std::max(storenumh - 4, 0);
 }
 
+#if 0 // Something like resale = 1000*isqrt(value/1000) could be used to compute resale value.  Or just use sqrtf() because this code might be client-side only so desync isn't an issue.
+static unsigned int isqrt(unsigned int n) // find square root of n using binary search
+{
+	unsigned int lo = 0;
+	unsigned int hi = n;
+	while (lo <= hi)
+	{
+		unsigned int mid = (lo + hi) / 2;
+		unsigned int sq = mid * mid;
+		if (sq == n)
+			return mid;
+		else if (sq < n)
+			lo = mid + 1;
+		else
+			hi = mid - 1;
+	}
+	return hi;
+}
+#endif
+static int ComputeResaleValue(int v)
+{
+#if JWK_ITEMS_HAVE_REDUCED_RESALE_VALUE
+	// Compute resale value using a piecewise linear scale
+	int resale = 0;
+	if (v > 1024000) {
+		// vendor doesn't pay more for items above this value
+		v = 1024000;
+	}
+	if (v > 512000) { // max contribution: 512000/25
+		resale += (v - 512000) / 25;
+		v = 512000;
+	}
+	if (v > 256000) { // max contribution: 256000/20
+		resale += (v - 256000) / 20;
+		v = 256000;
+	}
+	if (v > 128000) { // max contribution: 128000/16
+		resale += (v - 128000) / 16;
+		v = 128000;
+	}
+	if (v > 64000) { // max contribution: 64000/12
+		resale += (v - 64000) / 12;
+		v = 64000;
+	}
+	if (v > 32000) { // max contribution: 32000/10
+		resale += (v - 32000) / 10;
+		v = 32000;
+	}
+	if (v > 16000) { // max contribution: 16000/8
+		resale += (v - 16000) / 8;
+		v = 16000;
+	}
+	if (v > 8000) { // max contribution: 8000/6
+		resale += (v - 8000) / 6;
+		v = 8000;
+	}
+	if (v > 4000) { // max contribution: 4000/5
+		resale += (v - 4000) / 5;
+		v = 4000;
+	}
+	resale += v / 4; // max contribution: 1000
+	return resale;
+#else // original code:
+	return std::max(v / 4, 1);
+#endif
+}
+
 void StartSmithSell()
 {
 	stextsize = true;
@@ -560,7 +627,7 @@ void StartSmithSell()
 			if (storehold[storenumh]._iMagical != ITEM_QUALITY_NORMAL && storehold[storenumh]._iIdentified)
 				storehold[storenumh]._ivalue = storehold[storenumh]._iIvalue;
 
-			storehold[storenumh]._ivalue = std::max(storehold[storenumh]._ivalue / 4, 1);
+			storehold[storenumh]._ivalue = ComputeResaleValue(storehold[storenumh]._ivalue);
 			storehold[storenumh]._iIvalue = storehold[storenumh]._ivalue;
 			storehidx[storenumh] = i;
 			storenumh++;
@@ -577,7 +644,7 @@ void StartSmithSell()
 			if (storehold[storenumh]._iMagical != ITEM_QUALITY_NORMAL && storehold[storenumh]._iIdentified)
 				storehold[storenumh]._ivalue = storehold[storenumh]._iIvalue;
 
-			storehold[storenumh]._ivalue = std::max(storehold[storenumh]._ivalue / 4, 1);
+			storehold[storenumh]._ivalue = ComputeResaleValue(storehold[storenumh]._ivalue);
 			storehold[storenumh]._iIvalue = storehold[storenumh]._ivalue;
 			storehidx[storenumh] = -(i + 1);
 			storenumh++;
@@ -719,11 +786,11 @@ void ScrollWitchBuy(int idx)
 	stextup = 5;
 
 	for (int l = 5; l < 20; l += 4) {
-		if (!witchitem[idx].isEmpty()) {
-			UiFlags itemColor = witchitem[idx].getTextColorWithStatCheck();
-			AddSText(20, l, witchitem[idx].getName(), itemColor, true, witchitem[idx]._iCurs, true);
-			AddSTextVal(l, witchitem[idx]._iIvalue);
-			PrintStoreItem(witchitem[idx], l + 1, itemColor, true);
+		if (!gWitchItems[idx].isEmpty()) {
+			UiFlags itemColor = gWitchItems[idx].getTextColorWithStatCheck();
+			AddSText(20, l, gWitchItems[idx].getName(), itemColor, true, gWitchItems[idx]._iCurs, true);
+			AddSTextVal(l, gWitchItems[idx]._iIvalue);
+			PrintStoreItem(gWitchItems[idx], l + 1, itemColor, true);
 			stextdown = l;
 			idx++;
 		}
@@ -763,7 +830,7 @@ void StartWitchBuy()
 	AddItemListBackButton();
 
 	storenumh = 0;
-	for (Item &item : witchitem) {
+	for (Item &item : gWitchItems) {
 		if (item.isEmpty())
 			continue;
 
@@ -822,7 +889,7 @@ void StartWitchSell()
 			if (storehold[storenumh]._iMagical != ITEM_QUALITY_NORMAL && storehold[storenumh]._iIdentified)
 				storehold[storenumh]._ivalue = storehold[storenumh]._iIvalue;
 
-			storehold[storenumh]._ivalue = std::max(storehold[storenumh]._ivalue / 4, 1);
+			storehold[storenumh]._ivalue = ComputeResaleValue(storehold[storenumh]._ivalue);
 			storehold[storenumh]._iIvalue = storehold[storenumh]._ivalue;
 			storehidx[storenumh] = i;
 			storenumh++;
@@ -839,7 +906,7 @@ void StartWitchSell()
 			if (storehold[storenumh]._iMagical != ITEM_QUALITY_NORMAL && storehold[storenumh]._iIdentified)
 				storehold[storenumh]._ivalue = storehold[storenumh]._iIvalue;
 
-			storehold[storenumh]._ivalue = std::max(storehold[storenumh]._ivalue / 4, 1);
+			storehold[storenumh]._ivalue = ComputeResaleValue(storehold[storenumh]._ivalue);
 			storehold[storenumh]._iIvalue = storehold[storenumh]._ivalue;
 			storehidx[storenumh] = -(i + 1);
 			storenumh++;
@@ -868,7 +935,7 @@ void StartWitchSell()
 	AddItemListBackButton();
 }
 
-bool WitchRechargeOk(int i)
+static bool WitchRechargeOk(int i)
 {
 	const auto &item = MyPlayer->InvList[i];
 
@@ -883,11 +950,20 @@ bool WitchRechargeOk(int i)
 	return false;
 }
 
-void AddStoreHoldRecharge(Item itm, int8_t i)
+static void AddStoreHoldRecharge(const Item& item, int8_t i)
 {
-	storehold[storenumh] = itm;
-	storehold[storenumh]._ivalue += GetSpellData(itm._iSpell).staffCost();
+	storehold[storenumh] = item;
+#if JWK_EDIT_RECHARGE_COST_AT_WITCH
+	int costPerCharge = GetSpellData(item._iSpell).staffCost10;
+	if (JWK_INCREASE_VALUE_OF_STAFF_CHARGES_IF_SPELL_CANT_BE_LEARNED && GetSpellBookLevel(item._iSpell, true) < 0) { // then spell can't be learned so we shouldn't charge more for recharge
+		costPerCharge *= 5;
+	}
+	// Unlike original code, we don't charge extra if your staff has other properties.  Charging extra to recharge a better staff might make players prefer weaker staves.
+	storehold[storenumh]._ivalue = costPerCharge * (storehold[storenumh]._iMaxCharges - storehold[storenumh]._iCharges);
+#else // original code:
+	storehold[storenumh]._ivalue += GetSpellData(item._iSpell).staffCost();
 	storehold[storenumh]._ivalue = storehold[storenumh]._ivalue * (storehold[storenumh]._iMaxCharges - storehold[storenumh]._iCharges) / (storehold[storenumh]._iMaxCharges * 2);
+#endif
 	storehold[storenumh]._iIvalue = storehold[storenumh]._ivalue;
 	storehidx[storenumh] = i;
 	storenumh++;
@@ -1009,7 +1085,7 @@ void StartBoy()
 	stextscrl = false;
 	AddSText(0, 2, _("Wirt the Peg-legged boy"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSLine(5);
-	if (!boyitem.isEmpty()) {
+	if (!gBoyItem.isEmpty()) {
 		AddSText(0, 8, _("Talk to Wirt"), UiFlags::ColorBlue | UiFlags::AlignCenter, true);
 		AddSText(0, 12, _("I have something for sale,"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 		AddSText(0, 14, _("but it will cost 50 gold"), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
@@ -1031,14 +1107,14 @@ void SStartBoyBuy()
 	AddSText(20, 1, _("I have this item for sale:"), UiFlags::ColorWhitegold, false);
 	AddSLine(3);
 
-	boyitem._iStatFlag = MyPlayer->CanUseItem(boyitem);
-	UiFlags itemColor = boyitem.getTextColorWithStatCheck();
-	AddSText(20, 10, boyitem.getName(), itemColor, true, boyitem._iCurs, true);
+	gBoyItem._iStatFlag = MyPlayer->CanUseItem(gBoyItem);
+	UiFlags itemColor = gBoyItem.getTextColorWithStatCheck();
+	AddSText(20, 10, gBoyItem.getName(), itemColor, true, gBoyItem._iCurs, true);
 	if (gbIsHellfire)
-		AddSTextVal(10, boyitem._iIvalue - (boyitem._iIvalue / 4));
+		AddSTextVal(10, gBoyItem._iIvalue - (gBoyItem._iIvalue / 4));
 	else
-		AddSTextVal(10, boyitem._iIvalue + (boyitem._iIvalue / 2));
-	PrintStoreItem(boyitem, 11, itemColor, true);
+		AddSTextVal(10, gBoyItem._iIvalue + (gBoyItem._iIvalue / 2));
+	PrintStoreItem(gBoyItem, 11, itemColor, true);
 
 	{
 		// Add a Leave button. Unlike the other item list back buttons,
@@ -1082,11 +1158,11 @@ void ScrollHealerBuy(int idx)
 	ClearSText(5, 21);
 	stextup = 5;
 	for (int l = 5; l < 20; l += 4) {
-		if (!healitem[idx].isEmpty()) {
-			UiFlags itemColor = healitem[idx].getTextColorWithStatCheck();
-			AddSText(20, l, healitem[idx].getName(), itemColor, true, healitem[idx]._iCurs, true);
-			AddSTextVal(l, healitem[idx]._iIvalue);
-			PrintStoreItem(healitem[idx], l + 1, itemColor, true);
+		if (!gHealerItems[idx].isEmpty()) {
+			UiFlags itemColor = gHealerItems[idx].getTextColorWithStatCheck();
+			AddSText(20, l, gHealerItems[idx].getName(), itemColor, true, gHealerItems[idx]._iCurs, true);
+			AddSTextVal(l, gHealerItems[idx]._iIvalue);
+			PrintStoreItem(gHealerItems[idx], l + 1, itemColor, true);
 			stextdown = l;
 			idx++;
 		}
@@ -1110,7 +1186,7 @@ void StartHealerBuy()
 	AddItemListBackButton();
 
 	storenumh = 0;
-	for (Item &item : healitem) {
+	for (Item &item : gHealerItems) {
 		if (item.isEmpty())
 			continue;
 
@@ -1144,11 +1220,23 @@ bool IdItemOk(Item *i)
 	return !i->_iIdentified;
 }
 
-void AddStoreHoldId(Item itm, int8_t i)
+void AddStoreHoldId(Item item, int8_t i)
 {
-	storehold[storenumh] = itm;
+	storehold[storenumh] = item;
+#if JWK_DYNAMIC_PRICE_FOR_IDENTIFY
+	const BaseItemData& baseItemData = AllItemsList[item.IDidx];
+	int priceToID = 100;
+	if (baseItemData.itype == ItemType::Ring || baseItemData.itype == ItemType::Amulet) {
+		priceToID = 250;
+	} else {
+		priceToID = std::max(100, baseItemData.iValue / 8);
+	}
+	storehold[storenumh]._ivalue = priceToID;
+	storehold[storenumh]._iIvalue = priceToID;
+#else // original code (costs 100 to identify any item)
 	storehold[storenumh]._ivalue = 100;
 	storehold[storenumh]._iIvalue = 100;
+#endif
 	storehidx[storenumh] = i;
 	storenumh++;
 }
@@ -1261,7 +1349,7 @@ void StartTalk()
 	stextscrl = false;
 	AddSText(0, 2, fmt::format(fmt::runtime(_("Talk to {:s}")), _(TownerNames[talker])), UiFlags::ColorWhitegold | UiFlags::AlignCenter, false);
 	AddSLine(5);
-	if (gbIsSpawn) {
+	if (gbIsDemoGame) {
 		AddSText(0, 10, fmt::format(fmt::runtime(_("Talking to {:s}")), _(TownerNames[talker])), UiFlags::ColorWhite | UiFlags::AlignCenter, false);
 		AddSText(0, 12, _("is not available"), UiFlags::ColorWhite | UiFlags::AlignCenter, false);
 		AddSText(0, 14, _("in the shareware"), UiFlags::ColorWhite | UiFlags::AlignCenter, false);
@@ -1372,14 +1460,14 @@ void SmithBuyItem(Item &item)
 	StoreAutoPlace(item, true);
 	int idx = stextvhold + ((stextlhold - stextup) / 4);
 	if (idx == SMITH_ITEMS - 1) {
-		smithitem[SMITH_ITEMS - 1].clear();
+		gSmithBasicItems[SMITH_ITEMS - 1].clear();
 	} else {
-		for (; !smithitem[idx + 1].isEmpty(); idx++) {
-			smithitem[idx] = std::move(smithitem[idx + 1]);
+		for (; !gSmithBasicItems[idx + 1].isEmpty(); idx++) {
+			gSmithBasicItems[idx] = std::move(gSmithBasicItems[idx + 1]);
 		}
-		smithitem[idx].clear();
+		gSmithBasicItems[idx].clear();
 	}
-	CalcPlrInv(*MyPlayer, true);
+	CalcPlayerInventory(*MyPlayer, true);
 }
 
 void SmithBuyEnter()
@@ -1395,17 +1483,17 @@ void SmithBuyEnter()
 	stextshold = TalkID::SmithBuy;
 
 	int idx = stextsval + ((stextsel - stextup) / 4);
-	if (!PlayerCanAfford(smithitem[idx]._iIvalue)) {
+	if (!PlayerCanAfford(gSmithBasicItems[idx]._iIvalue)) {
 		StartStore(TalkID::NoMoney);
 		return;
 	}
 
-	if (!StoreAutoPlace(smithitem[idx], false)) {
+	if (!StoreAutoPlace(gSmithBasicItems[idx], false)) {
 		StartStore(TalkID::NoRoom);
 		return;
 	}
 
-	StoreItem = smithitem[idx];
+	StoreItem = gSmithBasicItems[idx];
 	StartStore(TalkID::Confirm);
 }
 
@@ -1422,15 +1510,15 @@ void SmithBuyPItem(Item &item)
 	int idx = stextvhold + ((stextlhold - stextup) / 4);
 	int xx = 0;
 	for (int i = 0; idx >= 0; i++) {
-		if (!premiumitems[i].isEmpty()) {
+		if (!gSmithPremiumItems[i].isEmpty()) {
 			idx--;
 			xx = i;
 		}
 	}
 
-	premiumitems[xx].clear();
-	numpremium--;
-	SpawnPremium(*MyPlayer);
+	gSmithPremiumItems[xx].clear();
+	gNumSmithPremiumItems--;
+	SpawnPremiumItemsForSmith(*MyPlayer);
 }
 
 void SmithPremiumBuyEnter()
@@ -1448,23 +1536,23 @@ void SmithPremiumBuyEnter()
 	int xx = stextsval + ((stextsel - stextup) / 4);
 	int idx = 0;
 	for (int i = 0; xx >= 0; i++) {
-		if (!premiumitems[i].isEmpty()) {
+		if (!gSmithPremiumItems[i].isEmpty()) {
 			xx--;
 			idx = i;
 		}
 	}
 
-	if (!PlayerCanAfford(premiumitems[idx]._iIvalue)) {
+	if (!PlayerCanAfford(gSmithPremiumItems[idx]._iIvalue)) {
 		StartStore(TalkID::NoMoney);
 		return;
 	}
 
-	if (!StoreAutoPlace(premiumitems[idx], false)) {
+	if (!StoreAutoPlace(gSmithPremiumItems[idx], false)) {
 		StartStore(TalkID::NoRoom);
 		return;
 	}
 
-	StoreItem = premiumitems[idx];
+	StoreItem = gSmithPremiumItems[idx];
 	StartStore(TalkID::Confirm);
 }
 
@@ -1624,16 +1712,16 @@ void WitchBuyItem(Item &item)
 
 	if (idx >= 3) {
 		if (idx == WITCH_ITEMS - 1) {
-			witchitem[WITCH_ITEMS - 1].clear();
+			gWitchItems[WITCH_ITEMS - 1].clear();
 		} else {
-			for (; !witchitem[idx + 1].isEmpty(); idx++) {
-				witchitem[idx] = std::move(witchitem[idx + 1]);
+			for (; !gWitchItems[idx + 1].isEmpty(); idx++) {
+				gWitchItems[idx] = std::move(gWitchItems[idx + 1]);
 			}
-			witchitem[idx].clear();
+			gWitchItems[idx].clear();
 		}
 	}
 
-	CalcPlrInv(*MyPlayer, true);
+	CalcPlayerInventory(*MyPlayer, true);
 }
 
 void WitchBuyEnter()
@@ -1650,17 +1738,17 @@ void WitchBuyEnter()
 
 	int idx = stextsval + ((stextsel - stextup) / 4);
 
-	if (!PlayerCanAfford(witchitem[idx]._iIvalue)) {
+	if (!PlayerCanAfford(gWitchItems[idx]._iIvalue)) {
 		StartStore(TalkID::NoMoney);
 		return;
 	}
 
-	if (!StoreAutoPlace(witchitem[idx], false)) {
+	if (!StoreAutoPlace(gWitchItems[idx], false)) {
 		StartStore(TalkID::NoRoom);
 		return;
 	}
 
-	StoreItem = witchitem[idx];
+	StoreItem = gWitchItems[idx];
 	StartStore(TalkID::Confirm);
 }
 
@@ -1707,7 +1795,7 @@ void WitchRechargeItem(int price)
 	}
 
 	TakePlrsMoney(price);
-	CalcPlrInv(myPlayer, true);
+	CalcPlayerInventory(myPlayer, true);
 }
 
 void WitchRechargeEnter()
@@ -1735,7 +1823,7 @@ void WitchRechargeEnter()
 
 void BoyEnter()
 {
-	if (!boyitem.isEmpty() && stextsel == 18) {
+	if (!gBoyItem.isEmpty() && stextsel == 18) {
 		if (!PlayerCanAfford(50)) {
 			stextshold = TalkID::Boy;
 			stextlhold = 18;
@@ -1748,7 +1836,7 @@ void BoyEnter()
 		return;
 	}
 
-	if ((stextsel != 8 && !boyitem.isEmpty()) || (stextsel != 12 && boyitem.isEmpty())) {
+	if ((stextsel != 8 && !gBoyItem.isEmpty()) || (stextsel != 12 && gBoyItem.isEmpty())) {
 		stextflag = TalkID::None;
 		return;
 	}
@@ -1765,7 +1853,7 @@ void BoyBuyItem(Item &item, int itemPrice)
 	StoreAutoPlace(item, true);
 	item.clear();
 	stextshold = TalkID::Boy;
-	CalcPlrInv(*MyPlayer, true);
+	CalcPlayerInventory(*MyPlayer, true);
 	stextlhold = 12;
 }
 
@@ -1797,14 +1885,14 @@ void HealerBuyItem(Item &item)
 	}
 	idx = stextvhold + ((stextlhold - stextup) / 4);
 	if (idx == 19) {
-		healitem[19].clear();
+		gHealerItems[19].clear();
 	} else {
-		for (; !healitem[idx + 1].isEmpty(); idx++) {
-			healitem[idx] = std::move(healitem[idx + 1]);
+		for (; !gHealerItems[idx + 1].isEmpty(); idx++) {
+			gHealerItems[idx] = std::move(gHealerItems[idx + 1]);
 		}
-		healitem[idx].clear();
+		gHealerItems[idx].clear();
 	}
-	CalcPlrInv(*MyPlayer, true);
+	CalcPlayerInventory(*MyPlayer, true);
 }
 
 void BoyBuyEnter()
@@ -1817,23 +1905,23 @@ void BoyBuyEnter()
 	stextshold = TalkID::BoyBuy;
 	stextvhold = stextsval;
 	stextlhold = 10;
-	int price = boyitem._iIvalue;
+	int price = gBoyItem._iIvalue;
 	if (gbIsHellfire)
-		price -= boyitem._iIvalue / 4;
+		price -= gBoyItem._iIvalue / 4;
 	else
-		price += boyitem._iIvalue / 2;
+		price += gBoyItem._iIvalue / 2;
 
 	if (!PlayerCanAfford(price)) {
 		StartStore(TalkID::NoMoney);
 		return;
 	}
 
-	if (!StoreAutoPlace(boyitem, false)) {
+	if (!StoreAutoPlace(gBoyItem, false)) {
 		StartStore(TalkID::NoRoom);
 		return;
 	}
 
-	StoreItem = boyitem;
+	StoreItem = gBoyItem;
 	StoreItem._iIvalue = price;
 	StartStore(TalkID::Confirm);
 }
@@ -1863,7 +1951,7 @@ void StorytellerIdentifyItem(Item &item)
 	}
 	item._iIdentified = true;
 	TakePlrsMoney(item._iIvalue);
-	CalcPlrInv(myPlayer, true);
+	CalcPlayerInventory(myPlayer, true);
 }
 
 void ConfirmEnter(Item &item)
@@ -1887,7 +1975,7 @@ void ConfirmEnter(Item &item)
 			WitchRechargeItem(item._iIvalue);
 			break;
 		case TalkID::BoyBuy:
-			BoyBuyItem(boyitem, item._iIvalue);
+			BoyBuyItem(gBoyItem, item._iIvalue);
 			break;
 		case TalkID::HealerBuy:
 			HealerBuyItem(item);
@@ -1949,17 +2037,17 @@ void HealerBuyEnter()
 
 	int idx = stextsval + ((stextsel - stextup) / 4);
 
-	if (!PlayerCanAfford(healitem[idx]._iIvalue)) {
+	if (!PlayerCanAfford(gHealerItems[idx]._iIvalue)) {
 		StartStore(TalkID::NoMoney);
 		return;
 	}
 
-	if (!StoreAutoPlace(healitem[idx], false)) {
+	if (!StoreAutoPlace(gHealerItems[idx], false)) {
 		StartStore(TalkID::NoRoom);
 		return;
 	}
 
-	StoreItem = healitem[idx];
+	StoreItem = gHealerItems[idx];
 	StartStore(TalkID::Confirm);
 }
 
@@ -2167,37 +2255,37 @@ void InitStores()
 	stextflag = TalkID::None;
 	stextsize = false;
 	stextscrl = false;
-	numpremium = 0;
-	premiumlevel = 1;
+	gNumSmithPremiumItems = 0;
+	gSmithPremiumItemLevel = 1;
 
-	for (auto &premiumitem : premiumitems)
+	for (auto &premiumitem : gSmithPremiumItems)
 		premiumitem.clear();
 
-	boyitem.clear();
-	boylevel = 0;
+	gBoyItem.clear();
+	gPlayerLevelForBoyItem = 0;
 }
 
 void SetupTownStores()
 {
 	Player &myPlayer = *MyPlayer;
 
-	int l = myPlayer._pLevel / 2;
+	int dungeonLevelUpTo16 = myPlayer._pLevel / 2;
 	if (!gbIsMultiplayer) {
-		l = 0;
+		dungeonLevelUpTo16 = 0;
 		for (int i = 0; i < NUMLEVELS; i++) {
 			if (myPlayer._pLvlVisited[i])
-				l = i;
+				dungeonLevelUpTo16 = i;
 		}
 	} else {
 		SetRndSeed(glSeedTbl[currlevel] * SDL_GetTicks());
 	}
 
-	l = clamp(l + 2, 6, 16);
-	SpawnSmith(l);
-	SpawnWitch(l);
-	SpawnHealer(l);
-	SpawnBoy(myPlayer._pLevel);
-	SpawnPremium(myPlayer);
+	dungeonLevelUpTo16 = clamp(dungeonLevelUpTo16 + 2, 6, 16);
+	SpawnBasicItemsForSmith(dungeonLevelUpTo16);
+	SpawnItemsForWitch(dungeonLevelUpTo16);
+	SpawnItemsForHealer(dungeonLevelUpTo16);
+	SpawnItemsForBoy(myPlayer._pLevel);
+	SpawnPremiumItemsForSmith(myPlayer);
 }
 
 void FreeStoreMem()
@@ -2323,7 +2411,7 @@ void StartStore(TalkID s)
 		break;
 	case TalkID::SmithBuy: {
 		bool hasAnyItems = false;
-		for (int i = 0; !smithitem[i].isEmpty(); i++) {
+		for (int i = 0; !gSmithBasicItems[i].isEmpty(); i++) {
 			hasAnyItems = true;
 			break;
 		}

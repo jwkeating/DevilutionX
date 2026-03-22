@@ -19,5 +19,6 @@ bool IsShopPriceValid(const Item &item);
 bool IsUniqueMonsterItemValid(uint16_t iCreateInfo, uint32_t dwBuff);
 bool IsDungeonItemValid(uint16_t iCreateInfo, uint32_t dwBuff);
 bool IsItemValid(const Item &item);
+bool DoesMonsterLevelExist(uint8_t monsterLevel, bool uniqueMonster, bool isHellfire);
 
 } // namespace devilution

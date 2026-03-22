@@ -83,12 +83,16 @@ UiFlags GetMaxHealthColor()
 
 std::pair<int, int> GetDamage()
 {
+#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE
+	int damageMod = InspectPlayer->_pIBonusDamMod + InspectPlayer->_pDamageMod;
+#else // original code
 	int damageMod = InspectPlayer->_pIBonusDamMod;
-	if (InspectPlayer->InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Bow && InspectPlayer->_pClass != HeroClass::Rogue) {
+	if (InspectPlayer->InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Bow && InspectPlayer->_pHeroClass != HeroClass::Rogue) {
 		damageMod += InspectPlayer->_pDamageMod / 2;
 	} else {
 		damageMod += InspectPlayer->_pDamageMod;
 	}
+#endif
 	int mindam = InspectPlayer->_pIMinDam + InspectPlayer->_pIBonusDam * InspectPlayer->_pIMinDam / 100 + damageMod;
 	int maxdam = InspectPlayer->_pIMaxDam + InspectPlayer->_pIBonusDam * InspectPlayer->_pIMaxDam / 100 + damageMod;
 	return { mindam, maxdam };
@@ -122,7 +126,7 @@ PanelEntry panelEntries[] = {
 	{ "", { 9, 14 }, 150, 0,
 	    []() { return StyledText { UiFlags::ColorWhite, InspectPlayer->_pName }; } },
 	{ "", { 161, 14 }, 149, 0,
-	    []() { return StyledText { UiFlags::ColorWhite, std::string(_(PlayersData[static_cast<std::size_t>(InspectPlayer->_pClass)].className)) }; } },
+	    []() { return StyledText { UiFlags::ColorWhite, std::string(_(PlayersData[static_cast<std::size_t>(InspectPlayer->_pHeroClass)].className)) }; } },
 
 	{ N_("Level"), { 57, 52 }, 57, 45,
 	    []() { return StyledText { UiFlags::ColorWhite, StrCat(InspectPlayer->_pLevel) }; } },
@@ -167,7 +171,11 @@ PanelEntry panelEntries[] = {
 	    []() { return StyledText { UiFlags::ColorWhite, FormatInteger(InspectPlayer->_pGold) }; } },
 
 	{ N_("Armor class"), { RightColumnLabelX, 163 }, 57, RightColumnLabelWidth,
+#if 1 // jwk don't include player level in armor display because that's confusing
+	    []() { return StyledText { GetValueColor(InspectPlayer->_pIBonusAC), StrCat(InspectPlayer->GetArmor()) }; } },
+#else
 	    []() { return StyledText { GetValueColor(InspectPlayer->_pIBonusAC), StrCat(InspectPlayer->GetArmor() + InspectPlayer->_pLevel * 2) }; } },
+#endif
 	{ N_("To hit"), { RightColumnLabelX, 191 }, 57, RightColumnLabelWidth,
 	    []() { return StyledText { GetValueColor(InspectPlayer->_pIBonusToHit), StrCat(InspectPlayer->InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Bow ? InspectPlayer->GetRangedToHit() : InspectPlayer->GetMeleeToHit(), "%") }; } },
 	{ N_("Damage"), { RightColumnLabelX, 219 }, 57, RightColumnLabelWidth,

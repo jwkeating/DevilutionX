@@ -274,7 +274,7 @@ void InitQuests()
 		InitialiseQuestPools(glSeedTbl[15], Quests);
 	}
 
-	if (gbIsSpawn) {
+	if (gbIsDemoGame) {
 		for (auto &quest : Quests) {
 			quest._qactive = QUEST_NOTAVAIL;
 		}
@@ -320,7 +320,7 @@ void InitialiseQuestPools(uint32_t seed, Quest quests[])
 
 void CheckQuests()
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return;
 
 	auto &quest = Quests[Q_BETRAYER];
@@ -386,7 +386,7 @@ void CheckQuests()
 
 bool ForceQuests()
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return false;
 
 	if (UseMultiplayerQuests()) {
@@ -410,7 +410,7 @@ bool ForceQuests()
 
 void CheckQuestKill(const Monster &monster, bool sendmsg)
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return;
 
 	Player &myPlayer = *MyPlayer;
@@ -558,7 +558,7 @@ void UpdatePWaterPalette()
 
 void ResyncMPQuests()
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return;
 
 	auto &kingQuest = Quests[Q_SKELKING];
@@ -606,7 +606,7 @@ void ResyncMPQuests()
 
 void ResyncQuests()
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return;
 
 	LoadingMapObjects = true;
@@ -912,7 +912,7 @@ void QuestlogESC()
 
 void SetMultiQuest(int q, quest_state s, bool log, int v1, int v2, int16_t qmsg)
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return;
 
 	auto &quest = Quests[q];

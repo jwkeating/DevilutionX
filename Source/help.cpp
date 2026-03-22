@@ -197,9 +197,9 @@ void DrawHelp(const Surface &out)
 
 	string_view title;
 	if (gbIsHellfire)
-		title = gbIsSpawn ? _("Shareware Hellfire Help") : _("Hellfire Help");
+		title = gbIsDemoGame ? _("Shareware Hellfire Help") : _("Hellfire Help");
 	else
-		title = gbIsSpawn ? _("Shareware Diablo Help") : _("Diablo Help");
+		title = gbIsDemoGame ? _("Shareware Diablo Help") : _("Diablo Help");
 
 	const Point uiPosition = GetUIRectangle().position;
 	const int sx = uiPosition.x + PaddingLeft;

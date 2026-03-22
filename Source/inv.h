@@ -212,8 +212,8 @@ void AutoGetItem(Player &player, Item *itemPointer, int ii);
  * @param ci Flags used to describe the specific subtype of the target item
  * @return An index into ActiveItems or -1 if no matching item was found
  */
-int FindGetItem(uint32_t iseed, _item_indexes idx, uint16_t ci);
-void SyncGetItem(Point position, uint32_t iseed, _item_indexes idx, uint16_t ci);
+int FindGetItem(uint32_t iseed, BaseItemIdx idx, uint16_t ci);
+void SyncGetItem(Point position, uint32_t iseed, BaseItemIdx idx, uint16_t ci);
 
 /**
  * @brief Checks if the tile has room for an item
@@ -225,7 +225,7 @@ bool CanPut(Point position);
 int ClampDurability(const Item &item, int durability);
 int16_t ClampToHit(const Item &item, int16_t toHit);
 uint8_t ClampMaxDam(const Item &item, uint8_t maxDam);
-int SyncDropItem(Point position, _item_indexes idx, uint16_t icreateinfo, int iseed, int id, int dur, int mdur, int ch, int mch, int ivalue, uint32_t ibuff, int toHit, int maxDam);
+int SyncDropItem(Point position, BaseItemIdx idx, uint16_t icreateinfo, int iseed, int id, int dur, int mdur, int ch, int mch, int ivalue, uint32_t ibuff, int toHit, int maxDam);
 int SyncDropEar(Point position, uint16_t icreateinfo, uint32_t iseed, uint8_t cursval, string_view heroname);
 int8_t CheckInvHLight();
 bool CanUseScroll(Player &player, SpellID spell);
@@ -275,7 +275,7 @@ bool HasInventoryOrBeltItem(Player &player, Predicate &&predicate)
 /**
  * @brief Checks whether the player has an inventory item with the given ID (IDidx).
  */
-inline bool HasInventoryItemWithId(Player &player, _item_indexes id)
+inline bool HasInventoryItemWithId(Player &player, BaseItemIdx id)
 {
 	return HasInventoryItem(player, [id](const Item &item) {
 		return item.IDidx == id;
@@ -285,7 +285,7 @@ inline bool HasInventoryItemWithId(Player &player, _item_indexes id)
 /**
  * @brief Checks whether the player has a belt item with the given ID (IDidx).
  */
-inline bool HasBeltItemWithId(Player &player, _item_indexes id)
+inline bool HasBeltItemWithId(Player &player, BaseItemIdx id)
 {
 	return HasBeltItem(player, [id](const Item &item) {
 		return item.IDidx == id;
@@ -295,7 +295,7 @@ inline bool HasBeltItemWithId(Player &player, _item_indexes id)
 /**
  * @brief Checks whether the player has an inventory or a belt item with the given ID (IDidx).
  */
-inline bool HasInventoryOrBeltItemWithId(Player &player, _item_indexes id)
+inline bool HasInventoryOrBeltItemWithId(Player &player, BaseItemIdx id)
 {
 	return HasInventoryItemWithId(player, id) || HasBeltItemWithId(player, id);
 }
@@ -348,7 +348,7 @@ bool RemoveInventoryOrBeltItem(Player &player, Predicate &&predicate)
  *
  * @return Whether an item was found and removed.
  */
-inline bool RemoveInventoryItemById(Player &player, _item_indexes id)
+inline bool RemoveInventoryItemById(Player &player, BaseItemIdx id)
 {
 	return RemoveInventoryItem(player, [id](const Item &item) {
 		return item.IDidx == id;
@@ -360,7 +360,7 @@ inline bool RemoveInventoryItemById(Player &player, _item_indexes id)
  *
  * @return Whether an item was found and removed.
  */
-inline bool RemoveBeltItemById(Player &player, _item_indexes id)
+inline bool RemoveBeltItemById(Player &player, BaseItemIdx id)
 {
 	return RemoveBeltItem(player, [id](const Item &item) {
 		return item.IDidx == id;
@@ -372,7 +372,7 @@ inline bool RemoveBeltItemById(Player &player, _item_indexes id)
  *
  * @return Whether an item was found and removed.
  */
-inline bool RemoveInventoryOrBeltItemById(Player &player, _item_indexes id)
+inline bool RemoveInventoryOrBeltItemById(Player &player, BaseItemIdx id)
 {
 	return RemoveInventoryItemById(player, id) || RemoveBeltItemById(player, id);
 }

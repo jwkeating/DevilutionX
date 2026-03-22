@@ -109,13 +109,16 @@ bool ReturnToMainMenu;
 /** Enable updating of player character, set to false once Diablo dies */
 bool gbProcessPlayers;
 bool gbLoadGame;
-bool cineflag;
+Uint64 gEndingCinematicTime; // for JWK_ALLOW_DIABLO_LOOT
+int gEndingCinematicCountdown; // for JWK_ALLOW_DIABLO_LOOT
 int PauseMode;
 bool gbBard;
 bool gbBarbarian;
 bool HeadlessMode = false;
 clicktype sgbMouseDown;
-uint16_t gnTickDelay = 50;
+uint16_t MaxMergeTicksForDamageNumbers = 20; // measured in "game logic ticks" to define a duration of time for displaying damage numbers.  Must be >= 1.  If == 1, damage numbers won't be merged unless they happen on the same tick.
+uint16_t gnTickDelay = 50; // 50, 33, 35, 20 milliseconds depending on chosen game speed
+uint32_t gnTotalGameLogicStepsExecuted = 0; // number of "game logic ticks"
 char gszProductName[64] = "DevilutionX vUnknown";
 
 #ifdef _DEBUG
@@ -157,7 +160,8 @@ bool was_ui_init = false;
 void StartGame(interface_mode uMsg)
 {
 	CalcViewportGeometry();
-	cineflag = false;
+	gEndingCinematicTime = UINT64_MAX;
+	gEndingCinematicCountdown = INT_MAX;
 	InitCursor();
 #ifdef _DEBUG
 	LoadDebugGFX();
@@ -440,7 +444,7 @@ void RightMouseDown(bool isShiftHeld)
 	if (pcursstashitem != StashStruct::EmptyCell && UseStashItem(pcursstashitem))
 		return;
 	if (pcurs == CURSOR_HAND) {
-		CheckPlrSpell(isShiftHeld);
+		CheckSpellAndSendCmd(isShiftHeld);
 	} else if (pcurs > CURSOR_HAND && pcurs < CURSOR_FIRSTITEM) {
 		NewCursor(CURSOR_HAND);
 	}
@@ -898,6 +902,21 @@ void RunGameLoop(interface_mode uMsg)
 		if (run_game_iteration++ == 0)
 			HeapProfilerDump("first_game_iteration");
 #endif
+		if (gEndingCinematicTime != UINT64_MAX)
+		{
+			Uint64 now = SDL_GetTicks64();
+			if (now >= gEndingCinematicTime) {
+				PrepDoEnding(); // This sets gbRunGame=false which breaks out of the game loop
+			} else {
+				int timeBetweenWarnings = 10000; // milliseconds
+				Uint64 countdown = (gEndingCinematicTime - now + timeBetweenWarnings - 1) / timeBetweenWarnings; // round up
+				if (countdown < gEndingCinematicCountdown) {
+					gEndingCinematicCountdown = countdown;
+					std::string message = fmt::format("Diablo has been defeated!  Game will end in {} seconds.", countdown * timeBetweenWarnings / 1000);
+					EventPlrMsg(message);
+				}
+			}
+		}
 	}
 
 	demo::NotifyGameLoopEnd();
@@ -916,8 +935,10 @@ void RunGameLoop(interface_mode uMsg)
 	assert(HeadlessMode || previousHandler == GameEventHandler);
 	FreeGame();
 
-	if (cineflag) {
-		cineflag = false;
+	if (gEndingCinematicTime != UINT64_MAX)
+	{
+		gEndingCinematicTime = UINT64_MAX;
+		gEndingCinematicCountdown = INT_MAX;
 		DoEnding();
 	}
 }
@@ -1157,7 +1178,7 @@ void ApplicationInit()
 void DiabloInit()
 {
 	if (forceSpawn || *sgOptions.GameMode.shareware)
-		gbIsSpawn = true;
+		gbIsDemoGame = true;
 	if (forceDiablo || *sgOptions.GameMode.gameMode == StartUpGameMode::Diablo)
 		gbIsHellfire = false;
 	if (forceHellfire)
@@ -1384,11 +1405,12 @@ void UpdateMonsterLights()
 		}
 
 		if (monster.lightId != NO_LIGHT) {
+#if !JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
 			if (monster.lightId == MyPlayer->lightId) { // Fix old saves where some monsters had 0 instead of NO_LIGHT
 				monster.lightId = NO_LIGHT;
 				continue;
 			}
-
+#endif
 			Light &light = Lights[monster.lightId];
 			if (monster.position.tile != light.position.tile) {
 				ChangeLightXY(monster.lightId, monster.position.tile);
@@ -1415,8 +1437,13 @@ void GameLogic()
 		ProcessMissiles();
 		gGameLogicStep = GameLogicStep::ProcessItems;
 		ProcessItems();
+#if JWK_FIX_LIGHTING // be consistent about order.  I think this only matters when using JWK_DEBUG_SET_LIGHTING_EQUAL_VISION
+		ProcessVisionList();
+		ProcessLightList();
+#else
 		ProcessLightList();
 		ProcessVisionList();
+#endif
 	} else {
 		gGameLogicStep = GameLogicStep::ProcessTowners;
 		ProcessTowners();
@@ -1440,6 +1467,8 @@ void GameLogic()
 	pfile_update(false);
 
 	plrctrls_after_game_logic();
+
+	gnTotalGameLogicStepsExecuted++;
 }
 
 void TimeoutCursor(bool bTimeout)
@@ -2512,7 +2541,7 @@ bool TryIconCurs()
 			DoRepair(myPlayer, pcursinvitem);
 		else if (pcursstashitem != StashStruct::EmptyCell) {
 			Item &item = Stash.stashList[pcursstashitem];
-			RepairItem(item, myPlayer._pLevel);
+			RepairItem(item, myPlayer);
 		}
 		NewCursor(CURSOR_HAND);
 		return true;
@@ -2974,9 +3003,18 @@ void LoadGameLevel(bool firstflag, lvl_entry lvldir)
 	UnstuckChargers();
 	if (leveltype != DTYPE_TOWN) {
 		memcpy(dLight, dPreLight, sizeof(dLight));                                     // resets the light on entering a level to get rid of incorrect light
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+		ChangePlayerLightXY(*MyPlayer, MyPlayer->position.tile); // forces player light refresh
+#else
 		ChangeLightXY(Players[MyPlayerId].lightId, Players[MyPlayerId].position.tile); // forces player light refresh
+#endif
+#if JWK_FIX_LIGHTING // be consistent about order.  I think this only matters when using JWK_DEBUG_SET_LIGHTING_EQUAL_VISION
+		ProcessVisionList();
+		ProcessLightList();
+#else
 		ProcessLightList();
 		ProcessVisionList();
+#endif
 	}
 
 	if (leveltype == DTYPE_CRYPT) {

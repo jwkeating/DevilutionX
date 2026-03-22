@@ -59,24 +59,24 @@ extern int8_t storehidx[48];
 extern DVL_API_FOR_TEST Item storehold[48];
 
 /** Items sold by Griswold */
-extern Item smithitem[SMITH_ITEMS];
+extern Item gSmithBasicItems[SMITH_ITEMS];
 /** Number of premium items for sale by Griswold */
-extern int numpremium;
+extern int gNumSmithPremiumItems;
 /** Base level of current premium items sold by Griswold */
-extern int premiumlevel;
+extern int gSmithPremiumItemLevel;
 /** Premium items sold by Griswold */
-extern Item premiumitems[SMITH_PREMIUM_ITEMS];
+extern Item gSmithPremiumItems[SMITH_PREMIUM_ITEMS];
 
 /** Items sold by Pepin */
-extern Item healitem[20];
+extern Item gHealerItems[20];
 
 /** Items sold by Adria */
-extern Item witchitem[WITCH_ITEMS];
+extern Item gWitchItems[WITCH_ITEMS];
 
 /** Current level of the item sold by Wirt */
-extern int boylevel;
+extern int gPlayerLevelForBoyItem;
 /** Current item sold by Wirt */
-extern Item boyitem;
+extern Item gBoyItem;
 
 void AddStoreHoldRepair(Item *itm, int8_t i);
 

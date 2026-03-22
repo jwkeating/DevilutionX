@@ -1759,7 +1759,9 @@ void CreateRoom(WorldTilePosition topLeft, WorldTilePosition bottomRight, int nR
 	if (nRoomCnt >= 80 || topLeft.x + AreaMin > bottomRight.x || topLeft.y + AreaMin > bottomRight.y)
 		return;
 
-	WorldTileDisplacement areaDisplacement = bottomRight - topLeft;
+	assert(bottomRight.x >= topLeft.x);
+	assert(bottomRight.y >= topLeft.y);
+	WorldTileDisplacement areaDisplacement = WorldTileDisplacement(bottomRight.x - topLeft.x, bottomRight.y - topLeft.y);
 	WorldTileSize area(areaDisplacement.deltaX, areaDisplacement.deltaY);
 
 	constexpr WorldTileCoord RoomMax = 10;

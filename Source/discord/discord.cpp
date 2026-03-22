@@ -88,7 +88,7 @@ std::string GetLocationString()
 
 std::string GetCharacterString()
 {
-	const string_view charClassStr = _(PlayersData[static_cast<int>(MyPlayer->_pClass)].className);
+	const string_view charClassStr = _(PlayersData[static_cast<int>(MyPlayer->_pHeroClass)].className);
 	return fmt::format(fmt::runtime(_(/* TRANSLATORS: Discord character, i.e. "Lv 6 Warrior" */ "Lv {} {}")), tracked_data.playerLevel, charClassStr);
 }
 
@@ -112,7 +112,7 @@ std::string GetTooltipString()
 std::string GetPlayerAssetString()
 {
 	char chars[5] {
-		CharChar[static_cast<int>(MyPlayer->_pClass)],
+		CharChar[static_cast<int>(MyPlayer->_pHeroClass)],
 		ArmourChar[tracked_data.playerGfx >> 4],
 		WepChar[tracked_data.playerGfx & 0xF],
 		'a',

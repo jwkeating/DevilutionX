@@ -83,7 +83,7 @@ Cutscenes PickCutscene(interface_mode uMsg)
 	case WM_DIABPREVLVL:
 	case WM_DIABTOWNWARP:
 	case WM_DIABTWARPUP: {
-		int lvl = MyPlayer->plrlevel;
+		int lvl = MyPlayer->currentDungeonLevel;
 		if (lvl == 1 && uMsg == WM_DIABNEXTLVL)
 			return CutTown;
 		if (lvl == 16 && uMsg == WM_DIABNEXTLVL)
@@ -358,7 +358,7 @@ void ShowProgress(interface_mode uMsg)
 		IncProgress();
 		FreeGameMem();
 		setlevel = false;
-		currlevel = myPlayer.plrlevel;
+		currlevel = myPlayer.currentDungeonLevel;
 		leveltype = GetLevelType(currlevel);
 		IncProgress();
 		LoadGameLevel(false, ENTRY_MAIN);
@@ -440,7 +440,7 @@ void ShowProgress(interface_mode uMsg)
 		IncProgress();
 		FreeGameMem();
 		setlevel = false;
-		currlevel = myPlayer.plrlevel;
+		currlevel = myPlayer.currentDungeonLevel;
 		leveltype = GetLevelType(currlevel);
 		IncProgress();
 		LoadGameLevel(false, ENTRY_TWARPDN);
@@ -455,7 +455,7 @@ void ShowProgress(interface_mode uMsg)
 		}
 		IncProgress();
 		FreeGameMem();
-		currlevel = myPlayer.plrlevel;
+		currlevel = myPlayer.currentDungeonLevel;
 		leveltype = GetLevelType(currlevel);
 		IncProgress();
 		LoadGameLevel(false, ENTRY_TWARPUP);
@@ -471,7 +471,7 @@ void ShowProgress(interface_mode uMsg)
 		IncProgress();
 		FreeGameMem();
 		setlevel = false;
-		currlevel = myPlayer.plrlevel;
+		currlevel = myPlayer.currentDungeonLevel;
 		leveltype = GetLevelType(currlevel);
 		IncProgress();
 		LoadGameLevel(false, ENTRY_MAIN);
@@ -500,7 +500,7 @@ void ShowProgress(interface_mode uMsg)
 	assert(previousHandler == DisableInputEventHandler);
 	IsProgress = false;
 
-	NetSendCmdLocParam2(true, CMD_PLAYER_JOINLEVEL, myPlayer.position.tile, myPlayer.plrlevel, myPlayer.plrIsOnSetLevel ? 1 : 0);
+	NetSendCmdLocParam2(true, CMD_PLAYER_JOINLEVEL, myPlayer.position.tile, myPlayer.currentDungeonLevel, myPlayer.plrIsOnSetLevel ? 1 : 0);
 	plrmsg_delay(false);
 
 	if (gbSomebodyWonGameKludge && myPlayer.isOnLevel(16)) {

@@ -142,21 +142,41 @@ void DrawMonsterHealthBar(const Surface &out)
 
 	if (multiplier > 0)
 		DrawString(out, StrCat("x", multiplier), { position, { width - 2, height } }, { UiFlags::ColorWhite | UiFlags::AlignRight | UiFlags::VerticalCenter });
-	if (monster.isUnique() || MonsterKillCounts[monster.type().type] >= 15) {
-		monster_resistance immunes[] = { IMMUNE_MAGIC, IMMUNE_FIRE, IMMUNE_LIGHTNING };
-		monster_resistance resists[] = { RESIST_MAGIC, RESIST_FIRE, RESIST_LIGHTNING };
 
-		int resOffset = 5;
-		for (size_t i = 0; i < 3; i++) {
+	int resOffset = 5;
+	int iconWidth = (*resistance)[0].width() + 2;
+#if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
+	constexpr monster_resistance immunes[] = { IMMUNE_FIRE, IMMUNE_LIGHTNING, IMMUNE_MAGIC };
+	constexpr monster_resistance resists[] = { RESIST_FIRE, RESIST_LIGHTNING, RESIST_MAGIC };
+	constexpr int permute[] = { 1, 2, 0 }; // permute from FLM to MFL to match original code order of the sprite data
+	MonsterID monsterType = monster.type().type;
+	for (size_t i = 0; i < 3; i++) {
+		if (MonsterHitWithDamage[monsterType][i] >= JWK_REVEAL_RESISTANCES_WHEN_DAMAGED) {
+			int p = permute[i];
 			if ((monster.resistance & immunes[i]) != 0) {
-				RenderClxSprite(out, (*resistance)[i * 2 + 1], position + Displacement { resOffset, height - 6 });
-				resOffset += (*resistance)[0].width() + 2;
+				RenderClxSprite(out, (*resistance)[p * 2 + 1], position + Displacement { resOffset, height - 6 });
+				resOffset += iconWidth;
 			} else if ((monster.resistance & resists[i]) != 0) {
-				RenderClxSprite(out, (*resistance)[i * 2], position + Displacement { resOffset, height - 6 });
-				resOffset += (*resistance)[0].width() + 2;
+				RenderClxSprite(out, (*resistance)[p * 2], position + Displacement { resOffset, height - 6 });
+				resOffset += iconWidth;
 			}
 		}
 	}
+#else // original code
+	constexpr monster_resistance immunes[] = { IMMUNE_MAGIC, IMMUNE_FIRE, IMMUNE_LIGHTNING };
+	constexpr monster_resistance resists[] = { RESIST_MAGIC, RESIST_FIRE, RESIST_LIGHTNING };
+	if (monster.isUnique() || MonsterKillCounts[monster.type().type] >= 15) {
+		for (size_t i = 0; i < 3; i++) {
+			if ((monster.resistance & immunes[i]) != 0) {
+				RenderClxSprite(out, (*resistance)[i * 2 + 1], position + Displacement { resOffset, height - 6 });
+				resOffset += iconWidth;
+			} else if ((monster.resistance & resists[i]) != 0) {
+				RenderClxSprite(out, (*resistance)[i * 2], position + Displacement { resOffset, height - 6 });
+				resOffset += iconWidth;
+			}
+		}
+	}
+#endif
 
 	if (Players.size() > 1) {
 		int tagOffset = 5;

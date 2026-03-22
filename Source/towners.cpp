@@ -345,7 +345,7 @@ void TalkToBarOwner(Player &player, Towner &barOwner)
 				bannerQuest._qactive = QUEST_DONE;
 				bannerQuest._qvar1 = 3;
 				NetSendCmdQuest(true, bannerQuest);
-				SpawnUnique(UITEM_HARCREST, barOwner.position + Direction::SouthWest, bannerQuest._qlevel);
+				CreateUniqueItem(UITEM_HARCREST, barOwner.position + Direction::SouthWest);
 				InitQTextMsg(TEXT_BANNER3);
 				return;
 			}
@@ -393,7 +393,7 @@ void TalkToBlackSmith(Player &player, Towner &blackSmith)
 			if (Quests[Q_ROCK]._qvar2 == 1 && RemoveInventoryItemById(player, IDI_ROCK)) {
 				Quests[Q_ROCK]._qactive = QUEST_DONE;
 				NetSendCmdQuest(true, Quests[Q_ROCK]);
-				SpawnUnique(UITEM_INFRARING, blackSmith.position + Direction::SouthWest, Quests[Q_ROCK]._qlevel);
+				CreateUniqueItem(UITEM_INFRARING, blackSmith.position + Direction::SouthWest);
 				InitQTextMsg(TEXT_INFRA7);
 				return;
 			}
@@ -414,7 +414,7 @@ void TalkToBlackSmith(Player &player, Towner &blackSmith)
 		if (Quests[Q_ANVIL]._qvar2 == 1 && RemoveInventoryItemById(player, IDI_ANVIL)) {
 			Quests[Q_ANVIL]._qactive = QUEST_DONE;
 			NetSendCmdQuest(true, Quests[Q_ANVIL]);
-			SpawnUnique(UITEM_GRISWOLD, blackSmith.position + Direction::SouthWest, Quests[Q_ANVIL]._qlevel);
+			CreateUniqueItem(UITEM_GRISWOLD, blackSmith.position + Direction::SouthWest);
 			InitQTextMsg(TEXT_ANVIL7);
 			return;
 		}
@@ -512,7 +512,7 @@ void TalkToHealer(Player &player, Towner &healer)
 		if (poisonWater._qactive == QUEST_DONE && poisonWater._qvar1 != 2) {
 			poisonWater._qvar1 = 2;
 			InitQTextMsg(TEXT_POISON5);
-			SpawnUnique(UITEM_TRING, healer.position + Direction::SouthWest, poisonWater._qlevel);
+			CreateUniqueItem(UITEM_TRING, healer.position + Direction::SouthWest);
 			NetSendCmdQuest(true, poisonWater);
 			return;
 		}
@@ -584,11 +584,11 @@ void TalkToCow(Player &player, Towner &cow)
 
 	CowPlaying = TSFX_COW1;
 	if (CowClicks == 4) {
-		if (gbIsSpawn)
+		if (gbIsDemoGame)
 			CowClicks = 0;
 
 		CowPlaying = TSFX_COW2;
-	} else if (CowClicks >= 8 && !gbIsSpawn) {
+	} else if (CowClicks >= 8 && !gbIsDemoGame) {
 		CowClicks = 4;
 
 		static const HeroSpeech SnSfx[3] = {
@@ -671,7 +671,7 @@ void TalkToCowFarmer(Player &player, Towner &cowFarmer)
 	auto &quest = Quests[Q_JERSEY];
 
 	if (RemoveInventoryItemById(player, IDI_BROWNSUIT)) {
-		SpawnUnique(UITEM_BOVINE, cowFarmer.position + Direction::SouthEast, quest._qlevel);
+		CreateUniqueItem(UITEM_BOVINE, cowFarmer.position + Direction::SouthEast);
 		InitQTextMsg(TEXT_JERSEY8);
 		quest._qactive = QUEST_DONE;
 		UpdateCowFarmerAnimAfterQuestComplete();
@@ -751,7 +751,7 @@ void TalkToGirl(Player &player, Towner &girl)
 
 	if (quest._qactive != QUEST_DONE && RemoveInventoryItemById(player, IDI_THEODORE)) {
 		InitQTextMsg(TEXT_GIRL4);
-		CreateAmulet(girl.position, 13, false, false, true);
+		CreateRandomItemOfTypeOrMisc(girl.position, ItemType::Amulet, IMISC_AMULET, true, false, false, true);
 		quest._qactive = QUEST_DONE;
 		UpdateGirlAnimAfterQuestComplete();
 		if (gbIsMultiplayer)

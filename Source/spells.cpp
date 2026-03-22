@@ -100,52 +100,64 @@ bool TargetsMonster(SpellID id)
 	    || id == SpellID::FlameWave;
 }
 
-int GetManaAmount(const Player &player, SpellID sn)
+int GetManaAmount(const Player &player, SpellID spellID)
 {
-	int ma; // mana amount
+	// spell level
+	int spellLvlMinus1 = std::max(player.GetSpellLevel(spellID) - 1, 0);
 
 	// mana adjust
 	int adj = 0;
-
-	// spell level
-	int sl = std::max(player.GetSpellLevel(sn) - 1, 0);
-
-	if (sl > 0) {
-		adj = sl * GetSpellData(sn).sManaAdj;
+	if (spellLvlMinus1 > 0) {
+		adj = spellLvlMinus1 * GetSpellData(spellID).sManaAdj;
 	}
-	if (sn == SpellID::Firebolt) {
+	if (spellID == SpellID::Firebolt) {
+#if 1 // This reduces mana cost slower, resulting in a 2 mana cost bolt at lvl 15 and a 1 mana cost bolt at lvl 16
+		adj /= 3;
+#else // original code
 		adj /= 2;
-	}
-	if (sn == SpellID::Resurrect && sl > 0) {
-		adj = sl * (GetSpellData(SpellID::Resurrect).sManaCost / 8);
+#endif
 	}
 
-	if (sn == SpellID::Healing || sn == SpellID::HealOther) {
+	int ma; // mana amount
+	if (spellID == SpellID::Healing || spellID == SpellID::HealOther) {
+#if 1 // jwk - heal spell mana cost
+		ma = std::max(5, 5 + player._pLevel - std::max(0, spellLvlMinus1));
+#else // original code
 		ma = (GetSpellData(SpellID::Healing).sManaCost + 2 * player._pLevel - adj);
-	} else if (GetSpellData(sn).sManaCost == 255) {
+#endif
+#if JWK_EDIT_MANA_SHIELD // make mana shield expensive to cast, proportional to your base mana
+	} else if (spellID == SpellID::ManaShield) {
+		int percentOfBaseMana = 80 - 2 * spellLvlMinus1;
+		ma = std::max(1, (percentOfBaseMana * player._pMaxManaBase / 100) >> 6);
+#endif
+	} else if (GetSpellData(spellID).sManaCost == 255) {
 		ma = (player._pMaxManaBase >> 6) - adj;
 	} else {
-		ma = (GetSpellData(sn).sManaCost - adj);
+		ma = (GetSpellData(spellID).sManaCost - adj);
 	}
 
 	ma = std::max(ma, 0);
 	ma <<= 6;
 
-	if (gbIsHellfire && player._pClass == HeroClass::Sorcerer) {
+#if 0 // jwk - don't give specific classes spell mana cost discounts
+	if (gbIsHellfire && player._pHeroClass == HeroClass::Sorcerer) {
 		ma /= 2;
-	} else if (player._pClass == HeroClass::Rogue || player._pClass == HeroClass::Monk || player._pClass == HeroClass::Bard) {
+	} else if (player._pHeroClass == HeroClass::Rogue || player._pHeroClass == HeroClass::Monk || player._pHeroClass == HeroClass::Bard) {
 		ma -= ma / 4;
 	}
+#endif
 
-	if (GetSpellData(sn).sMinMana > ma >> 6) {
-		ma = GetSpellData(sn).sMinMana << 6;
+	if (GetSpellData(spellID).sMinMana > ma >> 6) {
+		ma = GetSpellData(spellID).sMinMana << 6;
 	}
 
 	return ma;
 }
 
-void ConsumeSpell(Player &player, SpellID sn)
+void ConsumeSpell(Player &player, SpellID spellID, int manaCostMultiplier)
 {
+	if (JWK_GOD_MODE_SPELLS_COST_NOTHING) { return; }
+
 	switch (player.executedSpell.spellType) {
 	case SpellType::Skill:
 	case SpellType::Invalid:
@@ -161,17 +173,21 @@ void ConsumeSpell(Player &player, SpellID sn)
 		if (DebugGodMode)
 			break;
 #endif
-		int ma = GetManaAmount(player, sn);
-		player._pMana -= ma;
-		player._pManaBase -= ma;
-		RedrawComponent(PanelDrawComponent::Mana);
+		if (manaCostMultiplier != 0) {
+			int ma = manaCostMultiplier * GetManaAmount(player, spellID);
+			player._pMana -= ma;
+			player._pManaBase -= ma;
+			RedrawComponent(PanelDrawComponent::Mana);
+		}
 		break;
 	}
-	if (sn == SpellID::BloodStar) {
-		ApplyPlrDamage(DamageType::Physical, player, 5);
-	}
-	if (sn == SpellID::BoneSpirit) {
-		ApplyPlrDamage(DamageType::Physical, player, 6);
+	if (manaCostMultiplier != 0) {
+		if (spellID == SpellID::BloodStar) {
+			ApplyPlrDamage(DamageType::Physical, player, 5 * manaCostMultiplier, 0, 0, 100, DeathReason::MonsterOrTrap);
+		}
+		if (spellID == SpellID::BoneSpirit) {
+			ApplyPlrDamage(DamageType::Physical, player, 6 * manaCostMultiplier, 0, 0, 100, DeathReason::MonsterOrTrap);
+		}
 	}
 }
 
@@ -182,8 +198,11 @@ void EnsureValidReadiedSpell(Player &player)
 	}
 }
 
-SpellCheckResult CheckSpell(const Player &player, SpellID sn, SpellType st, bool manaonly)
+SpellCheckResult CheckSpell(const Player &player, SpellID spellID, SpellType st, bool manaonly)
 {
+#if JWK_GOD_MODE_SPELLS_COST_NOTHING
+	return SpellCheckResult::Success;
+#endif
 #ifdef _DEBUG
 	if (DebugGodMode)
 		return SpellCheckResult::Success;
@@ -197,39 +216,80 @@ SpellCheckResult CheckSpell(const Player &player, SpellID sn, SpellType st, bool
 		return SpellCheckResult::Success;
 	}
 
-	if (player.GetSpellLevel(sn) <= 0) {
+	if (player.GetSpellLevel(spellID) <= 0) {
 		return SpellCheckResult::Fail_Level0;
 	}
 
-	if (player._pMana < GetManaAmount(player, sn)) {
-		return SpellCheckResult::Fail_NoMana;
+	if (st != SpellType::Spell) {
+		__debugbreak(); // jwk - can this ever happen?
+	}
+
+#if JWK_EDIT_GOLEM // Allow removing golem for free (no mana cost)
+	if (spellID == SpellID::Golem && &player == MyPlayer && Monsters[MyPlayerId].position.tile != GolemHoldingCell) {
+		return SpellCheckResult::Success;
+	}
+#endif
+
+	if (!JWK_ALLOW_MANA_COST_MODIFIER || player._pManaCostMod >= 0 || st != SpellType::Spell) { // Only fail for lack of mana if there's no chance of free spell
+		if (player._pMana < GetManaAmount(player, spellID)) {
+			return SpellCheckResult::Fail_NoMana;
+		}
 	}
 
 	return SpellCheckResult::Success;
 }
 
-void CastSpell(int id, SpellID spl, int sx, int sy, int dx, int dy, int spllvl)
+void CastSpell(int playerID, SpellID spellID, int sx, int sy, int dx, int dy, int spllvl)
 {
-	Player &player = Players[id];
+	Player &player = Players[playerID];
 	Direction dir = player._pdir;
-	if (IsWallSpell(spl)) {
+	if (IsWallSpell(spellID)) {
 		dir = player.tempDirection;
 	}
 
-	bool fizzled = false;
-	const SpellData &spellData = GetSpellData(spl);
-	for (size_t i = 0; i < sizeof(spellData.sMissiles) / sizeof(spellData.sMissiles[0]) && spellData.sMissiles[i] != MissileID::Null; i++) {
-		Missile *missile = AddMissile({ sx, sy }, { dx, dy }, dir, spellData.sMissiles[i], TARGET_MONSTERS, id, 0, spllvl);
-		fizzled |= (missile == nullptr);
+	int manaCostMultiplier = 1;
+	if (JWK_ALLOW_MANA_COST_MODIFIER && player._pManaCostMod != 0 && player.executedSpell.spellType == SpellType::Spell)
+	{
+		if (player._pManaCostMod < 0) {
+			if (GenerateRnd(100) < -player._pManaCostMod) {
+				manaCostMultiplier = 0; // free spell
+			}
+		} else {
+			if (GenerateRnd(100) < player._pManaCostMod) {
+				manaCostMultiplier = 2; // costly spell
+			}
+		}
+		if (manaCostMultiplier != 0 && player._pMana < manaCostMultiplier * GetManaAmount(player, spellID)) {
+			if (MyPlayer == &player) {
+				MyPlayer->Say(HeroSpeech::NotEnoughMana);
+			}
+			return;
+		}
 	}
-	if (spl == SpellID::ChargedBolt) {
-		for (int i = (spllvl / 2) + 3; i > 0; i--) {
-			Missile *missile = AddMissile({ sx, sy }, { dx, dy }, dir, MissileID::ChargedBolt, TARGET_MONSTERS, id, 0, spllvl);
+
+	bool fizzled = false;
+	if (spellID == SpellID::ChargedBolt) {
+		int numBolts = GetNumberOfChargedBolts(spllvl);
+		for (int i = numBolts; i > 0; i--) {
+			Missile *missile = AddMissile({ sx, sy }, { dx, dy }, dir, MissileID::ChargedBolt, TARGET_MONSTERS, playerID, 0, spllvl);
+			fizzled |= (missile == nullptr);
+		}
+#if JWK_EDIT_GOLEM // Allow removing golem for free (no mana cost)
+	} else if (spellID == SpellID::Golem && Monsters[playerID].position.tile != GolemHoldingCell) {
+		KillPlayerGolem(playerID);
+		fizzled = true;
+#endif	
+	} else {
+		const SpellData &spellData = GetSpellData(spellID);
+		Missile* missile = nullptr;
+		for (size_t i = 0; i < sizeof(spellData.sMissiles) / sizeof(spellData.sMissiles[0]) && spellData.sMissiles[i] != MissileID::Null; i++) {
+			missile = AddMissile({ sx, sy }, { dx, dy }, dir, spellData.sMissiles[i], TARGET_MONSTERS, playerID, 0, spllvl, missile);
 			fizzled |= (missile == nullptr);
 		}
 	}
+
 	if (!fizzled) {
-		ConsumeSpell(player, spl);
+		ConsumeSpell(player, spellID, manaCostMultiplier);
 	}
 }
 
@@ -268,7 +328,7 @@ void DoResurrect(size_t pnum, Player &target)
 
 	target._pmode = PM_STAND;
 
-	CalcPlrInv(target, true);
+	CalcPlayerInventory(target, true);
 
 	if (target.isOnActiveLevel()) {
 		StartStand(target, target._pdir);
@@ -281,6 +341,9 @@ void DoHealOther(const Player &caster, Player &target)
 		return;
 	}
 
+#if 1 // jwk - be consistent with heal other defined in missiles.cpp
+	int hp = CalcHealOtherAmount(caster, target, caster.GetSpellLevel(SpellID::HealOther)) << 6;
+#else // original code, identical to missiles.cpp except monk is *3 instead of *2
 	int hp = (GenerateRnd(10) + 1) << 6;
 	for (int i = 0; i < caster._pLevel; i++) {
 		hp += (GenerateRnd(4) + 1) << 6;
@@ -289,14 +352,14 @@ void DoHealOther(const Player &caster, Player &target)
 		hp += (GenerateRnd(6) + 1) << 6;
 	}
 
-	if (caster._pClass == HeroClass::Warrior || caster._pClass == HeroClass::Barbarian) {
+	if (caster._pHeroClass == HeroClass::Warrior || caster._pHeroClass == HeroClass::Barbarian) {
 		hp *= 2;
-	} else if (caster._pClass == HeroClass::Rogue || caster._pClass == HeroClass::Bard) {
+	} else if (caster._pHeroClass == HeroClass::Rogue || caster._pHeroClass == HeroClass::Bard) {
 		hp += hp / 2;
-	} else if (caster._pClass == HeroClass::Monk) {
+	} else if (caster._pHeroClass == HeroClass::Monk) {
 		hp *= 3;
 	}
-
+#endif
 	target._pHitPoints = std::min(target._pHitPoints + hp, target._pMaxHP);
 	target._pHPBase = std::min(target._pHPBase + hp, target._pMaxHPBase);
 
@@ -305,9 +368,9 @@ void DoHealOther(const Player &caster, Player &target)
 	}
 }
 
-int GetSpellBookLevel(SpellID s)
+int GetSpellBookLevel(SpellID s, bool onlyLearnable)
 {
-	if (gbIsSpawn) {
+	if (gbIsDemoGame) {
 		switch (s) {
 		case SpellID::StoneCurse:
 		case SpellID::Guardian:
@@ -322,41 +385,20 @@ int GetSpellBookLevel(SpellID s)
 	}
 
 	if (!gbIsHellfire) {
-		switch (s) {
-		case SpellID::Nova:
-		case SpellID::Apocalypse:
-			return -1;
-		default:
-			if (s > SpellID::LastDiablo)
+		if (s == SpellID::Nova) {
+			if (onlyLearnable && !JWK_EDIT_NOVA) {
 				return -1;
-			break;
+			}
+		} else if (s == SpellID::Apocalypse) {
+			if (onlyLearnable) {
+				return -1;
+			}
+		} else if (s > SpellID::LastDiablo) {
+			return -1;
 		}
 	}
 
 	return GetSpellData(s).sBookLvl;
-}
-
-int GetSpellStaffLevel(SpellID s)
-{
-	if (gbIsSpawn) {
-		switch (s) {
-		case SpellID::StoneCurse:
-		case SpellID::Guardian:
-		case SpellID::Golem:
-		case SpellID::Apocalypse:
-		case SpellID::Elemental:
-		case SpellID::BloodStar:
-		case SpellID::BoneSpirit:
-			return -1;
-		default:
-			break;
-		}
-	}
-
-	if (!gbIsHellfire && s > SpellID::LastDiablo)
-		return -1;
-
-	return GetSpellData(s).sStaffLvl;
 }
 
 } // namespace devilution

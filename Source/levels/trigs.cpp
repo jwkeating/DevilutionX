@@ -71,7 +71,7 @@ void InitNoTriggers()
 
 bool IsWarpOpen(dungeon_type type)
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return false;
 
 	if (gbIsMultiplayer && type != DTYPE_NEST) // Opening the nest is part of in town quest
@@ -871,7 +871,7 @@ void CheckTriggers()
 
 		switch (trigs[i]._tmsg) {
 		case WM_DIABNEXTLVL:
-			if (gbIsSpawn && currlevel >= 2) {
+			if (gbIsDemoGame && currlevel >= 2) {
 				NetSendCmdLoc(MyPlayerId, true, CMD_WALKXY, { myPlayer.position.tile.x, myPlayer.position.tile.y + 1 });
 				myPlayer.Say(HeroSpeech::NotAChance);
 				InitDiabloMsg(EMSG_NOT_IN_SHAREWARE);

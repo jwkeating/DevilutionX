@@ -135,7 +135,7 @@ void InitQuestText()
 void InitQTextMsg(_speech_id m)
 {
 	_sfx_id sfxnr = Speeches[m].sfxnr;
-	const _sfx_id *classSounds = herosounds[static_cast<size_t>(MyPlayer->_pClass)];
+	const _sfx_id *classSounds = herosounds[static_cast<size_t>(MyPlayer->_pHeroClass)];
 	switch (sfxnr) {
 	case PS_WARR1:
 		sfxnr = classSounds[static_cast<size_t>(HeroSpeech::ChamberOfBoneLore)];

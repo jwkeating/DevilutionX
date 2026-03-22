@@ -14,15 +14,15 @@
 namespace devilution {
 
 /** @todo add missing values and apply */
-enum _item_indexes : int16_t { // TODO defines all indexes in AllItemsList
+enum BaseItemIdx : int16_t { // This defines named constants for indexing the AllItemsList array in itemdat.cpp
+// jwk - There's a bunch of missing indices in this enum but that just means the integer hasn't been named.  Basically, any item index that isn't referred by name doesn't need to be in this enum.
 	IDI_GOLD,
 	IDI_WARRIOR,
 	IDI_WARRSHLD,
 	IDI_WARRCLUB,
 	IDI_ROGUE,
 	IDI_SORCERER,
-	IDI_CLEAVER,
-	IDI_FIRSTQUEST = IDI_CLEAVER,
+	IDI_CLEAVER, IDI_FIRSTQUEST = IDI_CLEAVER,
 	IDI_SKCROWN,
 	IDI_INFRARING,
 	IDI_ROCK,
@@ -38,8 +38,7 @@ enum _item_indexes : int16_t { // TODO defines all indexes in AllItemsList
 	IDI_FUNGALTM,
 	IDI_SPECELIX,
 	IDI_BLDSTONE,
-	IDI_MAPOFDOOM,
-	IDI_LASTQUEST = IDI_MAPOFDOOM,
+	IDI_MAPOFDOOM, IDI_LASTQUEST = IDI_MAPOFDOOM,
 	IDI_EAR,
 	IDI_HEAL,
 	IDI_MANA,
@@ -65,17 +64,124 @@ enum _item_indexes : int16_t { // TODO defines all indexes in AllItemsList
 	IDI_FULLNOTE,
 	IDI_BROWNSUIT,
 	IDI_GREYSUIT,
+	// ...missing entries...
+	IDI_ELIXSTR = 87,
+	IDI_ELIXMAG,
+	IDI_ELIXDEX,
+	IDI_ELIXVIT,
+	// ...missing entries...
 	IDI_BOOK1 = 114,
 	IDI_BOOK2,
 	IDI_BOOK3,
 	IDI_BOOK4,
+	// ...missing entries...
 	IDI_BARBARIAN = 139,
+	// ...missing entries...
+	IDI_RING = 156,
+	// ...missing entries...
+	IDI_AMULET = 159,
+	// ...missing entries...
 	IDI_RUNEOFSTONE = 165,
 	IDI_SORCERER_DIABLO,
 	IDI_ARENAPOT,
 
 	IDI_LAST = IDI_ARENAPOT,
 	IDI_NONE = -1,
+};
+
+enum UniqueItemIdx : int8_t { // index into the UniqueItems[] array
+// jwk - There's a bunch of missing indices in this enum but that just means the integer hasn't been named.  Basically, any item index that isn't referred by name doesn't need to be in this enum.
+	UITEM_CLEAVER,
+	UITEM_SKCROWN,
+	UITEM_INFRARING,
+	UITEM_OPTAMULET,
+	UITEM_TRING,
+	UITEM_HARCREST,
+	UITEM_STEELVEIL,
+	UITEM_ARMOFVAL,
+	UITEM_GRISWOLD,
+	UITEM_BOVINE,
+	UITEM_RIFTBOW,
+	UITEM_NEEDLER,
+	UITEM_CELESTBOW,
+	UITEM_DEADLYHUNT,
+	UITEM_BOWOFDEAD,
+	UITEM_BLKOAKBOW,
+	UITEM_FLAMEDART,
+	UITEM_FLESHSTING,
+	UITEM_WINDFORCE,
+	UITEM_EAGLEHORN,
+	UITEM_GONNAGALDIRK,
+	UITEM_DEFENDER,
+	UITEM_GRYPHONCLAW,
+	UITEM_BLACKRAZOR,
+	UITEM_GIBBOUSMOON,
+	UITEM_ICESHANK,
+	UITEM_EXECUTIONER,
+	UITEM_BONESAW,
+	UITEM_SHADHAWK,
+	UITEM_WIZSPIKE,
+	UITEM_LGTSABRE,
+	UITEM_FALCONTALON,
+	UITEM_INFERNO,
+	UITEM_DOOMBRINGER,
+	UITEM_GRIZZLY,
+	UITEM_GRANDFATHER,
+	UITEM_MANGLER,
+	UITEM_SHARPBEAK,
+	UITEM_BLOODLSLAYER,
+	UITEM_CELESTAXE,
+	UITEM_WICKEDAXE,
+	UITEM_STONECLEAV,
+	UITEM_AGUHATCHET,
+	UITEM_HELLSLAYER,
+	UITEM_MESSERREAVER,
+	UITEM_CRACKRUST,
+	UITEM_JHOLMHAMM,
+	UITEM_CIVERBS,
+	UITEM_CELESTSTAR,
+	UITEM_BARANSTAR,
+	UITEM_GNARLROOT,
+	UITEM_CRANBASH,
+	UITEM_SCHAEFHAMM,
+	UITEM_DREAMFLANGE,
+	UITEM_STAFFOFSHAD,
+	UITEM_IMMOLATOR,
+	UITEM_STORMSPIRE,
+	UITEM_GLEAMSONG,
+	UITEM_THUNDERCALL,
+	UITEM_PROTECTOR,
+	UITEM_NAJPUZZLE,
+	UITEM_MINDCRY,
+	UITEM_RODOFONAN,
+	UITEM_SPIRITSHELM,
+	UITEM_THINKINGCAP,
+	UITEM_OVERLORDHELM,
+	UITEM_FOOLSCREST,
+	UITEM_GOTTERDAM,
+	UITEM_ROYCIRCLET,
+	UITEM_TORNFLESH,
+	UITEM_GLADBANE,
+	UITEM_RAINCLOAK,
+	UITEM_LEATHAUT,
+	UITEM_WISDWRAP,
+	UITEM_SPARKMAIL,
+	UITEM_SCAVCARAP,
+	UITEM_NIGHTSCAPE,
+	UITEM_NAJPLATE,
+	UITEM_DEMONSPIKE,
+	UITEM_DEFLECTOR,
+	UITEM_SKULLSHLD,
+	UITEM_DRAGONBRCH,
+	UITEM_BLKOAKSHLD,
+	UITEM_HOLYDEF,
+	UITEM_STORMSHLD,
+	UITEM_BRAMBLE,
+	UITEM_REGHA,
+	UITEM_BLEEDER,
+	UITEM_CONSTRICT,
+	UITEM_ENGAGE,
+	UITEM_INVALID = -1,
 };
 
 enum item_drop_rate : uint8_t {
@@ -338,6 +444,7 @@ enum class ItemSpecialEffect : uint32_t {
 	FireDamage             = 1 << 4,
 	LightningDamage        = 1 << 5,
 	DrainLife              = 1 << 6,
+	FastCast               = 1 << 7, // JWK_ALLOW_FASTER_CASTING
 	MultipleArrows         = 1 << 9,
 	Knockback              = 1 << 11,
 	StealMana3             = 1 << 13,
@@ -436,16 +543,16 @@ enum item_misc_id : int8_t {
 	IMISC_INVALID = -1,
 };
 
-struct ItemData {
+struct BaseItemData {
 	enum item_drop_rate iRnd;
 	enum item_class iClass;
 	enum item_equip_type iLoc;
 	enum item_cursor_graphic iCurs;
 	enum ItemType itype;
 	enum unique_base_item iItemId;
-	const char *iName;
-	const char *iSName;
-	uint8_t iMinMLvl;
+	const char *iName;  // full name:  "Studded Leather Armor"
+	const char *iSName; // short name: "Armor"  -  used instead of the full name if the full name is too long to fit in UI character limit
+	uint8_t iMinMLvl; // Indicates what monster level is required to drop this item.  This is BASE ITEM level, not to be confused with level requirements for prefixes and suffixes.
 	uint8_t iDurability;
 	uint8_t iMinDam;
 	uint8_t iMaxDam;
@@ -461,7 +568,7 @@ struct ItemData {
 	uint16_t iValue;
 };
 
-enum item_effect_type : int8_t {
+enum item_effect_type : int8_t { // I don't think this enum is used to index any array, so the numerical values are just for save/load compatability with vanilla game
 	IPL_TOHIT,
 	IPL_TOHIT_CURSE,
 	IPL_DAMP,
@@ -543,6 +650,10 @@ enum item_effect_type : int8_t {
 	IPL_ACUNDEAD,
 	IPL_MANATOLIFE,
 	IPL_LIFETOMANA,
+	IPL_FIRST_JWK,
+	IPL_FASTCAST = IPL_FIRST_JWK, // JWK_ALLOW_FASTER_CASTING
+	IPL_MANA_COST, // JWK_ALLOW_MANA_COST_MODIFIER
+	IPL_MANA_COST_CURSE, // JWK_ALLOW_MANA_COST_MODIFIER
 	IPL_INVALID = -1,
 };
 
@@ -571,17 +682,18 @@ struct ItemPower {
 	int param2 = 0;
 };
 
-struct PLStruct {
+struct ItemAffixData {
 	const char *PLName;
 	ItemPower power;
 	int8_t PLMinLvl;
 	AffixItemType PLIType; // AffixItemType as bit flags
-	enum goodorevil PLGOE;
-	bool PLDouble;
-	bool PLOk;
-	int minVal;
-	int maxVal;
-	int multVal;
+	enum goodorevil PLGOE; // Good or Evil (from a lore perspective).  Not necessarily related to helpful/harmful.  Used to avoid generating items like "Angel's staff of the dark" which have both "good" and "evil" affixes
+	bool PLDouble; // If true, this affix has double the chance of occuring on generated items
+	bool PLOk; // True if the affix can be helpful on an item.  False if it's a harmful affix.
+	bool PLDesirable; // jwk - I added this attribute to mark item affixes as "desirable" so the affix won't be skipped when the affix would otherwise be considered too low level.
+	int minVal; // for determining gold value
+	int maxVal; // for determining gold value
+	int multVal; // for determining gold value
 };
 
 struct UniqueItem {
@@ -593,9 +705,9 @@ struct UniqueItem {
 	ItemPower powers[6];
 };
 
-extern const ItemData AllItemsList[];
-extern const PLStruct ItemPrefixes[];
-extern const PLStruct ItemSuffixes[];
+extern const BaseItemData AllItemsList[];
+extern const ItemAffixData ItemPrefixes[];
+extern const ItemAffixData ItemSuffixes[];
 extern const UniqueItem UniqueItems[];
 
 } // namespace devilution

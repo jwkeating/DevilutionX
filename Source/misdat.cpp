@@ -27,7 +27,7 @@ constexpr auto Invisible = MissileDataFlags::Invisible;
 } // namespace
 
 /** Data related to each missile ID. */
-const MissileData MissilesData[] = {
+const MissileData MissilesData[] = { // This array is indexed by MissileID in spelldat.h
 	// clang-format off
 // id                      mAddProc,                mProc,                        mlSFX,       miSFX,       mFileNum,                               flags,                 MovementDistribution;
 /*Arrow*/                { &AddArrow,               &ProcessArrow,                SFX_NONE,    SFX_NONE,    MissileGraphicID::Arrow,                Physical | Arrow,      MissileMovementDistribution::Blockable   },
@@ -35,7 +35,7 @@ const MissileData MissilesData[] = {
 /*Guardian*/             { &AddGuardian,            &ProcessGuardian,             LS_GUARD,    LS_GUARDLAN, MissileGraphicID::Guardian,             Physical,              MissileMovementDistribution::Disabled    },
 /*Phasing*/              { &AddPhasing,             &ProcessTeleport,             LS_TELEPORT, SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*NovaBall*/             { &AddNovaBall,            &ProcessNovaBall,             SFX_NONE,    SFX_NONE,    MissileGraphicID::Lightning,            Lightning,             MissileMovementDistribution::Unblockable },
-/*FireWall*/             { &AddFireWall,            &ProcessFireWall,             LS_WALLLOOP, LS_FIRIMP2,  MissileGraphicID::FireWall,             Fire,                  MissileMovementDistribution::Disabled    },
+/*FireWall*/             { &AddFireWallTile,        &ProcessFireWallTile,         LS_WALLLOOP, LS_FIRIMP2,  MissileGraphicID::FireWall,             Fire,                  MissileMovementDistribution::Disabled    },
 /*Fireball*/             { &AddFireball,            &ProcessFireball,             LS_FBOLT1,   LS_FIRIMP2,  MissileGraphicID::Fireball,             Fire,                  MissileMovementDistribution::Blockable   },
 /*LightningControl*/     { &AddLightningControl,    &ProcessLightningControl,     SFX_NONE,    SFX_NONE,    MissileGraphicID::Lightning,            Lightning | Invisible, MissileMovementDistribution::Disabled    },
 /*Lightning*/            { &AddLightning,           &ProcessLightning,            LS_LNING1,   LS_ELECIMP1, MissileGraphicID::Lightning,            Lightning,             MissileMovementDistribution::Disabled    },
@@ -64,11 +64,15 @@ const MissileData MissilesData[] = {
 /*BloodRitual*/          { nullptr,                 nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical,              MissileMovementDistribution::Disabled    },
 /*Invisibility*/         { nullptr,                 nullptr,                      LS_INVISIBL, SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Golem*/                { &AddGolem,               nullptr,                      LS_GOLUM,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
+#if JWK_EDIT_PLAYER_SKILLS
+/*Etherealize*/          { &AddSneak,               nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
+#else
 /*Etherealize*/          { nullptr,                 nullptr,                      LS_ETHEREAL, SFX_NONE,    MissileGraphicID::Etherealize,          Physical,              MissileMovementDistribution::Disabled    },
+#endif
 /*Spurt*/                { nullptr,                 nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::Spurt,                Physical,              MissileMovementDistribution::Disabled    },
 /*ApocalypseBoom*/       { &AddApocalypseBoom,      &ProcessApocalypseBoom,       SFX_NONE,    SFX_NONE,    MissileGraphicID::ApocalypseBoom,       Physical,              MissileMovementDistribution::Disabled    },
 /*Healing*/              { &AddHealing,             nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
-/*FireWallControl*/      { &AddFireWallControl,     &ProcessFireWallControl,      SFX_NONE,    SFX_NONE,    MissileGraphicID::FireWall,             Fire | Invisible,      MissileMovementDistribution::Disabled    },
+/*FireWallControl*/      { &AddWallControl,         &ProcessWallControl,          SFX_NONE,    SFX_NONE,    MissileGraphicID::FireWall,             Fire | Invisible,      MissileMovementDistribution::Disabled    },
 /*Infravision*/          { &AddInfravision,         &ProcessInfravision,          LS_INFRAVIS, SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Identify*/             { &AddIdentify,            nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*FlameWaveControl*/     { &AddFlameWaveControl,    &ProcessFlameWaveControl,     LS_FLAMWAVE, SFX_NONE,    MissileGraphicID::FireWall,             Fire,                  MissileMovementDistribution::Disabled    },
@@ -88,8 +92,9 @@ const MissileData MissilesData[] = {
 /*Telekinesis*/          { &AddTelekinesis,         nullptr,                      LS_ETHEREAL, SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*LightningArrow*/       { &AddElementalArrow,      &ProcessElementalArrow,       SFX_NONE,    SFX_NONE,    MissileGraphicID::LightningArrow,       Lightning | Arrow,     MissileMovementDistribution::Blockable   },
 /*Acid*/                 { &AddAcid,                &ProcessGenericProjectile,    LS_ACID,     SFX_NONE,    MissileGraphicID::Acid,                 Acid,                  MissileMovementDistribution::Blockable   },
-/*AcidSplat*/            { &AddMissileExplosion,    &ProcessAcidSplate,           SFX_NONE,    SFX_NONE,    MissileGraphicID::AcidSplat,            Acid,                  MissileMovementDistribution::Disabled    },
+/*AcidSplat*/            { &AddMissileExplosion,    &ProcessAcidSplat,            SFX_NONE,    SFX_NONE,    MissileGraphicID::AcidSplat,            Acid,                  MissileMovementDistribution::Disabled    },
 /*AcidPuddle*/           { &AddAcidPuddle,          &ProcessAcidPuddle,           LS_PUDDLE,   SFX_NONE,    MissileGraphicID::AcidPuddle,           Acid,                  MissileMovementDistribution::Disabled    },
+/*AcidPuddleHuge*/       { &AddAcidPuddleHuge,      nullptr,                      LS_PUDDLE,   SFX_NONE,    MissileGraphicID::AcidPuddle,           Acid,                  MissileMovementDistribution::Disabled    },
 /*HealOther*/            { &AddHealOther,           nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Elemental*/            { &AddElemental,           &ProcessElemental,            LS_ELEMENTL, SFX_NONE,    MissileGraphicID::Elemental,            Fire,                  MissileMovementDistribution::Unblockable },
 /*ResurrectBeam*/        { &AddResurrectBeam,       &ProcessResurrectBeam,        SFX_NONE,    SFX_NONE,    MissileGraphicID::Resurrect,            Physical,              MissileMovementDistribution::Disabled    },
@@ -100,8 +105,8 @@ const MissileData MissilesData[] = {
 /*DiabloApocalypse*/     { &AddDiabloApocalypse,    nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Mana*/                 { &AddMana,                nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Magi*/                 { &AddMagi,                nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
-/*LightningWall*/        { &AddLightningWall,       &ProcessLightningWall,        LS_LMAG,     LS_ELECIMP1, MissileGraphicID::Lightning,            Lightning,             MissileMovementDistribution::Disabled    },
-/*LightningWallControl*/ { &AddFireWallControl,     &ProcessLightningWallControl, SFX_NONE,    SFX_NONE,    MissileGraphicID::Lightning,            Lightning | Invisible, MissileMovementDistribution::Disabled    },
+/*LightningWall*/        { &AddLightningWallTile,   &ProcessLightningWallTile,    LS_LMAG,     LS_ELECIMP1, MissileGraphicID::Lightning,            Lightning,             MissileMovementDistribution::Disabled    },
+/*LightningWallControl*/ { &AddWallControl,         &ProcessWallControl,          SFX_NONE,    SFX_NONE,    MissileGraphicID::Lightning,            Lightning | Invisible, MissileMovementDistribution::Disabled    },
 /*Immolation*/           { &AddNova,                &ProcessImmolation,           LS_FBOLT1,   LS_FIRIMP2,  MissileGraphicID::Fireball,             Fire,                  MissileMovementDistribution::Disabled    },
 /*SpectralArrow*/        { &AddSpectralArrow,       &ProcessSpectralArrow,        SFX_NONE,    SFX_NONE,    MissileGraphicID::Arrow,                Physical | Arrow,      MissileMovementDistribution::Disabled    },
 /*FireballBow*/          { &AddImmolation,          &ProcessFireball,             IS_FBALLBOW, LS_FIRIMP2,  MissileGraphicID::Fireball,             Fire,                  MissileMovementDistribution::Blockable   },
@@ -239,9 +244,15 @@ MissileFileData MissileSpriteData[] = {
 /*HolyBoltExplosion*/        { {},              160,          48, "holyexpl",         1, MissileGraphicsFlags::None,                     0, AnimLen_8       },
 /*LightningArrow*/           { {},               96,          16, "larrow",          16, MissileGraphicsFlags::None,                     0, AnimLen_4       },
 /*FireArrowExplosion*/       { {},               64,           0, {},                 1, MissileGraphicsFlags::None,                     0, AnimLen_6       },
+#if 1
+/*Acid*/                     { {},               96,          16, "acidbf",          16, MissileGraphicsFlags::None,                     0, AnimLen_8       },
+/*AcidSplat*/                { {},               96,          16, "acidspla",         1, MissileGraphicsFlags::None,                     0, AnimLen_8       },
+/*AcidPuddle*/               { {},               96,          16, "acidpud",          2, MissileGraphicsFlags::None,                     0, AnimLen_9_4     },
+#else // original code
 /*Acid*/                     { {},               96,          16, "acidbf",          16, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_8       },
 /*AcidSplat*/                { {},               96,          16, "acidspla",         1, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_8       },
 /*AcidPuddle*/               { {},               96,          16, "acidpud",          2, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_9_4     },
+#endif
 /*Etherealize*/              { {},               96,          16, {},                 1, MissileGraphicsFlags::None,                     0, AnimLen_1       },
 /*Elemental*/                { {},               96,          16, "firerun",          8, MissileGraphicsFlags::None,                     1, AnimLen_12      },
 /*Resurrect*/                { {},               96,          16, "ressur1",          1, MissileGraphicsFlags::None,                     0, AnimLen_16      },
@@ -250,8 +261,13 @@ MissileFileData MissileSpriteData[] = {
 /*DiabloApocalypseBoom*/     { {},              160,          48, "fireplar",         1, MissileGraphicsFlags::MonsterOwned,             1, AnimLen_17      },
 /*BloodStarBlue*/            { {},               96,          16, "scubmisb",         1, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_16      },
 /*BloodStarBlueExplosion*/   { {},              128,          32, "scbsexpb",         1, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_6       },
+#if JWK_EDIT_NOVA
+/*BloodStarYellow*/          { {},               96,          16, "scubmisc",         1, MissileGraphicsFlags::None,                     0, AnimLen_16      },
+/*BloodStarYellowExplosion*/ { {},              128,          32, "scbsexpc",         1, MissileGraphicsFlags::None,                     0, AnimLen_6       },
+#else // original code
 /*BloodStarYellow*/          { {},               96,          16, "scubmisc",         1, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_16      },
 /*BloodStarYellowExplosion*/ { {},              128,          32, "scbsexpc",         1, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_6       },
+#endif
 /*BloodStarRed*/             { {},               96,          16, "scubmisd",         1, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_16      },
 /*BloodStarRedExplosion*/    { {},              128,          32, "scbsexpd",         1, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_6       },
 /*HorkSpawn*/                { {},               96,          16, "spawns",           8, MissileGraphicsFlags::MonsterOwned,             0, AnimLen_9       },

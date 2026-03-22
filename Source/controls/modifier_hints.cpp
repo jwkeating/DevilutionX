@@ -126,6 +126,9 @@ void DrawSpellsCircleMenuHint(const Surface &out, const Point &origin)
 		hintBoxPositions[3] + spellIconDisplacement,
 	};
 	uint64_t spells = myPlayer._pAblSpells | myPlayer._pMemSpells | myPlayer._pScrlSpells | myPlayer._pISpells;
+#if JWK_GOD_MODE_MAX_SPELLS
+	spells |= myPlayer._pMemSpellsDebug;
+#endif
 	SpellID splId;
 	SpellType splType;
 

@@ -57,7 +57,7 @@ private:
 	asio::io_context &ioc;
 	packet_factory &pktfty;
 	std::unique_ptr<asio::ip::tcp::acceptor> acceptor;
-	std::array<scc, MAX_PLRS> connections;
+	std::array<scc, MAX_PLAYERS> connections;
 	buffer_t game_init_info;
 
 	scc MakeConnection();

@@ -85,7 +85,7 @@ void InitializeVirtualGamepad()
 	int rightMarginMenuButton2 = rightMarginMenuButton3 + menuPanelButtonSpacing + menuPanelButtonSize.width;
 	int rightMarginMenuButton1 = rightMarginMenuButton2 + menuPanelButtonSpacing + menuPanelButtonSize.width;
 
-	int padButtonAreaWidth = round(std::sqrt(2) * (padButtonSize + padButtonSpacing));
+	int padButtonAreaWidth = round(std::sqrtf(2) * (padButtonSize + padButtonSpacing));
 
 	int padButtonRight = gnScreenWidth - inputMargin - padButtonSize / 2;
 	int padButtonLeft = padButtonRight - padButtonAreaWidth;
@@ -130,7 +130,7 @@ void InitializeVirtualGamepad()
 	directionPad.position = directionPadArea.position;
 
 	int standButtonDiagonalOffset = directionPadArea.radius + padButtonSpacing / 2 + padButtonSize / 2;
-	int standButtonOffset = round(standButtonDiagonalOffset / std::sqrt(2));
+	int standButtonOffset = round(standButtonDiagonalOffset / std::sqrtf(2));
 	Circle &standButtonArea = VirtualGamepadState.standButton.area;
 	standButtonArea.position.x = directionPadArea.position.x - standButtonOffset;
 	standButtonArea.position.y = directionPadArea.position.y + standButtonOffset;

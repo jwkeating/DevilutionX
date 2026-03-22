@@ -89,7 +89,7 @@ protected:
 	virtual bool IsGameHost() = 0;
 
 private:
-	std::array<PlayerState, MAX_PLRS> playerStateTable_;
+	std::array<PlayerState, MAX_PLAYERS> playerStateTable_;
 	bool awaitingSequenceNumber_ = true;
 
 	plr_t GetOwner();

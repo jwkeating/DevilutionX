@@ -47,7 +47,7 @@ private:
 	endpoint_t firstpeer;
 	std::string gamename;
 	std::map<std::string, std::tuple<GameData, std::vector<std::string>, endpoint_t>> game_list;
-	std::array<Peer, MAX_PLRS> peers;
+	std::array<Peer, MAX_PLAYERS> peers;
 	bool isGameHost_;
 
 	plr_t get_master();
@@ -191,7 +191,7 @@ template <class P>
 void base_protocol<P>::send(packet &pkt)
 {
 	plr_t destination = pkt.Destination();
-	if (destination < MAX_PLRS) {
+	if (destination < MAX_PLAYERS) {
 		if (destination == MyPlayerId)
 			return;
 		SendTo(destination, pkt);
@@ -263,7 +263,7 @@ void base_protocol<P>::handle_join_request(packet &pkt, endpoint_t sender)
 			break;
 		}
 	}
-	if (i >= MAX_PLRS) {
+	if (i >= MAX_PLAYERS) {
 		// already full
 		return;
 	}
@@ -293,7 +293,7 @@ template <class P>
 void base_protocol<P>::recv_decrypted(packet &pkt, endpoint_t sender)
 {
 	if (pkt.Source() == PLR_BROADCAST && pkt.Destination() == PLR_MASTER && pkt.Type() == PT_INFO_REPLY) {
-		size_t neededSize = sizeof(GameData) + (PlayerNameLength * MAX_PLRS);
+		size_t neededSize = sizeof(GameData) + (PlayerNameLength * MAX_PLAYERS);
 		if (pkt.Info().size() < neededSize)
 			return;
 		GameData gameData;
@@ -333,7 +333,7 @@ void base_protocol<P>::recv_ingame(packet &pkt, endpoint_t sender)
 		} else if (pkt.Type() == PT_INFO_REQUEST) {
 			if ((plr_self != PLR_BROADCAST) && (get_master() == plr_self)) {
 				buffer_t buf;
-				buf.resize(game_init_info.size() + (PlayerNameLength * MAX_PLRS) + gamename.size());
+				buf.resize(game_init_info.size() + (PlayerNameLength * MAX_PLAYERS) + gamename.size());
 				std::memcpy(buf.data(), &game_init_info[0], game_init_info.size());
 				for (size_t i = 0; i < Players.size(); i++) {
 					if (Players[i].plractive) {
@@ -342,7 +342,7 @@ void base_protocol<P>::recv_ingame(packet &pkt, endpoint_t sender)
 						std::memset(buf.data() + game_init_info.size() + (i * PlayerNameLength), '\0', PlayerNameLength);
 					}
 				}
-				std::memcpy(buf.data() + game_init_info.size() + (PlayerNameLength * MAX_PLRS), &gamename[0], gamename.size());
+				std::memcpy(buf.data() + game_init_info.size() + (PlayerNameLength * MAX_PLAYERS), &gamename[0], gamename.size());
 				auto reply = pktfty->make_packet<PT_INFO_REPLY>(PLR_BROADCAST,
 				    PLR_MASTER,
 				    buf);
@@ -367,9 +367,9 @@ void base_protocol<P>::recv_ingame(packet &pkt, endpoint_t sender)
 			InitiateHandshake(newPlayer);
 
 		return;
-	} else if (pkt.Source() >= MAX_PLRS) {
+	} else if (pkt.Source() >= MAX_PLAYERS) {
 		// normal packets
-		LogDebug("Invalid packet: packet source ({}) >= MAX_PLRS", pkt.Source());
+		LogDebug("Invalid packet: packet source ({}) >= MAX_PLAYERS", pkt.Source());
 		return;
 	} else if (sender == firstpeer && pkt.Type() == PT_JOIN_ACCEPT) {
 		plr_t src = pkt.Source();
@@ -423,7 +423,7 @@ bool base_protocol<P>::is_recognized(endpoint_t sender)
 	if (sender == firstpeer)
 		return true;
 
-	for (auto player = 0; player <= MAX_PLRS; player++) {
+	for (auto player = 0; player <= MAX_PLAYERS; player++) {
 		if (sender == peers[player].endpoint)
 			return true;
 	}

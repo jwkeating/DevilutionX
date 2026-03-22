@@ -23,7 +23,7 @@ bool IsValidSpellFrom(int spellFrom);
 bool IsWallSpell(SpellID spl);
 bool TargetsMonster(SpellID id);
 int GetManaAmount(const Player &player, SpellID sn);
-void ConsumeSpell(Player &player, SpellID sn);
+void ConsumeSpell(Player &player, SpellID sn, int manaCostMultiplier = 1);
 SpellCheckResult CheckSpell(const Player &player, SpellID sn, SpellType st, bool manaonly);
 
 /**
@@ -42,8 +42,9 @@ void CastSpell(int id, SpellID spl, int sx, int sy, int dx, int dy, int spllvl);
  */
 void DoResurrect(size_t pnum, Player &target);
 void DoHealOther(const Player &caster, Player &target);
-int GetSpellBookLevel(SpellID s);
-int GetSpellStaffLevel(SpellID s);
+int GetSpellBookLevel(SpellID s, bool onlyLearnable); // onlyLearnable=true for books, false for scrolls or staff charges
+
+int CalcHealOtherAmount(const Player &caster, const Player &target, int spellLevel);
 
 /**
  * @brief Gets a value that represents the specified spellID in 64bit bitmask format.

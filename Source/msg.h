@@ -412,6 +412,8 @@ enum _cmd_id : uint8_t {
 	//
 	// body (TCmd)
 	CMD_REMSHIELD,
+	CMD_SETSNEAK,
+	CMD_REMSNEAK,
 	CMD_SETREFLECT,
 	CMD_NAKRUL,
 	CMD_OPENHIVE,
@@ -523,29 +525,31 @@ struct TCmdQuest {
 	int16_t qmsg;
 };
 
+// jwk - This describes the static item including its prefix and suffix values, for example: Godly full plate of the whale with 71 armor, +184% armor, +94 health
 struct TItemDef {
-	_item_indexes wIndx;
-	uint16_t wCI;
-	uint32_t dwSeed;
+	BaseItemIdx wIndx; // base item type (16 bits)
+	uint16_t wCI;      // create info flags including the item level
+	uint32_t dwSeed;   // random seed to recreate the item
 };
 
+// jwk - This describes mutable properties of the item which can't be derived from the original random seed.  Things like durability, remaining spell charges, and the effects of adding oils (hellfire item enhancements)
 struct TItem {
-	_item_indexes wIndx;
-	uint16_t wCI;
-	uint32_t dwSeed;
-	uint8_t bId;
-	uint8_t bDur;
-	uint8_t bMDur;
-	uint8_t bCh;
-	uint8_t bMCh;
-	uint16_t wValue;
-	uint32_t dwBuff;
-	uint16_t wToHit;
-	uint16_t wMaxDam;
+	BaseItemIdx wIndx; // matches TItemDef
+	uint16_t wCI;      // matches TItemDef
+	uint32_t dwSeed;   // matches TItemDef
+	uint8_t bId;       // true/false - has the item been identified?
+	uint8_t bDur;      // current durability
+	uint8_t bMDur;     // max durability (255 for indestructible)
+	uint8_t bCh;       // number of spell charges
+	uint8_t bMCh;      // max spell charges
+	uint16_t wValue;   // If this item is a stack of gold, this specifies how much gold it is.
+	uint32_t dwBuff;   // devilution-specific flag to help distinguish vanilla saves from devilution saves?
+	uint16_t wToHit;   // hellfire oil bonus
+	uint16_t wMaxDam;  // hellfire oil bonus
 };
 
 struct TEar {
-	_item_indexes wIndx;
+	BaseItemIdx wIndx;
 	uint16_t wCI;
 	uint32_t dwSeed;
 	uint8_t bCursval;
@@ -701,6 +705,7 @@ struct TPktHdr {
 	uint8_t bstr;
 	uint8_t bmag;
 	uint8_t bdex;
+	uint8_t pdir;
 	uint16_t wCheck;
 	uint16_t wLen;
 };
@@ -721,7 +726,7 @@ extern int dwRecCount;
 
 void PrepareItemForNetwork(const Item &item, TItem &messageItem);
 void PrepareEarForNetwork(const Item &item, TEar &ear);
-void RecreateItem(const Player &player, const TItem &messageItem, Item &item);
+void RecreateItem(const TItem &messageItem, Item &item);
 void msg_send_drop_pkt(int pnum, int reason);
 bool msg_wait_resync();
 void run_delta_info();

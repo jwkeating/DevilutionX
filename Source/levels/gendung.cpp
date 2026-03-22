@@ -30,7 +30,7 @@ std::array<TileProperties, MAXTILES> SOLData;
 WorldTilePosition dminPosition;
 WorldTilePosition dmaxPosition;
 dungeon_type leveltype;
-uint8_t currlevel;
+uint8_t currlevel; // current dungeon level (1-4 is cathedral, 5-8 is catacombs, 9-12 is caves, 13-16 is hell)
 bool setlevel;
 _setlevels setlvlnum;
 dungeon_type setlvltype;
@@ -41,8 +41,8 @@ std::array<bool, 256> TransList;
 uint16_t dPiece[MAXDUNX][MAXDUNY];
 MICROS DPieceMicros[MAXTILES];
 int8_t dTransVal[MAXDUNX][MAXDUNY];
-uint8_t dLight[MAXDUNX][MAXDUNY];
-uint8_t dPreLight[MAXDUNX][MAXDUNY];
+uint8_t dLight[MAXDUNX][MAXDUNY];    // dynamic lighting (player lamps, spell effects, etc) added to the static lighting.  Technically, it's the max of the two.
+uint8_t dPreLight[MAXDUNX][MAXDUNY]; // static lighting (dungeon lamps, etc) which only need to be computed once.  Basically, this is the world lightmap.
 DungeonFlag dFlags[MAXDUNX][MAXDUNY];
 int8_t dPlayer[MAXDUNX][MAXDUNY];
 int16_t dMonster[MAXDUNX][MAXDUNY];
@@ -597,7 +597,7 @@ std::optional<Point> PlaceMiniSet(const Miniset &miniset, int tries, bool drlg1Q
 {
 	int sw = miniset.size.width;
 	int sh = miniset.size.height;
-	Point position { GenerateRnd(DMAXX - sw), GenerateRnd(DMAXY - sh) };
+	Point position { static_cast<int32_t>(GenerateRnd(DMAXX - sw)), static_cast<int32_t>(GenerateRnd(DMAXY - sh)) };
 
 	for (int i = 0; i < tries; i++, position.x++) {
 		if (position.x == DMAXX - sw) {

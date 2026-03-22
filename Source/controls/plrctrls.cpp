@@ -2093,7 +2093,7 @@ void PerformSpellAction()
 	}
 
 	UpdateSpellTarget(myPlayer._pRSpell);
-	CheckPlrSpell(false);
+	CheckSpellAndSendCmd(false);
 	if (pcursplr != -1)
 		LastMouseButtonAction = MouseActionType::SpellPlayerTarget;
 	else if (pcursmonst != -1)
@@ -2208,7 +2208,7 @@ void QuickCast(size_t slot)
 		UpdateSpellTarget(spell);
 	}
 
-	CheckPlrSpell(false, spell, spellType);
+	CheckSpellAndSendCmd(false, spell, spellType);
 	LastMouseButtonAction = prevMouseButtonAction;
 }
 

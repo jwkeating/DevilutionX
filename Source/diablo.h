@@ -21,7 +21,7 @@ constexpr uint32_t GameIdDiabloFull = LoadBE32("DRTL");
 constexpr uint32_t GameIdDiabloSpawn = LoadBE32("DSHR");
 constexpr uint32_t GameIdHellfireFull = LoadBE32("HRTL");
 constexpr uint32_t GameIdHellfireSpawn = LoadBE32("HSHR");
-#define GAME_ID (gbIsHellfire ? (gbIsSpawn ? GameIdHellfireSpawn : GameIdHellfireFull) : (gbIsSpawn ? GameIdDiabloSpawn : GameIdDiabloFull))
+#define GAME_ID (gbIsHellfire ? (gbIsDemoGame ? GameIdHellfireSpawn : GameIdHellfireFull) : (gbIsDemoGame ? GameIdDiabloSpawn : GameIdDiabloFull))
 
 #define NUMLEVELS 25
 
@@ -65,7 +65,8 @@ extern bool gbRunGameResult;
 extern bool ReturnToMainMenu;
 extern bool gbProcessPlayers;
 extern DVL_API_FOR_TEST bool gbLoadGame;
-extern bool cineflag;
+extern Uint64 gEndingCinematicTime;
+extern int gEndingCinematicCountdown;
 /* These are defined in fonts.h */
 extern void FontsCleanup();
 extern DVL_API_FOR_TEST int PauseMode;
@@ -76,7 +77,9 @@ extern bool gbBarbarian;
  */
 extern DVL_API_FOR_TEST bool HeadlessMode;
 extern clicktype sgbMouseDown;
+extern uint16_t MaxMergeTicksForDamageNumbers;
 extern uint16_t gnTickDelay;
+extern uint32_t gnTotalGameLogicStepsExecuted;
 extern char gszProductName[64];
 
 extern MouseActionType LastMouseButtonAction;

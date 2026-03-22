@@ -24,7 +24,7 @@ namespace {
 
 _music_id NextTrack()
 {
-	if (gbIsSpawn) {
+	if (gbIsDemoGame) {
 		return TMUSIC_INTRO;
 	}
 
@@ -167,7 +167,7 @@ void mainmenu_loop()
 				done = true;
 			break;
 		case MAINMENU_ATTRACT_MODE:
-			if (gbIsSpawn && !HaveDiabdat())
+			if (gbIsDemoGame && !HaveDiabdat())
 				done = false;
 			else if (gbActive)
 				PlayIntro();

@@ -148,7 +148,7 @@ uint8_t NextTalkSave;
 char TalkMessage[MAX_SEND_STR_LEN];
 bool TalkButtonsDown[3];
 int sgbPlrTalkTbl;
-bool WhisperList[MAX_PLRS];
+bool WhisperList[MAX_PLAYERS];
 
 TextInputCursorState ChatCursor;
 std::optional<TextInputState> ChatInputState;
@@ -425,7 +425,7 @@ std::string TextCmdArenaPot(const string_view parameter)
 
 	for (int potNumber = std::max(1, atoi(parameter.data())); potNumber > 0; potNumber--) {
 		Item item {};
-		InitializeItem(item, IDI_ARENAPOT);
+		InitializeItemToDefaultValues(item, IDI_ARENAPOT);
 		GenerateNewSeed(item);
 		item.updateRequiredStatsCacheForPlayer(myPlayer);
 
@@ -625,7 +625,7 @@ void RemoveGold(Player &player, int goldIndex, int amount)
 		player.RemoveInvItem(gi);
 	}
 
-	MakeGoldStack(player.HoldItem, amount);
+	MakeGoldStackForInventory(player.HoldItem, amount);
 	NewCursor(player.HoldItem);
 
 	player._pGold = CalculateGold(player);
@@ -1206,7 +1206,7 @@ void DrawInfoBox(const Surface &out)
 			InfoColor = UiFlags::ColorWhitegold;
 			auto &target = Players[pcursplr];
 			InfoString = string_view(target._pName);
-			AddPanelString(fmt::format(fmt::runtime(_("{:s}, Level: {:d}")), _(PlayersData[static_cast<std::size_t>(target._pClass)].className), target._pLevel));
+			AddPanelString(fmt::format(fmt::runtime(_("{:s}, Level: {:d}")), _(PlayersData[static_cast<std::size_t>(target._pHeroClass)].className), target._pLevel));
 			AddPanelString(fmt::format(fmt::runtime(_("Hit Points {:d} of {:d}")), target._pHitPoints >> 6, target._pMaxHP >> 6));
 		}
 	}
@@ -1246,6 +1246,8 @@ void DrawLevelUpIcon(const Surface &out)
 void CheckChrBtns()
 {
 	Player &myPlayer = *MyPlayer;
+	if (myPlayer._pmode == PM_DEATH)
+		return;
 
 	if (chrbtnactive || myPlayer._pStatPts == 0)
 		return;
@@ -1265,6 +1267,10 @@ void CheckChrBtns()
 
 void ReleaseChrBtns(bool addAllStatPoints)
 {
+	Player &myPlayer = *MyPlayer;
+	if (myPlayer._pmode == PM_DEATH)
+		return;
+
 	chrbtnactive = false;
 	for (auto attribute : enum_values<CharacterAttribute>()) {
 		auto buttonId = static_cast<size_t>(attribute);

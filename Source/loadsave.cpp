@@ -303,27 +303,32 @@ void LoadItemData(LoadHelper &file, Item &item)
 	item._iPLLight = file.NextLE<int32_t>();
 	item._iSplLvlAdd = file.NextLE<int8_t>();
 	item._iRequest = file.NextBool8();
+#if JWK_ALLOW_MANA_COST_MODIFIER
+	item._iPLManaCostMod = file.NextLE<int8_t>();
+	file.Skip(1); // Alignment
+#else // original code:
 	file.Skip(2); // Alignment
+#endif
 	item._iUid = file.NextLE<int32_t>();
 	item._iFMinDam = file.NextLE<int32_t>();
 	item._iFMaxDam = file.NextLE<int32_t>();
 	item._iLMinDam = file.NextLE<int32_t>();
 	item._iLMaxDam = file.NextLE<int32_t>();
-	item._iPLEnAc = file.NextLE<int32_t>();
-	item._iPrePower = static_cast<item_effect_type>(file.NextLE<int8_t>());
-	item._iSufPower = static_cast<item_effect_type>(file.NextLE<int8_t>());
+	item._iPLArmorPierce = file.NextLE<int32_t>();
+	item._iPrefixPower = static_cast<item_effect_type>(file.NextLE<int8_t>());
+	item._iSuffixPower = static_cast<item_effect_type>(file.NextLE<int8_t>());
 	file.Skip(2); // Alignment
 	item._iVAdd1 = file.NextLE<int32_t>();
 	item._iVMult1 = file.NextLE<int32_t>();
 	item._iVAdd2 = file.NextLE<int32_t>();
 	item._iVMult2 = file.NextLE<int32_t>();
-	item._iMinStr = file.NextLE<int8_t>();
+	item._iMinStr = file.NextLE<uint8_t>();
 	item._iMinMag = file.NextLE<uint8_t>();
-	item._iMinDex = file.NextLE<int8_t>();
+	item._iMinDex = file.NextLE<uint8_t>();
 	file.Skip(1); // Alignment
 	item._iStatFlag = file.NextBool32();
-	item.IDidx = static_cast<_item_indexes>(file.NextLE<int32_t>());
-	if (gbIsSpawn) {
+	item.IDidx = static_cast<BaseItemIdx>(file.NextLE<int32_t>());
+	if (gbIsDemoGame) {
 		item.IDidx = RemapItemIdxFromSpawn(item.IDidx);
 	}
 	if (!gbIsHellfireSaveGame) {
@@ -378,7 +383,11 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	player.AnimInfo.numberOfFrames = file.NextLENarrow<int32_t, int8_t>();
 	player.AnimInfo.currentFrame = file.NextLENarrow<int32_t, int8_t>(-1);
 	file.Skip<uint32_t>(3); // Skip _pAnimWidth, _pAnimWidth2, _peflag
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+	file.Skip<int32_t>(); // player.lightId is unused
+#else
 	player.lightId = file.NextLE<int32_t>();
+#endif
 	file.Skip<int32_t>(); // _pvid
 
 	player.queuedSpell.spellId = static_cast<SpellID>(file.NextLE<int32_t>());
@@ -421,7 +430,7 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	player._pLvlChanging = file.NextBool8();
 
 	file.NextBytes(player._pName, PlayerNameLength);
-	player._pClass = static_cast<HeroClass>(file.NextLE<int8_t>());
+	player._pHeroClass = static_cast<HeroClass>(file.NextLE<int8_t>());
 	file.Skip(3); // Alignment
 	player._pStrength = file.NextLE<int32_t>();
 	player._pBaseStr = file.NextLE<int32_t>();
@@ -435,7 +444,7 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	player._pDamageMod = file.NextLE<int32_t>();
 	player._pBaseToBlk = file.NextLE<int32_t>();
 	if (player._pBaseToBlk == 0)
-		player._pBaseToBlk = PlayersData[static_cast<std::size_t>(player._pClass)].blockBonus;
+		player._pBaseToBlk = PlayersData[static_cast<std::size_t>(player._pHeroClass)].blockBonus;
 	player._pHPBase = file.NextLE<int32_t>();
 	player._pMaxHPBase = file.NextLE<int32_t>();
 	player._pHitPoints = file.NextLE<int32_t>();
@@ -457,8 +466,13 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	player._pFireResist = file.NextLE<int8_t>();
 	player._pLghtResist = file.NextLE<int8_t>();
 	player._pGold = file.NextLE<int32_t>();
+#if JWK_EDIT_PLAYER_SKILLS
+	uint32_t visionFlags = file.NextLE<uint32_t>();
+	player._pInfraFlag = (visionFlags & 1) != 0;
+	player.pSneak = (visionFlags & 2) != 0;
+#else // original code:
 	player._pInfraFlag = file.NextBool32();
-
+#endif
 	int32_t tempPositionX = file.NextLE<int32_t>();
 	int32_t tempPositionY = file.NextLE<int32_t>();
 	if (player._pmode == PM_WALK_NORTHWARDS) {
@@ -538,10 +552,14 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	player._pIFlags = static_cast<ItemSpecialEffect>(file.NextLE<int32_t>());
 	player._pIGetHit = file.NextLE<int32_t>();
 	player._pISplLvlAdd = file.NextLE<int8_t>();
+#if JWK_ALLOW_MANA_COST_MODIFIER
+	player._pManaCostMod = file.NextLE<int8_t>();
+#else // original code
 	file.Skip(1);         // Unused
+#endif
 	file.Skip(2);         // Alignment
 	file.Skip<int32_t>(); // _pISplDur
-	player._pIEnAc = file.NextLE<int32_t>();
+	player._pArmorPierce = file.NextLE<int32_t>();
 	player._pIFMinDam = file.NextLE<int32_t>();
 	player._pIFMaxDam = file.NextLE<int32_t>();
 	player._pILMinDam = file.NextLE<int32_t>();
@@ -572,7 +590,7 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	sgGameInitInfo.nDifficulty = static_cast<_difficulty>(file.NextLE<uint32_t>());
 	player.pDamAcFlags = static_cast<ItemSpecialEffectHf>(file.NextLE<uint32_t>());
 	file.Skip(20); // Available bytes
-	CalcPlrInv(player, false);
+	CalcPlayerInventory(player, false);
 
 	player.executedSpell = player.queuedSpell; // Ensures backwards compatibility
 
@@ -587,7 +605,7 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	// Omit pointer _pBData
 	// Omit pointer pReserved
 
-	// Ensure plrIsOnSetLevel and plrlevel is correctly initialized, cause in vanilla sometimes plrlevel is not updated to setlvlnum
+	// Ensure plrIsOnSetLevel and currentDungeonLevel is correctly initialized, cause in vanilla sometimes currentDungeonLevel is not updated to setlvlnum
 	if (setlevel)
 		player.setLevel(setlvlnum);
 	else
@@ -638,6 +656,9 @@ void LoadMonster(LoadHelper *file, Monster &monster, MonsterConversionData *mons
 	file->Skip<int32_t>(2); // skip offset2;
 	file->Skip(4);          // Skip actionFrame
 	monster.maxHitPoints = file->NextLE<int32_t>();
+#if JWK_BUFF_MONSTERS_IN_MULTIPLAYER
+	monster.maxHitPointsPreMultiplayerScale = monster.maxHitPoints;
+#endif
 	monster.hitPoints = file->NextLE<int32_t>();
 
 	monster.ai = static_cast<MonsterAIID>(file->NextLE<uint8_t>());
@@ -671,7 +692,11 @@ void LoadMonster(LoadHelper *file, Monster &monster, MonsterConversionData *mons
 	if (monsterConversionData != nullptr)
 		monsterConversionData->toHit = file->NextLE<uint8_t>();
 	else if (monster.isPlayerMinion()) // Don't skip for golems
+#if JWK_EDIT_GOLEM
+		file->Skip(1);
+#else
 		monster.golemToHit = file->NextLE<uint8_t>();
+#endif
 	else
 		file->Skip(1); // Skip toHit - now calculated on the fly
 	monster.minDamage = file->NextLE<uint8_t>();
@@ -756,7 +781,7 @@ void LoadMissile(LoadHelper *file)
 	missile._miLightFlag = file->NextBool32();
 	missile._miPreFlag = file->NextBool32();
 	missile._miUniqTrans = file->NextLE<uint32_t>();
-	missile._mirange = file->NextLE<int32_t>();
+	missile._ticksUntilExpiry = file->NextLE<int32_t>();
 	missile._misource = file->NextLE<int32_t>();
 	missile._micaster = static_cast<mienemy_type>(file->NextLE<int32_t>());
 	missile._midam = file->NextLE<int32_t>();
@@ -862,7 +887,7 @@ void LoadItem(LoadHelper &file, Item &item)
 
 void LoadPremium(LoadHelper &file, int i)
 {
-	LoadAndValidateItemData(file, premiumitems[i]);
+	LoadAndValidateItemData(file, gSmithPremiumItems[i]);
 }
 
 void LoadQuest(LoadHelper *file, int i)
@@ -982,7 +1007,7 @@ void LoadMatchingItems(LoadHelper &file, const Player &player, const int n, Item
 			// game's item generation logic before attempting to use it for validation
 			if ((heroItem.dwBuff & CF_HELLFIRE) != (unpackedItem.dwBuff & CF_HELLFIRE)) {
 				unpackedItem = {};
-				RecreateItem(player, unpackedItem, heroItem.IDidx, heroItem._iCreateInfo, heroItem._iSeed, heroItem._ivalue, (heroItem.dwBuff & CF_HELLFIRE) != 0);
+				RecreateItem(unpackedItem, heroItem.IDidx, heroItem._iCreateInfo, heroItem._iSeed, heroItem._ivalue, (heroItem.dwBuff & CF_HELLFIRE) != 0);
 				unpackedItem._iIdentified = heroItem._iIdentified;
 				unpackedItem._iMaxDur = heroItem._iMaxDur;
 				unpackedItem._iDurability = ClampDurability(unpackedItem, heroItem._iDurability);
@@ -1044,11 +1069,11 @@ void SaveItem(SaveHelper &file, const Item &item)
 	auto idx = item.IDidx;
 	if (!gbIsHellfire)
 		idx = RemapItemIdxToDiablo(idx);
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		idx = RemapItemIdxToSpawn(idx);
 	ItemType iType = item._itype;
 	if (idx == -1) {
-		idx = _item_indexes::IDI_GOLD;
+		idx = BaseItemIdx::IDI_GOLD;
 		iType = ItemType::None;
 	}
 
@@ -1107,23 +1132,28 @@ void SaveItem(SaveHelper &file, const Item &item)
 	file.WriteLE<int32_t>(item._iPLLight);
 	file.WriteLE<int8_t>(item._iSplLvlAdd);
 	file.WriteLE<int8_t>(item._iRequest ? 1 : 0);
+#if JWK_ALLOW_MANA_COST_MODIFIER
+	file.WriteLE<int8_t>(item._iPLManaCostMod);
+	file.Skip(1); // Alignment
+#else // original code:
 	file.Skip(2); // Alignment
+#endif
 	file.WriteLE<int32_t>(item._iUid);
 	file.WriteLE<int32_t>(item._iFMinDam);
 	file.WriteLE<int32_t>(item._iFMaxDam);
 	file.WriteLE<int32_t>(item._iLMinDam);
 	file.WriteLE<int32_t>(item._iLMaxDam);
-	file.WriteLE<int32_t>(item._iPLEnAc);
-	file.WriteLE<int8_t>(item._iPrePower);
-	file.WriteLE<int8_t>(item._iSufPower);
+	file.WriteLE<int32_t>(item._iPLArmorPierce);
+	file.WriteLE<int8_t>(item._iPrefixPower);
+	file.WriteLE<int8_t>(item._iSuffixPower);
 	file.Skip(2); // Alignment
 	file.WriteLE<int32_t>(item._iVAdd1);
 	file.WriteLE<int32_t>(item._iVMult1);
 	file.WriteLE<int32_t>(item._iVAdd2);
 	file.WriteLE<int32_t>(item._iVMult2);
-	file.WriteLE<int8_t>(item._iMinStr);
+	file.WriteLE<uint8_t>(item._iMinStr);
 	file.WriteLE<uint8_t>(item._iMinMag);
-	file.WriteLE<int8_t>(item._iMinDex);
+	file.WriteLE<uint8_t>(item._iMinDex);
 	file.Skip(1); // Alignment
 	file.WriteLE<uint32_t>(item._iStatFlag ? 1 : 0);
 	file.WriteLE<int32_t>(idx);
@@ -1144,7 +1174,7 @@ void SavePlayer(SaveHelper &file, const Player &player)
 	file.WriteLE<int32_t>(player.destParam2);
 	file.WriteLE<int32_t>(static_cast<int32_t>(player.destParam3));
 	file.WriteLE<int32_t>(player.destParam4);
-	file.WriteLE<uint32_t>(player.plrlevel);
+	file.WriteLE<uint32_t>(player.currentDungeonLevel);
 	file.WriteLE<int32_t>(player.position.tile.x);
 	file.WriteLE<int32_t>(player.position.tile.y);
 	file.WriteLE<int32_t>(player.position.future.x);
@@ -1185,7 +1215,11 @@ void SavePlayer(SaveHelper &file, const Player &player)
 	// write _pAnimWidth2 for vanilla compatibility
 	file.WriteLE<int32_t>(CalculateWidth2(animWidth));
 	file.Skip<uint32_t>(); // Skip _peflag
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+	file.WriteLE<int32_t>(0); // player.lightId is unused
+#else
 	file.WriteLE<int32_t>(player.lightId);
+#endif
 	file.WriteLE<int32_t>(1); // _pvid
 
 	file.WriteLE<int32_t>(static_cast<int8_t>(player.queuedSpell.spellId));
@@ -1226,7 +1260,7 @@ void SavePlayer(SaveHelper &file, const Player &player)
 	file.WriteLE<uint8_t>(player._pLvlChanging ? 1 : 0);
 
 	file.WriteBytes(player._pName, PlayerNameLength);
-	file.WriteLE<int8_t>(static_cast<int8_t>(player._pClass));
+	file.WriteLE<int8_t>(static_cast<int8_t>(player._pHeroClass));
 	file.Skip(3); // Alignment
 	file.WriteLE<int32_t>(player._pStrength);
 	file.WriteLE<int32_t>(player._pBaseStr);
@@ -1261,8 +1295,16 @@ void SavePlayer(SaveHelper &file, const Player &player)
 	file.WriteLE<int8_t>(player._pFireResist);
 	file.WriteLE<int8_t>(player._pLghtResist);
 	file.WriteLE<int32_t>(player._pGold);
+#if JWK_EDIT_PLAYER_SKILLS
+	uint32_t visionFlags = 0;
+	if (player._pInfraFlag)
+		visionFlags |= 1;
+	if (player.pSneak)
+		visionFlags |= 2;
+	file.WriteLE<uint32_t>(visionFlags);
+#else // original code:
 	file.WriteLE<uint32_t>(player._pInfraFlag ? 1 : 0);
-
+#endif
 	int32_t tempPositionX = player.position.temp.x;
 	int32_t tempPositionY = player.position.temp.y;
 	if (player._pmode == PM_WALK_NORTHWARDS) {
@@ -1343,10 +1385,14 @@ void SavePlayer(SaveHelper &file, const Player &player)
 	file.WriteLE<int32_t>(player._pIGetHit);
 
 	file.WriteLE<int8_t>(player._pISplLvlAdd);
+#if JWK_ALLOW_MANA_COST_MODIFIER
+	file.WriteLE<int8_t>(player._pManaCostMod);
+#else // original code - what is _pISplCost?  It doesn't appear anywhere in the code
 	file.Skip<uint8_t>(); // Skip _pISplCost
+#endif
 	file.Skip(2);         // Alignment
 	file.Skip<int32_t>(); // _pISplDur
-	file.WriteLE<int32_t>(player._pIEnAc);
+	file.WriteLE<int32_t>(player._pArmorPierce);
 	file.WriteLE<int32_t>(player._pIFMinDam);
 	file.WriteLE<int32_t>(player._pIFMaxDam);
 	file.WriteLE<int32_t>(player._pILMinDam);
@@ -1433,7 +1479,12 @@ void SaveMonster(SaveHelper *file, Monster &monster, MonsterConversionData *mons
 	file->WriteLE<int32_t>(offset2.deltaX);
 	file->WriteLE<int32_t>(offset2.deltaY);
 	file->Skip<int32_t>(); // Skip _mVar8
+#if JWK_BUFF_MONSTERS_IN_MULTIPLAYER
+	file->WriteLE<int32_t>(monster.maxHitPointsPreMultiplayerScale);
+	monster.maxHitPoints = monster.maxHitPointsPreMultiplayerScale;
+#else // original code
 	file->WriteLE<int32_t>(monster.maxHitPoints);
+#endif
 	file->WriteLE<int32_t>(monster.hitPoints);
 
 	file->WriteLE<uint8_t>(static_cast<int8_t>(monster.ai));
@@ -1525,7 +1576,7 @@ void SaveMissile(SaveHelper *file, const Missile &missile)
 	file->WriteLE<uint32_t>(missile._miLightFlag ? 1 : 0);
 	file->WriteLE<uint32_t>(missile._miPreFlag ? 1 : 0);
 	file->WriteLE<uint32_t>(missile._miUniqTrans);
-	file->WriteLE<int32_t>(missile._mirange);
+	file->WriteLE<int32_t>(missile._ticksUntilExpiry);
 	file->WriteLE<int32_t>(missile._misource);
 	file->WriteLE<int32_t>(missile._micaster);
 	file->WriteLE<int32_t>(missile._midam);
@@ -1942,7 +1993,11 @@ void LoadLevel(LevelConversionData *levelConversionData)
 
 		// No need to load dLight, we can recreate it accurately from LightList
 		memcpy(dLight, dPreLight, sizeof(dLight));                                     // resets the light on entering a level to get rid of incorrect light
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+		ChangePlayerLightXY(*MyPlayer, MyPlayer->position.tile); // forces player light refresh
+#else
 		ChangeLightXY(Players[MyPlayerId].lightId, Players[MyPlayerId].position.tile); // forces player light refresh
+#endif
 	} else {
 		memset(dLight, 0, sizeof(dLight));
 	}
@@ -1956,7 +2011,11 @@ void LoadLevel(LevelConversionData *levelConversionData)
 
 	for (Player &player : Players) {
 		if (player.plractive && player.isOnActiveLevel())
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+			PlayerLights[player.getId()].hasChanged = true;
+#else
 			Lights[player.lightId].hasChanged = true;
+#endif
 	}
 }
 
@@ -2037,19 +2096,24 @@ void RemoveInvalidItem(Item &item)
 	bool isInvalid = !IsItemAvailable(item.IDidx) || !IsUniqueAvailable(item._iUid);
 
 	if (!gbIsHellfire) {
-		isInvalid = isInvalid || (item._itype == ItemType::Staff && GetSpellStaffLevel(item._iSpell) == -1);
-		isInvalid = isInvalid || (item._iMiscId == IMISC_BOOK && GetSpellBookLevel(item._iSpell) == -1);
+		isInvalid = isInvalid || (item._itype == ItemType::Staff && GetSpellBookLevel(item._iSpell, false) == -1);
+		isInvalid = isInvalid || (item._iMiscId == IMISC_BOOK && GetSpellBookLevel(item._iSpell, true) == -1);
 		isInvalid = isInvalid || item._iDamAcFlags != ItemSpecialEffectHf::None;
-		isInvalid = isInvalid || item._iPrePower > IPL_LASTDIABLO;
-		isInvalid = isInvalid || item._iSufPower > IPL_LASTDIABLO;
+		isInvalid = isInvalid || (item._iPrefixPower > IPL_LASTDIABLO && item._iPrefixPower < IPL_FIRST_JWK);
+		isInvalid = isInvalid || (item._iSuffixPower > IPL_LASTDIABLO && item._iSuffixPower < IPL_FIRST_JWK);
 	}
+
+	if (!JWK_ALLOW_FASTER_CASTING && (item._iPrefixPower == IPL_FASTCAST || item._iSuffixPower == IPL_FASTCAST))
+		isInvalid = true;
+	if (!JWK_ALLOW_MANA_COST_MODIFIER && (item._iPrefixPower == IPL_MANA_COST || item._iSuffixPower == IPL_MANA_COST || item._iPrefixPower == IPL_MANA_COST_CURSE || item._iSuffixPower == IPL_MANA_COST_CURSE))
+		isInvalid = true;
 
 	if (isInvalid) {
 		item.clear();
 	}
 }
 
-_item_indexes RemapItemIdxFromDiablo(_item_indexes i)
+BaseItemIdx RemapItemIdxFromDiablo(BaseItemIdx i)
 {
 	constexpr auto GetItemIdValue = [](int i) -> int {
 		if (i == IDI_SORCERER) {
@@ -2068,10 +2132,10 @@ _item_indexes RemapItemIdxFromDiablo(_item_indexes i)
 		return i;
 	};
 
-	return static_cast<_item_indexes>(GetItemIdValue(i));
+	return static_cast<BaseItemIdx>(GetItemIdValue(i));
 }
 
-_item_indexes RemapItemIdxToDiablo(_item_indexes i)
+BaseItemIdx RemapItemIdxToDiablo(BaseItemIdx i)
 {
 	constexpr auto GetItemIdValue = [](int i) -> int {
 		if (i == IDI_SORCERER_DIABLO) {
@@ -2090,10 +2154,10 @@ _item_indexes RemapItemIdxToDiablo(_item_indexes i)
 		return i;
 	};
 
-	return static_cast<_item_indexes>(GetItemIdValue(i));
+	return static_cast<BaseItemIdx>(GetItemIdValue(i));
 }
 
-_item_indexes RemapItemIdxFromSpawn(_item_indexes i)
+BaseItemIdx RemapItemIdxFromSpawn(BaseItemIdx i)
 {
 	constexpr auto GetItemIdValue = [](int i) {
 		if (i >= 62) {
@@ -2121,10 +2185,10 @@ _item_indexes RemapItemIdxFromSpawn(_item_indexes i)
 		return i;
 	};
 
-	return static_cast<_item_indexes>(GetItemIdValue(i));
+	return static_cast<BaseItemIdx>(GetItemIdValue(i));
 }
 
-_item_indexes RemapItemIdxToSpawn(_item_indexes i)
+BaseItemIdx RemapItemIdxToSpawn(BaseItemIdx i)
 {
 	constexpr auto GetItemIdValue = [](int i) {
 		if (i >= 104) {
@@ -2152,7 +2216,7 @@ _item_indexes RemapItemIdxToSpawn(_item_indexes i)
 		return i;
 	};
 
-	return static_cast<_item_indexes>(GetItemIdValue(i));
+	return static_cast<BaseItemIdx>(GetItemIdValue(i));
 }
 
 bool IsHeaderValid(uint32_t magicNumber)
@@ -2165,10 +2229,10 @@ bool IsHeaderValid(uint32_t magicNumber)
 		gbIsHellfireSaveGame = true;
 		return true;
 	}
-	if (!gbIsSpawn && magicNumber == LoadLE32("RETL")) {
+	if (!gbIsDemoGame && magicNumber == LoadLE32("RETL")) {
 		return true;
 	}
-	if (!gbIsSpawn && magicNumber == LoadLE32("HELF")) {
+	if (!gbIsDemoGame && magicNumber == LoadLE32("HELF")) {
 		gbIsHellfireSaveGame = true;
 		return true;
 	}
@@ -2435,6 +2499,11 @@ void LoadGame(bool firstflag)
 			LoadLighting(&file, &VisionList[i]);
 			VisionActive[i] = true;
 		}
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+		for (int i = 0; i < visionCount; i++) {
+			LoadLighting(&file, &PlayerLights[i]);
+		}
+#endif
 	}
 
 	LoadDroppedItems(file, savedItemCount);
@@ -2485,18 +2554,22 @@ void LoadGame(bool firstflag)
 
 		// No need to load dLight, we can recreate it accurately from LightList
 		memcpy(dLight, dPreLight, sizeof(dLight));               // resets the light on entering a level to get rid of incorrect light
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+		ChangePlayerLightXY(myPlayer, myPlayer.position.tile); // forces player light refresh
+#else
 		ChangeLightXY(myPlayer.lightId, myPlayer.position.tile); // forces player light refresh
+#endif
 	} else {
 		memset(dLight, 0, sizeof(dLight));
 	}
 
-	numpremium = file.NextBE<int32_t>();
-	premiumlevel = file.NextBE<int32_t>();
+	gNumSmithPremiumItems = file.NextBE<int32_t>();
+	gSmithPremiumItemLevel = file.NextBE<int32_t>();
 
 	for (int i = 0; i < giNumberOfSmithPremiumItems; i++)
 		LoadPremium(file, i);
 	if (gbIsHellfire && !gbIsHellfireSaveGame)
-		SpawnPremium(myPlayer);
+		SpawnPremiumItemsForSmith(myPlayer);
 
 	AutomapActive = file.NextBool8();
 	AutoMapScale = file.NextBE<int32_t>();
@@ -2605,13 +2678,13 @@ void SaveGameData(SaveWriter &saveWriter)
 {
 	SaveHelper file(saveWriter, "game", 320 * 1024);
 
-	if (gbIsSpawn && !gbIsHellfire)
+	if (gbIsDemoGame && !gbIsHellfire)
 		file.WriteLE<uint32_t>(LoadLE32("SHAR"));
-	else if (gbIsSpawn && gbIsHellfire)
+	else if (gbIsDemoGame && gbIsHellfire)
 		file.WriteLE<uint32_t>(LoadLE32("SHLF"));
-	else if (!gbIsSpawn && gbIsHellfire)
+	else if (!gbIsDemoGame && gbIsHellfire)
 		file.WriteLE<uint32_t>(LoadLE32("HELF"));
-	else if (!gbIsSpawn && !gbIsHellfire)
+	else if (!gbIsDemoGame && !gbIsHellfire)
 		file.WriteLE<uint32_t>(LoadLE32("RETL"));
 	else
 		app_fatal(_("Invalid game state"));
@@ -2700,6 +2773,11 @@ void SaveGameData(SaveWriter &saveWriter)
 
 		for (const Player &player : Players)
 			SaveLighting(&file, &VisionList[player.getId()], true);
+
+#if JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
+		for (const Player &player : Players)
+			SaveLighting(&file, &PlayerLights[player.getId()], true);
+#endif
 	}
 
 	auto itemIndexes = SaveDroppedItems(file);
@@ -2753,11 +2831,11 @@ void SaveGameData(SaveWriter &saveWriter)
 		}
 	}
 
-	file.WriteBE<int32_t>(numpremium);
-	file.WriteBE<int32_t>(premiumlevel);
+	file.WriteBE<int32_t>(gNumSmithPremiumItems);
+	file.WriteBE<int32_t>(gSmithPremiumItemLevel);
 
 	for (int i = 0; i < giNumberOfSmithPremiumItems; i++)
-		SaveItem(file, premiumitems[i]);
+		SaveItem(file, gSmithPremiumItems[i]);
 
 	file.WriteLE<uint8_t>(AutomapActive ? 1 : 0);
 	file.WriteBE<int32_t>(AutoMapScale);

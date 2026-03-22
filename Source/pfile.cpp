@@ -54,7 +54,7 @@ char hero_names[MAX_CHARACTERS][PlayerNameLength];
 std::string GetSavePath(uint32_t saveNum, string_view savePrefix = {})
 {
 	return StrCat(paths::PrefPath(), savePrefix,
-	    gbIsSpawn
+	    gbIsDemoGame
 	        ? (gbIsMultiplayer ? "share_" : "spawn_")
 	        : (gbIsMultiplayer ? "multi_" : "single_"),
 	    saveNum,
@@ -69,7 +69,7 @@ std::string GetSavePath(uint32_t saveNum, string_view savePrefix = {})
 std::string GetStashSavePath()
 {
 	return StrCat(paths::PrefPath(),
-	    gbIsSpawn ? "stash_spawn" : "stash",
+	    gbIsDemoGame ? "stash_spawn" : "stash",
 #ifdef UNPACKED_SAVES
 	    gbIsHellfire ? "_hsv" DIRECTORY_SEPARATOR_STR : "_sv" DIRECTORY_SEPARATOR_STR
 #else
@@ -172,14 +172,14 @@ void Game2UiPlayer(const Player &player, _uiheroinfo *heroinfo, bool bHasSaveFil
 {
 	CopyUtf8(heroinfo->name, player._pName, sizeof(heroinfo->name));
 	heroinfo->level = player._pLevel;
-	heroinfo->heroclass = player._pClass;
+	heroinfo->heroclass = player._pHeroClass;
 	heroinfo->strength = player._pStrength;
 	heroinfo->magic = player._pMagic;
 	heroinfo->dexterity = player._pDexterity;
 	heroinfo->vitality = player._pVitality;
 	heroinfo->hassaved = bHasSaveFile;
 	heroinfo->herorank = player.pDiabloKillLevel;
-	heroinfo->spawned = gbIsSpawn;
+	heroinfo->spawned = gbIsDemoGame;
 }
 
 bool GetFileName(uint8_t lvl, char *dst)
@@ -586,7 +586,7 @@ std::unique_ptr<byte[]> ReadArchive(SaveReader &archive, const char *pszName, si
 
 const char *pfile_get_password()
 {
-	if (gbIsSpawn)
+	if (gbIsDemoGame)
 		return gbIsMultiplayer ? PASSWORD_SPAWN_MULTI : PASSWORD_SPAWN_SINGLE;
 	return gbIsMultiplayer ? PASSWORD_MULTI : PASSWORD_SINGLE;
 }
@@ -657,7 +657,7 @@ bool pfile_ui_set_hero_infos(bool (*uiAddHeroInfo)(_uiheroinfo *))
 				UnPackPlayer(pkplr, player);
 				LoadHeroItems(player);
 				RemoveAllInvalidItems(player);
-				CalcPlrInv(player, false);
+				CalcPlayerInventory(player, false);
 
 				Game2UiPlayer(player, &uihero, hasSaveGame);
 				uiAddHeroInfo(&uihero);
@@ -702,7 +702,7 @@ bool pfile_ui_save_create(_uiheroinfo *heroinfo)
 	CopyUtf8(hero_names[saveNum], heroinfo->name, sizeof(hero_names[saveNum]));
 
 	Player &player = Players[0];
-	CreatePlayer(player, heroinfo->heroclass);
+	CreateNewPlayer(player, heroinfo->heroclass);
 	CopyUtf8(player._pName, heroinfo->name, PlayerNameLength);
 	PackPlayer(pkplr, player);
 	EncodeHero(saveWriter, &pkplr);
@@ -743,7 +743,7 @@ void pfile_read_player_from_save(uint32_t saveNum, Player &player)
 	UnPackPlayer(pkplr, player);
 	LoadHeroItems(player);
 	RemoveAllInvalidItems(player);
-	CalcPlrInv(player, false);
+	CalcPlayerInventory(player, false);
 }
 
 void pfile_save_level()

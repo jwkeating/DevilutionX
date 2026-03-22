@@ -45,7 +45,7 @@ void UiSelOkDialog(const char *title, const char *body, bool background)
 	if (!background) {
 		UiLoadBlackBackground();
 	} else {
-		if (!gbIsSpawn) {
+		if (!gbIsDemoGame) {
 			LoadBackgroundArt("ui_art\\mainmenu");
 		} else {
 			LoadBackgroundArt("ui_art\\swmmenu");

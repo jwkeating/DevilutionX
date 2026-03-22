@@ -20,9 +20,9 @@
 namespace devilution {
 
 uint8_t sgbNetUpdateRate;
-size_t gdwMsgLenTbl[MAX_PLRS];
+size_t gdwMsgLenTbl[MAX_PLAYERS];
 uint32_t gdwTurnsInTransit;
-uintptr_t glpMsgTbl[MAX_PLRS];
+uintptr_t glpMsgTbl[MAX_PLAYERS];
 uint32_t gdwLargestMsgSize;
 uint32_t gdwNormalMsgSize;
 int last_tick;
@@ -120,7 +120,7 @@ bool nthread_recv_turns(bool *pfSendAsync)
 		last_tick += gnTickDelay;
 		return true;
 	}
-	if (!SNetReceiveTurns(MAX_PLRS, (char **)glpMsgTbl, gdwMsgLenTbl, &player_state[0])) {
+	if (!SNetReceiveTurns(MAX_PLAYERS, (char **)glpMsgTbl, gdwMsgLenTbl, &player_state[0])) {
 		if (SErrGetLastError() != STORM_ERROR_NO_MESSAGES_WAITING)
 			nthread_terminate_game("SNetReceiveTurns");
 		sgbTicsOutOfSync = false;
@@ -172,8 +172,8 @@ void nthread_start(bool setTurnUpperBit)
 	gdwNormalMsgSize = caps.bytessec * sgbNetUpdateRate / 20;
 	gdwNormalMsgSize *= 3;
 	gdwNormalMsgSize >>= 2;
-	if (caps.maxplayers > MAX_PLRS)
-		caps.maxplayers = MAX_PLRS;
+	if (caps.maxplayers > MAX_PLAYERS)
+		caps.maxplayers = MAX_PLAYERS;
 	gdwNormalMsgSize /= caps.maxplayers;
 	while (gdwNormalMsgSize < 0x80) {
 		gdwNormalMsgSize *= 2;

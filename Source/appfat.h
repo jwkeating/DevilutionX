@@ -10,16 +10,18 @@
 #include "utils/attributes.h"
 #include "utils/stdcompat/string_view.hpp"
 
+#define JWK_ALWAYS_LOG_ASSERTION_FAILURES 1
+
 namespace devilution {
 
 #define ErrSdl() ErrDlg("SDL Error", SDL_GetError(), __FILE__, __LINE__)
 
 #undef assert
 
-#ifndef _DEBUG
-#define assert(exp)
-#else
+#if defined(_DEBUG) || JWK_ALWAYS_LOG_ASSERTION_FAILURES
 #define assert(exp) (void)((exp) || (assert_fail(__LINE__, __FILE__, #exp), 0))
+#else
+#define assert(exp)
 #endif
 
 /**

@@ -263,7 +263,7 @@ void AddSelHeroBackground()
 void SelheroClassSelectorSelect(int value)
 {
 	auto hClass = static_cast<HeroClass>(vecSelHeroDlgItems[value]->m_value);
-	if (gbIsSpawn && (hClass == HeroClass::Rogue || hClass == HeroClass::Sorcerer || (hClass == HeroClass::Bard && !gbBard))) {
+	if (gbIsDemoGame && (hClass == HeroClass::Rogue || hClass == HeroClass::Sorcerer || (hClass == HeroClass::Bard && !gbBard))) {
 		RemoveSelHeroBackground();
 		UiSelOkDialog(nullptr, _("The Rogue and Sorcerer are only available in the full retail version of Diablo. Visit https://www.gog.com/game/diablo to purchase.").data(), false);
 		AddSelHeroBackground();

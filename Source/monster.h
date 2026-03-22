@@ -181,7 +181,7 @@ struct CMonster {
 	std::unique_ptr<TSnd> sounds[4][2];
 	const MonsterData *data;
 
-	_monster_id type;
+	MonsterID type;
 	/** placeflag enum as a flags*/
 	uint8_t placeFlags;
 	int8_t corpseId;
@@ -198,19 +198,26 @@ struct CMonster {
 extern CMonster LevelMonsterTypes[MaxLvlMTypes];
 
 struct Monster { // note: missing field _mAFNum
+#if JWK_PREVENT_DUPLICATE_MISSILE_HITS
+	MissileGroupList _missileGroupsToIgnoreThisTick;
+	MissileGroupRingBuffer _missileGroupsToIgnoreForever;
+#endif
 	std::unique_ptr<uint8_t[]> uniqueMonsterTRN;
 	/**
 	 * @brief Contains information for current animation
 	 */
 	AnimationInfo animInfo;
 	int maxHitPoints;
+	int maxHitPointsPreMultiplayerScale;
 	int hitPoints;
 	uint32_t flags;
 	/** Seed used to determine item drops on death */
 	uint32_t rndItemSeed;
 	/** Seed used to determine AI behaviour/sync sounds in multiplayer games? */
 	uint32_t aiSeed;
+#if !JWK_EDIT_GOLEM
 	uint16_t golemToHit;
+#endif
 	uint16_t resistance;
 	_speech_id talkMsg;
 
@@ -256,7 +263,7 @@ struct Monster { // note: missing field _mAFNum
 	 */
 	uint8_t intelligence;
 	/** Stores information for how many ticks the monster will remain active */
-	uint8_t activeForTicks;
+	uint8_t activeForTicks; // if UINT8_MAX, monster is always active.  If the monster goes out of vision, monster will remain active until it runs out of ticks
 	UniqueMonsterType uniqueType;
 	uint8_t uniqTrans;
 	int8_t corpseId;
@@ -329,6 +336,24 @@ struct Monster { // note: missing field _mAFNum
 		return pgettext("monster", data().name);
 	}
 
+	static unsigned int ScaleExp(unsigned int monsterExp, _difficulty difficulty, bool isMonsterUnique)
+	{
+		if (difficulty == DIFF_NIGHTMARE) {
+			monsterExp = 2 * (monsterExp + 1000);
+		} else if (difficulty == DIFF_HELL) {
+			monsterExp = 4 * (monsterExp + 1000);
+		}
+
+		if (isMonsterUnique) {
+#if JWK_BUFF_UNIQUE_MONSTERS
+			monsterExp *= 5;
+#else // original code
+			monsterExp *= 2;
+#endif
+		}
+		return monsterExp;
+	}
+
 	/**
 	 * @brief Calculates monster's experience points.
 	 * Fetches base exp value from @p MonstersData array.
@@ -337,19 +362,7 @@ struct Monster { // note: missing field _mAFNum
 	 */
 	unsigned int exp(_difficulty difficulty) const
 	{
-		unsigned int monsterExp = data().exp;
-
-		if (difficulty == DIFF_NIGHTMARE) {
-			monsterExp = 2 * (monsterExp + 1000);
-		} else if (difficulty == DIFF_HELL) {
-			monsterExp = 4 * (monsterExp + 1000);
-		}
-
-		if (isUnique()) {
-			monsterExp *= 2;
-		}
-
-		return monsterExp;
+		return ScaleExp(data().exp, difficulty, isUnique());
 	}
 
 	/**
@@ -359,7 +372,8 @@ struct Monster { // note: missing field _mAFNum
 	 * @return Monster's chance to hit with normal attack, including bonuses from difficulty and monster being unique
 	 */
 	unsigned int toHit(_difficulty difficulty) const;
-
+	unsigned int toHitWithMagic(_difficulty difficulty) const;
+	
 	/**
 	 * @brief Calculates monster's chance to hit with special attack.
 	 * Fetches base value from @p MonstersData array or @p UniqueMonstersData.
@@ -368,36 +382,31 @@ struct Monster { // note: missing field _mAFNum
 	 */
 	unsigned int toHitSpecial(_difficulty difficulty) const;
 
+	static unsigned int GetLevelForUnique(UniqueMonsterType uniqueType)
+	{
+		const UniqueMonsterData& uniqueMonsterData = UniqueMonstersData[static_cast<int8_t>(uniqueType)];
+		unsigned int baseLevel = uniqueMonsterData.mlevel;
+#if JWK_BUFF_UNIQUE_MONSTERS
+		// Ensure the level is at least "ordinary monster of same type" + 5
+		// This *2 factor is kind of arbitrary - why not include the desired mlevel in the table in the first place?
+		baseLevel = std::max<int>(baseLevel * 2, MonstersData[uniqueMonsterData.mtype].level + 5);
+#else // original code
+		if (baseLevel != 0) {
+			baseLevel *= 2;
+		} else {
+			baseLevel = MonstersData[uniqueMonsterData.mtype].level + 5;
+		}
+#endif
+		return baseLevel;
+	}
+
 	/**
 	 * @brief Calculates monster's level.
 	 * Fetches base level value from @p MonstersData array or @p UniqueMonstersData.
 	 * @param difficulty - difficulty on which calculation is performed
 	 * @return Monster's level, including bonuses from difficulty and monster being unique
 	 */
-	unsigned int level(_difficulty difficulty) const
-	{
-		unsigned int baseLevel = data().level;
-		if (isUnique()) {
-			baseLevel = UniqueMonstersData[static_cast<int8_t>(uniqueType)].mlevel;
-			if (baseLevel != 0) {
-				baseLevel *= 2;
-			} else {
-				baseLevel = data().level + 5;
-			}
-		}
-
-		if (type().type == MT_DIABLO && !gbIsHellfire) {
-			baseLevel -= 15;
-		}
-
-		if (difficulty == DIFF_NIGHTMARE) {
-			baseLevel += 15;
-		} else if (difficulty == DIFF_HELL) {
-			baseLevel += 30;
-		}
-
-		return baseLevel;
-	}
+	unsigned int level(_difficulty difficulty) const;
 
 	/**
 	 * @brief Returns the network identifier for this monster
@@ -460,8 +469,10 @@ extern Monster Monsters[MaxMonsters];
 extern int ActiveMonsters[MaxMonsters];
 extern size_t ActiveMonsterCount;
 extern int MonsterKillCounts[NUM_MTYPES];
+extern uint8_t MonsterHitWithDamage[NUM_MTYPES][3];
 extern bool sgbSaveSoundOn;
 
+bool ScaleAllMonsterHealthForMultiplayer();
 void PrepareUniqueMonst(Monster &monster, UniqueMonsterType monsterType, size_t miniontype, int bosspacksize, const UniqueMonsterData &uniqueMonsterData);
 void InitLevelMonsters();
 void GetLevelMTypes();
@@ -473,7 +484,7 @@ void InitMonsters();
 void SetMapMonsters(const uint16_t *dunData, Point startPosition);
 Monster *AddMonster(Point position, Direction dir, size_t mtype, bool inMap);
 void AddDoppelganger(Monster &monster);
-void ApplyMonsterDamage(DamageType damageType, Monster &monster, int damage);
+void ApplyMonsterDamage(DamageType damageType, Monster &monster, int damage, int hitChanceForUI); // expects 'damage' to be shifted
 bool M_Talker(const Monster &monster);
 void M_StartStand(Monster &monster, Direction md);
 void M_ClearSquares(const Monster &monster);
@@ -482,6 +493,9 @@ void M_StartHit(Monster &monster, int dam);
 void M_StartHit(Monster &monster, const Player &player, int dam);
 void StartMonsterDeath(Monster &monster, const Player &player, bool sendmsg);
 void MonsterDeath(Monster &monster, Direction md, bool sendmsg);
+#if JWK_EDIT_GOLEM
+void KillPlayerGolem(int playerID);
+#endif
 void KillMyGolem();
 void M_StartKill(Monster &monster, const Player &player);
 void M_SyncStartKill(Monster &monster, Point position, const Player &player);
@@ -489,7 +503,7 @@ void M_UpdateRelations(const Monster &monster);
 void DoEnding();
 void PrepDoEnding();
 bool Walk(Monster &monster, Direction md);
-void GolumAi(Monster &monster);
+void GolemAi(Monster &monster);
 void DeleteMonsterList();
 void ProcessMonsters();
 void FreeMonsters();
@@ -499,20 +513,21 @@ bool LineClearMissile(Point startPoint, Point endPoint);
 bool LineClear(tl::function_ref<bool(Point)> clear, Point startPoint, Point endPoint);
 void SyncMonsterAnim(Monster &monster);
 void M_FallenFear(Point position);
-void PrintMonstHistory(int mt);
+void PrintMonstHistory(MonsterID monsterID);
 void PrintUniqueHistory();
 void PlayEffect(Monster &monster, MonsterSound mode);
-void MissToMonst(Missile &missile, Point position);
+void MissileBecomesMonster(Missile &missile, Point position);
 
 Monster *FindMonsterAtPosition(Point position, bool ignoreMovingMonsters = false);
 Monster *FindUniqueMonster(UniqueMonsterType monsterType);
+Monster *FindClosestMonsterInSight(Point source, int rad);
 
 /**
  * @brief Check that the given tile is available to the monster
  */
 bool IsTileAvailable(const Monster &monster, Point position);
-bool IsSkel(_monster_id mt);
-bool IsGoat(_monster_id mt);
+bool IsSkel(MonsterID mt);
+bool IsGoat(MonsterID mt);
 /**
  * @brief Reveals a monster that was hiding in a container
  * @param monster instance returned from a previous call to PreSpawnSkeleton

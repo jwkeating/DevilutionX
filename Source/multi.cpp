@@ -37,33 +37,47 @@ namespace devilution {
 
 bool gbSomebodyWonGameKludge;
 TBuffer highPriorityBuffer;
-uint16_t sgwPackPlrOffsetTbl[MAX_PLRS];
-bool sgbPlayerTurnBitTbl[MAX_PLRS];
-bool sgbPlayerLeftGameTbl[MAX_PLRS];
+uint16_t sgwPackPlrOffsetTbl[MAX_PLAYERS];
+bool sgbPlayerTurnBitTbl[MAX_PLAYERS];
+bool sgbPlayerLeftGameTbl[MAX_PLAYERS];
 bool shareNextHighPriorityMessage;
-uint8_t gbActivePlayers;
 bool gbGameDestroyed;
-bool sgbSendDeltaTbl[MAX_PLRS];
+bool sgbSendDeltaTbl[MAX_PLAYERS];
 GameData sgGameInitInfo;
 bool gbSelectProvider;
 int sglTimeoutStart;
-uint32_t sgdwPlayerLeftReasonTbl[MAX_PLRS];
+uint32_t sgdwPlayerLeftReasonTbl[MAX_PLAYERS];
 TBuffer lowPriorityBuffer;
 uint32_t sgdwGameLoops;
 /**
  * Specifies the maximum number of players in a game, where 1
  * represents a single player game and 4 represents a multi player game.
  */
-bool gbIsMultiplayer;
+bool gbIsMultiplayer; // This is true for multiplayer characters, even if playing offline with no other players.
 bool sgbTimeout;
 std::string GameName;
 std::string GamePassword;
 bool PublicGame;
 uint8_t gbDeltaSender;
 bool sgbNetInited;
-uint32_t player_state[MAX_PLRS];
-Uint32 playerInfoTimers[MAX_PLRS];
+uint32_t player_state[MAX_PLAYERS];
+Uint32 playerInfoTimers[MAX_PLAYERS];
 bool IsLoopback;
+
+
+static uint8_t gbActivePlayers;
+uint8_t GetNumActivePlayers() { return gbActivePlayers; }
+bool IncreaseNumActivePlayers()
+{
+	gbActivePlayers++;
+	return ScaleAllMonsterHealthForMultiplayer();
+}
+bool DecreaseNumActivePlayers()
+{
+	gbActivePlayers--;
+	return ScaleAllMonsterHealthForMultiplayer();
+}
+
 
 /**
  * Contains the set of supported event types supported by the multiplayer
@@ -157,14 +171,15 @@ void NetReceivePlayerData(TPkt *pkt)
 	pkt->hdr.bstr = myPlayer._pBaseStr;
 	pkt->hdr.bmag = myPlayer._pBaseMag;
 	pkt->hdr.bdex = myPlayer._pBaseDex;
+	pkt->hdr.pdir = static_cast<uint8_t>(myPlayer._pdir);
 }
 
 bool IsNetPlayerValid(const Player &player)
 {
 	return player._pLevel >= 1
 	    && player._pLevel <= MaxCharacterLevel
-	    && static_cast<uint8_t>(player._pClass) < enum_size<HeroClass>::value
-	    && player.plrlevel < NUMLEVELS
+	    && static_cast<uint8_t>(player._pHeroClass) < enum_size<HeroClass>::value
+	    && player.currentDungeonLevel < NUMLEVELS
 	    && InDungeonBounds(player.position.tile)
 	    && !string_view(player._pName).empty();
 }
@@ -266,23 +281,26 @@ void PlayerLeftMsg(int pnum, bool left)
 	DeactivatePortal(pnum);
 	delta_close_portal(pnum);
 	RemovePlrMissiles(player);
+	bool minionsWeaken = DecreaseNumActivePlayers();
 	if (left) {
-		string_view pszFmt = _("Player '{:s}' just left the game");
+		string_view pszFmt = minionsWeaken ? _("Player '{:s}' left the game.  Diablo's minions have weakened.") : _("Player '{:s}' left the game");
 		switch (sgdwPlayerLeftReasonTbl[pnum]) {
 		case LEAVE_ENDING:
-			pszFmt = _("Player '{:s}' killed Diablo and left the game!");
+			pszFmt = minionsWeaken ? _("Player '{:s}' killed Diablo and left the game!  Diablo's minions have weakened.") : _("Player '{:s}' killed Diablo and left the game!");
 			gbSomebodyWonGameKludge = true;
 			break;
 		case LEAVE_DROP:
-			pszFmt = _("Player '{:s}' dropped due to timeout");
+			pszFmt = minionsWeaken ? _("Player '{:s}' dropped due to timeout.  Diablo's minions have weakened.") : _("Player '{:s}' dropped due to timeout");
 			break;
 		}
+		EventPlrMsg(fmt::format(fmt::runtime(pszFmt), player._pName));
+	} else {
+		string_view pszFmt = minionsWeaken ? _("Player '{:s}' left the game?  Diablo's minions have weakened.") : _("Player '{:s}' left the game?");
 		EventPlrMsg(fmt::format(fmt::runtime(pszFmt), player._pName));
 	}
 	player.plractive = false;
 	player._pName[0] = '\0';
 	ResetPlayerGFX(player);
-	gbActivePlayers--;
 }
 
 void ClearPlayerLeftState()
@@ -413,7 +431,7 @@ void HandleEvents(_SNETEVENT *pEvt)
 		sgbSendDeltaTbl[playerId] = false;
 
 		if (gbDeltaSender == playerId)
-			gbDeltaSender = MAX_PLRS;
+			gbDeltaSender = MAX_PLAYERS;
 	} break;
 	case EVENT_TYPE_PLAYER_MESSAGE: {
 		string_view data(static_cast<const char *>(pEvt->data), pEvt->databytes);
@@ -468,7 +486,7 @@ bool InitSingle(GameData *gameData)
 
 bool InitMulti(GameData *gameData)
 {
-	Players.resize(MAX_PLRS);
+	Players.resize(MAX_PLAYERS);
 
 	int playerId;
 
@@ -667,8 +685,17 @@ void multi_process_network_packets()
 			player._pBaseStr = pkt->bstr;
 			player._pBaseMag = pkt->bmag;
 			player._pBaseDex = pkt->bdex;
+
 			if (!cond && player.plractive && player._pHitPoints != 0) {
 				if (player.isOnActiveLevel() && !player._pLvlChanging) {
+					const uint8_t rawDir = pkt->pdir;
+					if (rawDir <= static_cast<uint8_t>(Direction::SouthEast)) {
+						const Direction newDir = static_cast<Direction>(rawDir);
+						if (player._pdir != newDir && player._pmode == PM_STAND) {
+							player._pdir = newDir;
+							StartStand(player, newDir);
+						}
+					}
 					if (player.position.tile.WalkingDistance(syncPosition) > 3 && PosOkPlayer(player, syncPosition)) {
 						// got out of sync, clear the tiles around where we last thought the player was located
 						FixPlrWalkTags(player);
@@ -821,9 +848,9 @@ bool NetInit(bool bSinglePlayer)
 
 void recv_plrinfo(int pnum, const TCmdPlrInfoHdr &header, bool recv)
 {
-	static PlayerNetPack PackedPlayerBuffer[MAX_PLRS];
+	static PlayerNetPack PackedPlayerBuffer[MAX_PLAYERS];
 
-	assert(pnum >= 0 && pnum < MAX_PLRS);
+	assert(pnum >= 0 && pnum < MAX_PLAYERS);
 	Player &player = Players[pnum];
 	if (&player == MyPlayer) {
 		return;
@@ -861,13 +888,21 @@ void recv_plrinfo(int pnum, const TCmdPlrInfoHdr &header, bool recv)
 
 	ResetPlayerGFX(player);
 	player.plractive = true;
-	gbActivePlayers++;
+	bool minionsStronger = IncreaseNumActivePlayers();
 
 	string_view szEvent;
 	if (sgbPlayerTurnBitTbl[pnum]) {
-		szEvent = _("Player '{:s}' (level {:d}) just joined the game");
+		if (minionsStronger) {
+			szEvent = _("Player '{:s}' (level {:d}) just joined the game.  Diablo's minions grow stronger.");
+		} else {
+			szEvent = _("Player '{:s}' (level {:d}) just joined the game");
+		}
 	} else {
-		szEvent = _("Player '{:s}' (level {:d}) is already in the game");
+		if (minionsStronger) {
+			szEvent = _("Player '{:s}' (level {:d}) is already in the game.  Diablo's minions grow stronger.");
+		} else {
+			szEvent = _("Player '{:s}' (level {:d}) is already in the game");
+		}
 	}
 	EventPlrMsg(fmt::format(fmt::runtime(szEvent), player._pName, player._pLevel));
 
@@ -878,13 +913,13 @@ void recv_plrinfo(int pnum, const TCmdPlrInfoHdr &header, bool recv)
 	}
 
 	if (player._pHitPoints >> 6 > 0) {
-		StartStand(player, Direction::South);
+		StartStand(player, player._pdir);
 		return;
 	}
 
 	player._pgfxnum &= ~0xFU;
 	player._pmode = PM_DEATH;
-	NewPlrAnim(player, player_graphic::Death, Direction::South);
+	NewPlrAnim(player, player_graphic::Death, player._pdir);
 	player.AnimInfo.currentFrame = player.AnimInfo.numberOfFrames - 2;
 	dFlags[player.position.tile.x][player.position.tile.y] |= DungeonFlag::DeadPlayer;
 }

@@ -1160,12 +1160,12 @@ void sound_init()
 	uint8_t mask = sfx_MISC;
 	if (gbIsMultiplayer) {
 		mask |= sfx_WARRIOR;
-		if (!gbIsSpawn)
+		if (!gbIsDemoGame)
 			mask |= (sfx_ROGUE | sfx_SORCERER);
 		if (gbIsHellfire)
 			mask |= sfx_MONK;
 	} else {
-		switch (MyPlayer->_pClass) {
+		switch (MyPlayer->_pHeroClass) {
 		case HeroClass::Warrior:
 		case HeroClass::Barbarian:
 			mask |= sfx_WARRIOR;
