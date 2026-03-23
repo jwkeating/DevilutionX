@@ -11,6 +11,11 @@
 #include "sdl2_to_1_2_backports.h"
 #endif
 
+#define JWK_ALWAYS_LOG_ASSERTION_FAILURES 1
+#if JWK_ALWAYS_LOG_ASSERTION_FAILURES
+extern void JwkLog(const std::string& msg);
+#endif
+
 namespace devilution {
 
 // Local definition to fix compilation issue due to header conflict.
@@ -138,6 +143,9 @@ template <typename... Args>
 void LogCritical(LogCategory category, string_view fmt, Args &&...args)
 {
 	auto str = detail::format(fmt, std::forward<Args>(args)...);
+#if JWK_ALWAYS_LOG_ASSERTION_FAILURES
+	JwkLog(str);
+#endif
 	SDL_LogCritical(static_cast<int>(category), "%s", str.c_str());
 }
 

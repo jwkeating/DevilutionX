@@ -108,7 +108,7 @@ void UpdateFloatingText(FloatingNumber &num)
 	num.style &= ~(UiFlags::FontSize12 | UiFlags::FontSize24 | UiFlags::FontSize30);
 	num.style |= GetFontSizeByDamage(num.value);
 
-	// ColorDialogWhite crashes the game
+	// ColorDialogWhite is tan
 	// ColorUiGoldDark is dark red, looks kinda bad
 	// ColorBlack is super black, hard to read because outline is also black
 	// ColorGold and ColorWhitegold are the same
@@ -118,7 +118,7 @@ void UpdateFloatingText(FloatingNumber &num)
 		num.style |= UiFlags::ColorWhite;//::ColorGold;
 		break;
 	case DamageType::Fire:
-		num.style |= UiFlags::ColorUiSilver; // UiSilver appears dark red ingame
+		num.style |= UiFlags::ColorUiSilver; // UiSilver appears dark red in game
 		break;
 	case DamageType::Lightning:
 		num.style |= UiFlags::ColorBlue;

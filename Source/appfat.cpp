@@ -4,11 +4,7 @@
  * Implementation of error dialogs.
  */
 
-#if JWK_LOG_ASSERTIONS
-#include <stdio.h>
-#include <ctime>
-#endif
-
+#include "appfat.h"
 #include <config.h>
 #include <fmt/format.h>
 
@@ -19,6 +15,25 @@
 #include "utils/sdl_thread.h"
 #include "utils/str_cat.hpp"
 #include "utils/ui_fwd.h"
+
+#if JWK_ALWAYS_LOG_ASSERTION_FAILURES
+#include <stdio.h>
+#include <ctime>
+#include <windows.h> // for IsDebuggerPresent()
+void JwkLog(const std::string& msg)
+{
+	if (IsDebuggerPresent()) {
+		__debugbreak();
+	}
+	std::time_t currentTime = std::time(nullptr);
+	std::string timeStr = std::ctime(&currentTime); // includes newline
+	FILE* file = fopen("jwk_assertion_failures.txt", "a");
+	if (file) {
+		fprintf(file, "%s%s\n\n", timeStr.c_str(), msg.c_str());
+		fclose(file);
+	}
+}
+#endif
 
 namespace devilution {
 
@@ -52,6 +67,9 @@ void FreeDlg()
 
 void app_fatal(string_view str)
 {
+#if JWK_ALWAYS_LOG_ASSERTION_FAILURES
+	JwkLog(std::string(str));
+#endif
 	FreeDlg();
 	UiErrorOkDialog(_("Error"), str);
 	diablo_quit(1);
@@ -60,18 +78,7 @@ void app_fatal(string_view str)
 #if defined(_DEBUG) || JWK_ALWAYS_LOG_ASSERTION_FAILURES
 void assert_fail(int nLineNo, const char *pszFile, const char *pszFail)
 {
-	std::string msg = StrCat("assertion failed (", pszFile, ":", nLineNo, ")\n", pszFail);
-	__debugbreak();
-#if JWK_ALWAYS_LOG_ASSERTION_FAILURES
-	std::time_t currentTime = std::time(nullptr);
-	std::string timeStr = std::ctime(&currentTime); // includes newline
-	FILE* file = fopen("jwk_assertion_failures.txt", "a");
-	if (file) {
-		fprintf(file, "%s%s\n\n", timeStr.c_str(), msg.c_str());
-		fclose(file);
-	}
-#endif
-	app_fatal(msg);
+	app_fatal(StrCat("assertion failed (", pszFile, ":", nLineNo, ")\n", pszFail));
 }
 #endif
 

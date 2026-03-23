@@ -10,7 +10,7 @@
 #include "utils/attributes.h"
 #include "utils/stdcompat/string_view.hpp"
 
-#define JWK_ALWAYS_LOG_ASSERTION_FAILURES 1
+#include "utils/log.hpp" // jwk added
 
 namespace devilution {
 

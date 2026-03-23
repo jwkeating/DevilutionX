@@ -503,9 +503,11 @@ bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxd
 
 	if (monster.hitPoints >> 6 <= 0) {
 		M_StartKill(monster, player);
+#if !JWK_RESISTANT_TARGETS_CAN_BE_STUNNED
 	} else if (resist) {
 		monster.tag(player);
 		PlayEffect(monster, MonsterSound::Hit);
+#endif
 	} else {
 		if (monster.mode != MonsterMode::Petrified && missileData.isArrow() && HasAnyOf(player._pIFlags, ItemSpecialEffect::Knockback))
 			M_GetKnockback(monster);
@@ -617,23 +619,21 @@ bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, M
 		dam /= 2;
 	if (resper > 0) {
 		dam -= (dam * resper) / 100;
-#if !JWK_ALLOW_BLOCK_AND_STUN_WITH_RESISTANCE
-		if (&attacker == MyPlayer)
-			NetSendCmdDamage(true, p, dam, damageType);
-		target.Say(HeroSpeech::ArghClang);
-		return true;
-#endif
 	}
-
-	if (blockChance > blockDifficultyRoll) {
+	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
 		//Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
 		StartPlrBlock(target, dir);
 		*blocked = true;
-	} else {
-		if (&attacker == MyPlayer)
+	} else { // target takes damage
+		if (&attacker == MyPlayer) {
 			NetSendCmdDamage(true, p, dam, damageType);
-		StartPlrHit(target, dam, false);
+		}
+		if (JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) {
+			StartPlrHit(target, dam, false);
+		} else {
+			target.Say(HeroSpeech::ArghClang);
+		}
 	}
 
 	return true;
@@ -1411,8 +1411,10 @@ bool MonsterHitByMissileFromMonsterOrTrap(int monsterId, Monster* attacker, int 
 #endif
 	if (monster.hitPoints >> 6 <= 0) {
 		MonsterDeath(monster, monster.direction, true);
+#if !JWK_RESISTANT_TARGETS_CAN_BE_STUNNED
 	} else if (resist) {
 		PlayEffect(monster, MonsterSound::Hit);
+#endif
 	} else if (monster.type().type != MT_GOLEM) {
 		M_StartHit(monster, dam);
 	}
@@ -1553,7 +1555,7 @@ bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, M
 		dam = std::max(dam, 64);
 	}
 
-#if JWK_ALLOW_BLOCK_AND_STUN_WITH_RESISTANCE
+#if JWK_RESISTANT_TARGETS_CAN_BLOCK
 	if (blockChance > blockDifficultyRoll) {
 #else // original code
 	if ((resper <= 0 || gbIsHellfire) && blockChance > blockDifficultyRoll) {
@@ -1561,32 +1563,23 @@ bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, M
 		//if (monster != nullptr) {
 		//	mDir = GetDirection(player.position.tile, monster->position.tile);
 		//}
-		Direction dir = mStartPos != Point(0,0) ? GetDirection(player.position.tile, mStartPos) : player._pdir;
+		Direction dir = mStartPos != Point(0,0) ? GetDirection(player.position.tile, mStartPos) : monster? GetDirection(player.position.tile, monster->position.tile) : player._pdir;
 		*blocked = true;
 		StartPlrBlock(player, dir);
 		return true;
 	}
 
+	// target takes damage
 	if (resper > 0) {
 		dam -= dam * resper / 100;
-#if !JWK_ALLOW_BLOCK_AND_STUN_WITH_RESISTANCE // The original code here skips hit recovery (player gets stunned) if you have even 1% resistance, no matter how big the damage is.
-		if (&player == MyPlayer) {
-			ApplyPlrDamage(damageType, player, 0, 0, dam, hitChance, deathReason);
-		}
-
-		if (player._pHitPoints >> 6 > 0) {
-			player.Say(HeroSpeech::ArghClang);
-		}
-		return true;
-#endif
 	}
-
 	if (&player == MyPlayer) {
 		ApplyPlrDamage(damageType, player, 0, 0, dam, hitChance, deathReason);
 	}
-
-	if (player._pHitPoints >> 6 > 0) {
+	if ((JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) && player._pHitPoints >> 6 > 0) {
 		StartPlrHit(player, dam, false); // stun player if damage is large enough
+	} else if (player._pHitPoints >> 6 > 0) {
+		player.Say(HeroSpeech::ArghClang);
 	}
 
 	return true;

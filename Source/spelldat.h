@@ -14,10 +14,11 @@
 #define JWK_BLACK_DEATH_NO_PERM_HP_LOSS 1 // Instead of -1HP to your permanent max health, black death does insane damage instead (likely killing the player in one hit).
 #define JWK_3X_MELEE_CRITS 0 // Boost warrior/barbarian critical strike damage from 2x to 3x.
 #define JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE 1 // When a bow is equipped, use the same damage formula for all classes instead of halving non-rogue damage vs mosters.  To compensate rogue, give her a modest critical strike chance with bows.
-#define JWK_USE_CONSISTENT_HIT_CHANCE 1 // remove the 10% and 20% class-specific bonuses to hit so that everything is based on stats (more consistent and easier for players to understand).  One exception: The warrior gets a hit chance buff otherwise he risks being worse at melee than the rogue.
+#define JWK_USE_CONSISTENT_HIT_CHANCE 1 // remove the class-specific bonuses to hit chance so everything is based on stats (more consistent and easier for players to understand).
 #define JWK_EDIT_BLOCK_CHANCE 1 // Use new formula based on str/dex instead of purely dex
 #define JWK_EDIT_FAST_BLOCK 1 // Make fastblock -2 frames instead of -4 frames.  This only affects sorcerer because he's the only one who needs -4 frames to reach the block speed limit.
-#define JWK_ALLOW_BLOCK_AND_STUN_WITH_RESISTANCE 1 // If true, resistance doesn't affect block and stun.  If false (original code), having fire/lightning/magic resistance (even 1%) prevents your character from blocking the attack and also prevents you from getting stunned by the attack.
+#define JWK_RESISTANT_TARGETS_CAN_BLOCK 1 // If true, resistance doesn't affect blocking.  If false (original code), having fire/lightning/magic resistance (even 1%) prevents your character from blocking the attack.
+#define JWK_RESISTANT_TARGETS_CAN_BE_STUNNED 1 // If true, resistance doesn't affect stuns other than reduced damage reduces chance of stun.  If false (original code), having fire/lightning/magic resistance (even 1%) prevents players/monsters from being stunned.
 #define JWK_USE_HELLFIRE_ARMOR_PIERCE 1 // If true, armor pierce ignore a percent of target armor.  If false, armor pierce of x% is identical to gear with +x chance to hit.
 #define JWK_ALLOW_LEECH_IN_PVP 1 // If true, allow life and mana leech weapons to function in pvp.  Original code does not allow weapon-based leech but it DOES allow life steal crown, which seems like a bug.
 #define JWK_BUFF_LIFE_STEAL_CROWN 1 // If true, buff life steal crown from random 0-12% leech to a constant 12% leech
