@@ -27,41 +27,24 @@
 #include "spells.h"
 #include "utils/str_cat.hpp"
 
-#define JWK_EDIT_SPELL_DAMAGE 1 // kinda mandatory because code won't compile without
-
 namespace devilution {
 
 std::list<Missile> Missiles;
 bool MissilePreFlag;
 
-namespace {
-
-//int AddClassHealingBonus(int hp, HeroClass heroClass)
-//{
-//	switch (heroClass) {
-//	case HeroClass::Warrior:
-//	case HeroClass::Monk:
-//	case HeroClass::Barbarian:
-//		return hp * 2;
-//	case HeroClass::Rogue:
-//	case HeroClass::Bard:
-//		return hp + hp / 2;
-//	default:
-//		return hp;
-//	}
-//}
-
-int ScaleSpellEffect(int base, int spellLevel) // at spell level 15, this multiplies base by about 5.5 (depending on integer truncation)
+static unsigned int ScaleSpellEffect(unsigned int base, int spellLevel)
 {
-	// compute base * (9/8)^spellLevel
+	// Compute base * (9/8)^spellLevel.  At spell level 15, this multiplies base by 5.85
+	base <<= 8; // use fixed point to maintain precision
 	for (int i = 0; i < spellLevel; i++) {
-		base += base / 8;
+		base += base >> 3;
 	}
-
+	//base = base * (100 + playerLevel) / 100; // This corresponds roughly to the damage scaling of critical strike chance when using melee/ranged attacks
+	base >>= 8; // drop the fractional bits
 	return base;
 }
 
-int GenerateRndSum(int range, int iterations)
+static int GenerateRndSum(int range, int iterations)
 {
 	int value = 0;
 	for (int i = 0; i < iterations; i++) {
@@ -71,80 +54,78 @@ int GenerateRndSum(int range, int iterations)
 	return value;
 }
 
-#if JWK_EDIT_SPELL_DAMAGE
 // Note: Most player-casted spells are initiated from void CastSpell() in spells.cpp which calls AddMissile().  Other code can also call AddMissle() to spawn spell effects.
 // AddMissile() calls the mAddProc for the given spell in the MissilesData table.  The mProc for the given spell is also called every tick until the missle goes away.
 // In general, damage-per-tick spells use shifted integers (integer value 64 means 1 damage in game) but direct damage spells use ordinary integers (integer value 1 means 1 damage in game).
-int32_t GenerateRndMin(int32_t v) { return 0; }
-int32_t GenerateRndMax(int32_t v) { return std::max(0, v - 1); }
-int GenerateRndSumMin(int range, int iterations) { return 0; }
-int GenerateRndSumMax(int range, int iterations) { return iterations * GenerateRndMax(range); }
+static int32_t GenerateRndMin(int32_t v) { return 0; }
+static int32_t GenerateRndMax(int32_t v) { return std::max(0, v - 1); }
+static int GenerateRndSumMin(int range, int iterations) { return 0; }
+static int GenerateRndSumMax(int range, int iterations) { return iterations * GenerateRndMax(range); }
 
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcFireBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFireBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return generateRndFunc(10) + player._pLevel + spellLevel + 1;
+	return ScaleSpellEffect(2 + generateRndFunc(player._pLevel / 4), spellLevel);
 	// original code: return generateRndFunc(10) + (player._pMagic / 8) + spellLevel + 1;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcChargedBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcChargedBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return (player._pLevel + 2 * spellLevel) * (player._pMagic + 200) / 400;
+	return ScaleSpellEffect(10 + generateRndSumFunc(player._pLevel / 2, 4) + 10, spellLevel);
 	// original code: return generateRndFunc(player._pMagic / 4) + 1;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcHolyBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcHolyBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return 1 + player._pLevel * player._pMagic * (3 * spellLevel + generateRndSumFunc(spellLevel, 3)) / 6000;
+	return ScaleSpellEffect(((4 + player._pLevel) * (300 + player._pMagic) * (20 + generateRndSumFunc(10, 4))) >> 16, spellLevel);
 	// original code: return generateRndFunc(10) + player._pLevel + 9;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcFireBallDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFireBallDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	return ScaleSpellEffect(player._pLevel + generateRndSumFunc(10, 3) + 5, spellLevel);
 	// original code: return ScaleSpellEffect(2 * (player._pLevel + generateRndSumFunc(10, 2)) + 4, spellLevel);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcElementalDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcElementalDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	return CalcFireBallDamage(player, spellLevel, generateRndFunc, generateRndSumFunc);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcGuardianDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcGuardianDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// The original code computes a firebolt with the guardian's spell level:
 	return CalcFireBoltDamage(player, spellLevel, generateRndFunc, generateRndSumFunc);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcFlameWaveDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFlameWaveDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return (player._pLevel + 5 * spellLevel + generateRndSumFunc(spellLevel, 6) + generateRndSumFunc(player._pLevel, 3)) * 100 / 150;
+	return ScaleSpellEffect(3 + player._pLevel + generateRndSumFunc(player._pLevel, 3), spellLevel) / 5;
 	// original code: return generateRndFunc(10) + player._pLevel + 1;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcLightningDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcLightningDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	// Note: lightning damage is scaled by CalcLightningLength()
-	return generateRndFunc(40 * (player._pLevel + 2 * spellLevel)) + 64;
+	// Note: 64 means 1 when shifted by 6.  Also note: lightning damage is scaled by CalcLightningLength() because it ticks every frame as the bolt passes through a target
+	return 64 + ScaleSpellEffect(generateRndFunc(13 * player._pLevel), spellLevel);
 	// original code: return (generateRndFunc(2) + generateRndFunc(player._pLevel) + 2) << 6;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcChainLightningDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcChainLightningDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// Note: Even with the samge damage per tick, chain lightning is weaker than lightning because CalcChainLightningLength() is much less than CalcLightningLength()
 	return CalcLightningDamageShifted(player, spellLevel, generateRndFunc, generateRndSumFunc);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcFireWallDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFireWallDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// At normal game speed, damage ticks every 50ms
-	//return 100 << 6;
-	return (generateRndSumFunc(10, 3) + player._pLevel + 2 * spellLevel) * 5;
+	return ScaleSpellEffect(generateRndSumFunc(8, 3) + 2 * player._pLevel, spellLevel);
 	// original code: return (generateRndSumFunc(10, 2) + 2 + player._pLevel) * 8;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcLightningWallDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcLightningWallDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	// original code:
-	return 16 * (generateRndSumFunc(10, 2) + player._pLevel + 2);
+	return CalcFireWallDamageShifted(player, spellLevel, generateRndFunc, generateRndSumFunc);
+	// original code: return 16 * (generateRndSumFunc(10, 2) + player._pLevel + 2);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcInfernoDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcInfernoDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// "return (N << 6);" does (20 to 30) * N total damage to the target depending on 1,2,3 tile distance
-	return (25 + player._pLevel / 2) * 25  +  5 * (generateRndSumFunc(5 + player._pLevel / 2, 4) + 2 * generateRndSumFunc(spellLevel, 2));
+	return ScaleSpellEffect(generateRndSumFunc(20, 5) + player._pLevel, spellLevel) * 3;
 	// original code: int i = generateRndFunc(player._pLevel) + generateRndFunc(2);
 	// original code: return 8 * i + 16 + ((8 * i + 16) / 2);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcFlashDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFlashDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// "return 270 << 6;" deals 5130 damage in game.  5130/270 == 19 so flash does 19 ticks
 	return ScaleSpellEffect(player._pLevel + generateRndSumFunc(player._pLevel / 5, 4), spellLevel) * 6;
@@ -154,23 +135,25 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcFlashDa
 	// original code: dmg += dmg / 2;
 	// original code: return dmg;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcNovaDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcNovaDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(generateRndSumFunc(10, 4) + player._pLevel + 10, spellLevel) / 2;
+	return ScaleSpellEffect(8 + generateRndSumFunc(8, 2) + player._pLevel, spellLevel) / 2;
 	// original code: return ScaleSpellEffect((generateRndSumFunc(6, 5) + player._pLevel + 5) / 2, spellLevel);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcBloodStarDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcBloodStarDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return (player._pMagic + 10 * spellLevel) * player._pHitPoints / (150 * 64);
-	// player._pMaxHP >> 6;
+	// note: player._pHitPoints is shifted << 6
+	return ScaleSpellEffect(((50 + player._pLevel) * (300 + player._pMagic) * player._pHitPoints) >> 16, spellLevel) / 128;
 	// original code: return 3 * spellLevel - (player._pMagic / 8) + (player._pMagic / 2);
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcApocalypseDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcApocalypseDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(3 * player._pLevel + generateRndSumFunc(2 * player._pLevel, 2), spellLevel);
+	// For this formula, we assume players can't learn the spell so every spell level added makes a big difference.
+	int base = 16 * player._pLevel + generateRndSumFunc(player._pLevel + 1, 4);
+	return base * (4 + spellLevel) / 4; // 25% more damage per spell level
 	// original code: return generateRndSumFunc(6, player._pLevel) + player._pLevel;
 }
-template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcHealingAmount(const Player &caster, const Player& target, int casterSpellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
+template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcHealingAmount(const Player &caster, const Player& target, int casterSpellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 #if 1 // jwk - edit healing amount
 	if (casterSpellLevel < 0) { casterSpellLevel = 0; }
@@ -191,22 +174,21 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> int CalcHealing
 	return hp;
 #endif
 }
-int CalcLightningLength(int spellLevel)
+static int CalcLightningLength(int spellLevel)
 {
 	// Note: bolt length affects damage
 	return (spellLevel / 3) + 5;
 	// original code: return (spellLevel / 2) + 6;
 }
-int CalcChainLightningLength(int spellLevel)
+static int CalcChainLightningLength(int spellLevel)
 {
 	// Note: bolt length affects damage
 	// We want a short bolt so the bolt can be seen bouncing between targets
 	return 5;
 }
-#endif // JWK_EDIT_SPELL_DAMAGE
 
 
-void TagMonsterWithDamageType(Monster& monster, DamageType damageType)
+static void TagMonsterWithDamageType(Monster& monster, DamageType damageType)
 {
 	static_assert((int)DamageType::Fire == 1 && (int)DamageType::Lightning == 2 && (int)DamageType::Magic == 3, "Enum must match array index");
 	if ((int)damageType >= 1 && (int)damageType <= 3) {
@@ -216,14 +198,14 @@ void TagMonsterWithDamageType(Monster& monster, DamageType damageType)
 	}
 }
 
-constexpr Direction16 Direction16Flip(Direction16 x, Direction16 pivot)
+static constexpr Direction16 Direction16Flip(Direction16 x, Direction16 pivot)
 {
 	std::underlying_type_t<Direction16> ret = (2 * static_cast<std::underlying_type_t<Direction16>>(pivot) + 16 - static_cast<std::underlying_type_t<Direction16>>(x)) % 16;
 
 	return static_cast<Direction16>(ret);
 }
 
-void UpdateMissileVelocity(Missile &missile, Point destination, int velocityInPixels)
+static void UpdateMissileVelocity(Missile &missile, Point destination, int velocityInPixels)
 {
 	missile.position.velocity = { 0, 0 };
 
@@ -241,7 +223,7 @@ void UpdateMissileVelocity(Missile &missile, Point destination, int velocityInPi
  * @brief Add the missile to the lookup tables
  * @param missile The missile to add
  */
-void PutMissile(Missile &missile)
+static void PutMissile(Missile &missile)
 {
 	Point position = missile.position.tile;
 
@@ -263,7 +245,7 @@ void PutMissile(Missile &missile)
 		MissilePreFlag = true;
 }
 
-void UpdateMissilePos(Missile &missile)
+static void UpdateMissilePos(Missile &missile)
 {
 	Displacement pixelsTravelled = missile.position.traveled >> 16;
 
@@ -283,7 +265,7 @@ void UpdateMissilePos(Missile &missile)
  * This appears to compensate for some visual oddity or invalid calculation earlier in the ProcessRhino logic.
  * @param missile MissileStruct representing a charging monster.
  */
-void MoveMissilePos(Missile &missile)
+static void MoveMissilePos(Missile &missile)
 {
 	Direction moveDirection;
 
@@ -310,24 +292,24 @@ void MoveMissilePos(Missile &missile)
 	}
 }
 
-int ScaleTrapDamage(int dmg)
+static int ScaleTrapDamage(int dmg)
 {
 	// TODO: remove this function and individually tune each trap
 	return dmg * (sgGameInitInfo.nDifficulty + 1);
 }
-int ProjectileTrapDamage(Missile &missile)
+static int ProjectileTrapDamage(Missile &missile)
 {
 	return 3 * (15 + 30);
 	// return currlevel + GenerateRnd(2 * currlevel);
 	return ScaleTrapDamage(currlevel + GenerateRndSum(currlevel + 1, 2));
 }
-void GetTrapArrowDamage(int& mind, int& maxd)
+static void GetTrapArrowDamage(int& mind, int& maxd)
 {
 	// Deals [45 - 70] damage in hell/hell
 	mind = (currlevel + 15 * sgGameInitInfo.nDifficulty) * 1 + 1;
 	maxd = (currlevel + 15 * sgGameInitInfo.nDifficulty) * 3 / 2 + 3;
 }
-void GetAddedTrapElementalArrowDamage(int& mind, int& maxd)
+static void GetAddedTrapElementalArrowDamage(int& mind, int& maxd)
 {
 	// Note: An elemental arrow hits twice - once for physical damage and once for fire damage.
 	// The total damage of an elemental arrow is GetTrapArrowDamage() + GetAddedTrapElementalArrowDamage()
@@ -335,59 +317,59 @@ void GetAddedTrapElementalArrowDamage(int& mind, int& maxd)
 	mind = (currlevel + 15 * sgGameInitInfo.nDifficulty) / 2 + 1;
 	maxd = (currlevel + 15 * sgGameInitInfo.nDifficulty) * 3 / 2 + 3;
 }
-int TrapFireboltDamage()
+static int TrapFireboltDamage()
 {
 	// This trap fires from distant walls and trapped doors (not chests)
 	// Deals [135 - 180] in hell/hell
 	return (currlevel + 15 * sgGameInitInfo.nDifficulty) * (3 + GenerateRnd(2));
 }
-int TrapLightningDamageShifted()
+static int TrapLightningDamageShifted()
 {
 	// This trap fires from distant walls and trapped doors (not chests)
 	// Deals [90 - 270] damage in hell/hell
 	int damageInGame = (currlevel + 15 * sgGameInitInfo.nDifficulty) * (2 + GenerateRnd(5));
 	return damageInGame * 8; // Assuming a length 8 bolt, we need to multiply by approx 8 to obtain the desired damage in game
 }
-int TrapChainLightningDamageShifted()
+static int TrapChainLightningDamageShifted()
 {
 	// Deals [135 - 225] damage in hell/hell
 	int damageInGame = (currlevel + 15 * sgGameInitInfo.nDifficulty) * (3 + GenerateRnd(3));
 	return damageInGame * 13; // Assuming a length 5 bolt, we need to multiply by approx 13 to obtain the desired damage in game
 }
-int TrapDamageAcidPuddleShifted()
+static int TrapDamageAcidPuddleShifted()
 {
 	// Deals 45 damage per second in hell/hell (Player is expected to run out of the acid puddle)
 	int damagePerSecond = (currlevel + 15 * sgGameInitInfo.nDifficulty);
 	return damagePerSecond * 16 / 5;
 }
-int TrapFireballDamage()
+static int TrapFireballDamage()
 {
 	// Deals [180 - 270] damage in hell/hell
 	return (currlevel + 15 * sgGameInitInfo.nDifficulty) * (4 + GenerateRnd(3));
 }
-int TrapNovaDamage()
+static int TrapNovaDamage()
 {
 	// Deals [135 - 270] damage in hell/hell
 	return (currlevel + 15 * sgGameInitInfo.nDifficulty) * (3 + GenerateRnd(5));
 }
-int TrapFlashDamage() // Note: sparkling shrine causes flash
+static int TrapFlashDamage() // Note: sparkling shrine causes flash
 {
 	// Deals [90 - 315] (avg 203) damage in hell/hell but you can avoid 90% of the damage if you immediately run away after opening the chest
 	int damageInGame = (currlevel + 15 * sgGameInitInfo.nDifficulty) * (2 + GenerateRnd(6));
 	return (damageInGame << 6) / 19;
 	// original code: return currlevel / 2; // This does almost no damage
 }
-int TrapApocalypseBoomDamage()
+static int TrapApocalypseBoomDamage()
 {
-	// Deals [150 - 300] damage in hell/hell
-	return (1 + sgGameInitInfo.nDifficulty) * (50 + GenerateRnd(51));
+	// Deals [100-200] in normal, [150-300] in nightmare, [200-400] in hell/hell
+	return (2 + sgGameInitInfo.nDifficulty) * (50 + GenerateRnd(51));
 }
-int TrapRingOfFireDamageShifted()
+static int TrapRingOfFireDamageShifted()
 {
 	return 16 * (GenerateRndSum(10, 2) + currlevel + 2) / 2; // original code
 }
 
-int ProjectileMonsterDamage(Missile &missile)
+static int ProjectileMonsterDamage(Missile &missile)
 {
 	const Monster &monster = *missile.sourceMonster();
 	return monster.minDamage + GenerateRnd(monster.maxDamage - monster.minDamage + 1);
@@ -401,7 +383,118 @@ static int ChanceToMissAtDistance(int distance)
 }
 #endif
 
-bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
+static void RotateBlockedMissile(Missile &missile)
+{
+	int rotation = PickRandomlyAmong({ -1, 1 });
+
+	if (missile._miAnimType == MissileGraphicID::Arrow) {
+		int dir = missile._miAnimFrame + rotation;
+		missile._miAnimFrame = (dir + 15) % 16 + 1;
+		return;
+	}
+
+	int dir = missile._mimfnum + rotation;
+	int mAnimFAmt = GetMissileSpriteData(missile._miAnimType).animFAmt;
+	if (dir < 0)
+		dir = mAnimFAmt - 1;
+	else if (dir >= mAnimFAmt)
+		dir = 0;
+
+	SetMissDir(missile, dir);
+}
+
+#if JWK_PREVENT_DUPLICATE_MISSILE_HITS
+static uint16_t GenerateMissileGroup()
+{
+	static uint16_t id = 0;
+	if (++id == 0) { ++id; }
+	return id;
+}
+static bool RecordMissleGroupHit(const Missile& missile, MissileGroupList& missileGroupsToIgnoreThisTick, MissileGroupRingBuffer& missileGroupsToIgnoreForever)
+{
+	if (missile._missileGroup == 0) {
+		return true; // missile doesn't require deduplication logic.
+	}
+	if (missile._missileGroupIgnoreForever) {
+		if (missileGroupsToIgnoreForever.DoesEntryExist(missile._missileGroup)) {
+			return false; // Missile group already hit this target.  Don't allow another hit.
+		}
+		missileGroupsToIgnoreForever.AddEntry(missile._missileGroup);
+		return true;
+	} else {
+		if (missileGroupsToIgnoreThisTick.DoesEntryExist(missile._missileGroup)) {
+			return false; // Missile group already hit this target this tick.  Don't allow another hit this tick.
+		}
+		missileGroupsToIgnoreThisTick.AddEntry(missile._missileGroup);
+		return true;
+	}
+}
+#endif
+
+
+bool MonsterHitByMissileFromMonsterOrTrap(int monsterId, Monster* attacker, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
+{
+	auto &monster = Monsters[monsterId];
+
+	if (!monster.isPossibleToHit() || monster.isImmune(missileID, damageType))
+		return false;
+
+	int diceRollToAvoidHit = GenerateRnd(100);
+	int hitChance;
+#if JWK_USE_CONSISTENT_HIT_CHANCE
+	if (shift) {
+		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
+	} else {
+		if (attacker) {
+			const MissileData &missileData = GetMissileData(missileID);
+			if (missileData.isArrow()) {
+				hitChance = attacker->toHit(sgGameInitInfo.nDifficulty) - monster.armorClass;
+			} else {
+				hitChance = attacker->toHitWithMagic(sgGameInitInfo.nDifficulty);
+			}
+			hitChance += 2 * (attacker->level(sgGameInitInfo.nDifficulty) - monster.level(sgGameInitInfo.nDifficulty)) - ChanceToMissAtDistance(dist);
+		} else { // monster hit by trap
+			hitChance = 50;
+		}
+		hitChance = clamp(hitChance, 5, 95);
+	}
+#else // original code:
+	hitChance = 90 - monster.armorClass - dist;
+	hitChance = clamp(hitChance, 5, 95);
+#endif
+	if (monster.tryLiftGargoyle())
+		return true;
+	if (diceRollToAvoidHit >= hitChance && monster.mode != MonsterMode::Petrified) {
+#ifdef _DEBUG
+		if (!DebugGodMode)
+#endif
+			return false;
+	}
+
+	bool resist = monster.isResistant(missileID, damageType);
+	int dam = mindam + GenerateRnd(maxdam - mindam + 1);
+	if (!shift)
+		dam <<= 6;
+	if (resist)
+		dam /= 4;
+	ApplyMonsterDamage(damageType, monster, dam, monster.mode == MonsterMode::Petrified ? 100 : hitChance);
+#ifdef _DEBUG
+	if (DebugGodMode)
+		monster.hitPoints = 0;
+#endif
+	if (monster.hitPoints >> 6 <= 0) {
+		MonsterDeath(monster, monster.direction, true);
+#if !JWK_RESISTANT_TARGETS_CAN_BE_STUNNED
+	} else if (resist) {
+		PlayEffect(monster, MonsterSound::Hit);
+#endif
+	} else if (monster.type().type != MT_GOLEM) {
+		M_StartHit(monster, dam);
+	}
+	return true;
+}
+
+static bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
 {
 	auto &monster = Monsters[monsterId];
 	const Player &player = Players[pnum];
@@ -423,12 +516,17 @@ bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxd
 	const MissileData &missileData = GetMissileData(missileID);
 
 #if JWK_USE_CONSISTENT_HIT_CHANCE
-	if (missileData.isArrow()) {
-		hitChance = player.GetRangedPiercingToHit() - player.CalculateArmorAfterPierce(monster.armorClass, false);
-		hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty)) - ChanceToMissAtDistance(dist);
+	if (shift) {
+		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
 	} else {
-		// magic ignores armor but caster level doesn't factor in, and there are no "+hit with magic" bonuses
-		hitChance = player.GetMagicToHit() - 2 * monster.level(sgGameInitInfo.nDifficulty) - ChanceToMissAtDistance(dist);
+		if (missileData.isArrow()) {
+			hitChance = player.GetRangedPiercingToHit() - player.CalculateArmorAfterPierce(monster.armorClass, false);
+			hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty)) - ChanceToMissAtDistance(dist);
+		} else {
+			// magic ignores armor but caster level doesn't factor in, and there are no "+hit with magic" bonuses
+			hitChance = player.GetMagicToHit() - 2 * monster.level(sgGameInitInfo.nDifficulty) - ChanceToMissAtDistance(dist);
+		}
+		hitChance = clamp(hitChance, 5, 95);
 	}
 #else // original code:
 	if (missileData.isArrow()) {
@@ -437,17 +535,13 @@ bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxd
 	} else {
 		hitChance = player.GetMagicToHit() - 2 * monster.level(sgGameInitInfo.nDifficulty) - dist;
 	}
-#endif
-
 	hitChance = clamp(hitChance, 5, 95);
-
-	if (monster.mode == MonsterMode::Petrified)
-		diceRollToAvoidHit = 0;
+#endif
 
 	if (monster.tryLiftGargoyle())
 		return true;
 
-	if (diceRollToAvoidHit >= hitChance) {
+	if (diceRollToAvoidHit >= hitChance && monster.mode != MonsterMode::Petrified) {
 #ifdef _DEBUG
 		if (!DebugGodMode)
 #endif
@@ -466,17 +560,19 @@ bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxd
 		assert(!shift);
 #if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE
 		dam += player._pIBonusDamMod + dam * player._pIBonusDam / 100 + player._pDamageMod;
-		if (player._pHeroClass == HeroClass::Rogue) {
-			if (GenerateRnd(100) < (player._pLevel + 1) / 2) { // Instead of halving the damage of other classes, give rogue a chance to critically hit (but only half the chance compared to warrior in melee)
-				dam *= 2;
-			}
-		}
 #else // original code
 		dam += player._pIBonusDamMod + dam * player._pIBonusDam / 100;
 		if (player._pHeroClass == HeroClass::Rogue)
 			dam += player._pDamageMod;
 		else
 			dam += player._pDamageMod / 2;
+#endif
+#if JWK_EDIT_CRITICAL_STRIKE
+		if (player._pHeroClass == HeroClass::Rogue) {
+			if (GenerateRnd(200) < 10 + player._pLevel) { // 5.5% - 30% chance at level 1 - 50
+				dam *= 2;
+			}
+		}
 #endif
 		if (monster.data().monsterClass == MonsterClass::Demon && HasAnyOf(player._pIFlags, ItemSpecialEffect::TripleDemonDamage))
 			dam *= 3;
@@ -492,6 +588,19 @@ bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxd
 #else // original code:
 	if (resist)
 		dam >>= 2;
+#endif
+#if JWK_EDIT_APOCALYPSE
+	if (missileID == MissileID::ApocalypseBoom) {
+		// Apocalypse is 50% fire, 50% physical
+		if ((monster.resistance & IMMUNE_FIRE) != 0) {
+			dam = dam / 2; // 100% of the fire is resisted
+		} else if ((monster.resistance & RESIST_FIRE) != 0) {
+			dam = dam * 5 / 8; // 75% of the fire is resisted
+		}
+#if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
+		TagMonsterWithDamageType(monster, DamageType::Fire);
+#endif
+	}
 #endif
 
 	if (&player == MyPlayer) {
@@ -523,7 +632,177 @@ bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, int maxd
 	return true;
 }
 
-bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, MissileID missileID, int mindam, int maxdam, DamageType damageType, bool shift, bool *blocked)
+// Player hit by missile from monster or trap
+bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, MissileID missileID, int mind, int maxd, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked)
+{
+	*blocked = false;
+
+	Player &player = Players[pnum];
+
+	if (player._pHitPoints >> 6 <= 0) {
+		return false;
+	}
+
+	if (player._pInvincible) {
+		return false;
+	}
+
+	const MissileData &missileData = GetMissileData(missileID);
+
+	if (HasAnyOf(player._pSpellFlags, SpellFlag::Etherealize) && missileData.isArrow()) {
+		return false;
+	}
+
+#if JWK_USE_CONSISTENT_HIT_CHANCE
+	int hitChance = 0;
+	if (shift) {
+		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
+	} else {
+		if (missileData.isArrow()) {
+			if (monster) {
+				hitChance = monster->toHit(sgGameInitInfo.nDifficulty) - player.GetArmor() + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel) - ChanceToMissAtDistance(dist);
+			} else { // arrow traps
+				int trapToHit = 100 * (sgGameInitInfo.nDifficulty + 1);
+				hitChance = trapToHit - player.GetArmor() - ChanceToMissAtDistance(dist);
+			}
+		} else if (monster) { // magic spell from monster
+			hitChance = monster->toHitWithMagic(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel) - ChanceToMissAtDistance(dist);
+		} else { // magical trap
+			hitChance = 100;
+		}
+		hitChance = std::min(hitChance, 95);
+	}
+#else // original code:
+	int hitChance = 40;
+	if (missileData.isArrow()) {
+		int tac = player.GetArmor();
+		if (monster) {
+			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel - dist) - tac;
+		} else { // arrow traps
+			hitChance = 100 - (tac / 2) - 2 * dist;
+		}
+	} else if (monster != nullptr) {
+		hitChance += 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel - dist);
+	}
+#endif
+
+	int minhit = 10;
+	if (currlevel == 14)
+		minhit = 20;
+	if (currlevel == 15)
+		minhit = 25;
+	if (currlevel == 16)
+		minhit = 30;
+	if (hitChance < minhit) {
+		hitChance = minhit;
+	}
+
+	int blockDifficultyRoll = 100;
+	if ((player._pmode == PM_STAND || player._pmode == PM_ATTACK) && player._pBlockFlag) { // note: You can't block while already blocking another attack
+		blockDifficultyRoll = GenerateRnd(100);
+	}
+
+	if (shift) // we can't block per-tick damage
+		blockDifficultyRoll = 100;
+	//if (missileID == MissileID::AcidPuddle)
+	//	blockDifficultyRoll = 100;
+
+	int blockChance = monster ? player.GetBlockChance(monster->level(sgGameInitInfo.nDifficulty)) : player.GetBlockChance(player._pLevel);
+
+	int diceRollToAvoidHit = GenerateRnd(100);
+#ifdef _DEBUG
+	if (DebugGodMode)
+		diceRollToAvoidHit = 1000;
+#endif
+	if (diceRollToAvoidHit >= hitChance) {
+		return false;
+	}
+
+	int dam;
+	if (missileID == MissileID::BoneSpirit) {
+		dam = player._pHitPoints / 3;
+	} else {
+		int trapDamageReduction = 1;
+		if (monster == nullptr) {
+			if (HasAnyOf(player._pIFlags, ItemSpecialEffect::HalfTrapDamage)) {
+				trapDamageReduction *= 2;
+			}
+#if JWK_EDIT_PLAYER_SKILLS
+			if (player._pHeroClass == HeroClass::Rogue && (SDL_GetTicks64() - player._timeOfMostRecentSkillUse < 1000)) {
+				trapDamageReduction *= 2; // rogue takes reduced damage if she tried to disarm the trap
+			}
+#endif
+		}
+		if (!shift) {
+			dam = (mind << 6) + GenerateRnd(((maxd - mind) << 6) + 1);
+			if (monster == nullptr) {
+				dam /= trapDamageReduction;
+			}
+			dam += player._pIGetHit * 64;
+		} else {
+			dam = mind + GenerateRnd(maxd - mind + 1);
+			if (monster == nullptr) {
+				dam /= trapDamageReduction;
+			}
+			dam += player._pIGetHit;
+		}
+
+		dam = std::max(dam, 64);
+	}
+
+	int8_t resper;
+	switch (damageType) {
+	case DamageType::Fire:
+		resper = player._pFireResist;
+		break;
+	case DamageType::Lightning:
+		resper = player._pLghtResist;
+		break;
+	case DamageType::Magic:
+	case DamageType::Acid:
+		resper = player._pMagResist;
+		break;
+	default:
+		resper = 0;
+		break;
+	}
+
+#if JWK_RESISTANT_TARGETS_CAN_BLOCK
+	if (blockChance > blockDifficultyRoll) {
+#else // original code
+	if ((resper <= 0 || gbIsHellfire) && blockChance > blockDifficultyRoll) {
+#endif
+		//if (monster != nullptr) {
+		//	mDir = GetDirection(player.position.tile, monster->position.tile);
+		//}
+		Direction dir = mStartPos != Point(0,0) ? GetDirection(player.position.tile, mStartPos) : monster? GetDirection(player.position.tile, monster->position.tile) : player._pdir;
+		*blocked = true;
+		StartPlrBlock(player, dir);
+		return true;
+	}
+
+	// target takes damage
+	if (resper > 0) {
+		dam -= dam * resper / 100;
+	}
+#if JWK_EDIT_APOCALYPSE
+	if (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom) {
+		dam -= (dam * player._pFireResist) / 200; // Apocalypse is 50% fire, 50% physical
+	}
+#endif
+	if (&player == MyPlayer) {
+		ApplyPlrDamage(damageType, player, 0, 0, dam, hitChance, deathReason);
+	}
+	if ((JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) && player._pHitPoints >> 6 > 0) {
+		StartPlrHit(player, dam, false); // stun player if damage is large enough
+	} else if (player._pHitPoints >> 6 > 0) {
+		player.Say(HeroSpeech::ArghClang);
+	}
+
+	return true;
+}
+
+static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, MissileID missileID, int mindam, int maxdam, DamageType damageType, bool shift, bool *blocked)
 {
 	Player &target = Players[p];
 
@@ -549,32 +828,20 @@ bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, M
 		return false;
 	}
 
-	int8_t resper;
-	switch (damageType) {
-	case DamageType::Fire:
-		resper = target._pFireResist;
-		break;
-	case DamageType::Lightning:
-		resper = target._pLghtResist;
-		break;
-	case DamageType::Magic:
-	case DamageType::Acid:
-		resper = target._pMagResist;
-		break;
-	default:
-		resper = 0;
-		break;
-	}
-
 	int diceRollToAvoidHit = GenerateRnd(100);
 
 	int hitChance;
 #if JWK_USE_CONSISTENT_HIT_CHANCE
-	if (missileData.isArrow()) {
-		hitChance = attacker.GetRangedToHit() - target.GetArmor() + 2 * (attacker._pLevel - target._pLevel) - ChanceToMissAtDistance(dist);
+	if (shift) {
+		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
 	} else {
-		// magic ignores armor but caster level doesn't factor in, and there are no "+hit with magic" bonuses
-		hitChance = attacker.GetMagicToHit() - 2 * target._pLevel - ChanceToMissAtDistance(dist);
+		if (missileData.isArrow()) {
+			hitChance = attacker.GetRangedToHit() - target.GetArmor() + 2 * (attacker._pLevel - target._pLevel) - ChanceToMissAtDistance(dist);
+		} else {
+			// magic ignores armor but caster level doesn't factor in, and there are no "+hit with magic" bonuses
+			hitChance = attacker.GetMagicToHit() - 2 * target._pLevel - ChanceToMissAtDistance(dist);
+		}
+		hitChance = clamp(hitChance, 5, 95);
 	}
 #else // original code:
 	if (missileData.isArrow()) {
@@ -582,9 +849,8 @@ bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, M
 	} else {
 		hitChance = attacker.GetMagicToHit() - 2 * target._pLevel - dist;
 	}
-#endif
-
 	hitChance = clamp(hitChance, 5, 95);
+#endif
 
 	if (diceRollToAvoidHit >= hitChance) {
 		return false;
@@ -604,9 +870,9 @@ bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, M
 		dam = mindam + GenerateRnd(maxdam - mindam + 1);
 		if (missileData.isArrow() && damageType == DamageType::Physical) {
 			dam += attacker._pIBonusDamMod + attacker._pDamageMod + dam * attacker._pIBonusDam / 100;
-#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE
+#if JWK_EDIT_CRITICAL_STRIKE
 			if (attacker._pHeroClass == HeroClass::Rogue) {
-				if (GenerateRnd(100) < attacker._pLevel) {
+				if (GenerateRnd(200) < 10 + attacker._pLevel) { // 5.5% - 30% chance at level 1 - 50
 					dam *= 2;
 				}
 			}
@@ -615,11 +881,36 @@ bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, M
 		if (!shift)
 			dam <<= 6;
 	}
-	if (!missileData.isArrow())
-		dam /= 2;
+
+	int8_t resper;
+	switch (damageType) {
+	case DamageType::Fire:
+		resper = target._pFireResist;
+		break;
+	case DamageType::Lightning:
+		resper = target._pLghtResist;
+		break;
+	case DamageType::Magic:
+	case DamageType::Acid:
+		resper = target._pMagResist;
+		break;
+	default:
+		resper = 0;
+		break;
+	}
 	if (resper > 0) {
 		dam -= (dam * resper) / 100;
 	}
+#if JWK_EDIT_APOCALYPSE
+	if (missileID == MissileID::ApocalypseBoom) {
+		dam -= (dam * target._pFireResist) / 200; // Apocalypse is 50% fire, 50% physical
+		dam /= 2; // Apocalypse does half damage in pvp
+	}
+#endif
+	// All spells do half damage in pvp - maybe this isn't needed because players can get 75% resist
+	//if (!missileData.isArrow())
+	//	dam /= 2;
+
 	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
 		//Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
@@ -639,55 +930,7 @@ bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStartPos, M
 	return true;
 }
 
-void RotateBlockedMissile(Missile &missile)
-{
-	int rotation = PickRandomlyAmong({ -1, 1 });
-
-	if (missile._miAnimType == MissileGraphicID::Arrow) {
-		int dir = missile._miAnimFrame + rotation;
-		missile._miAnimFrame = (dir + 15) % 16 + 1;
-		return;
-	}
-
-	int dir = missile._mimfnum + rotation;
-	int mAnimFAmt = GetMissileSpriteData(missile._miAnimType).animFAmt;
-	if (dir < 0)
-		dir = mAnimFAmt - 1;
-	else if (dir >= mAnimFAmt)
-		dir = 0;
-
-	SetMissDir(missile, dir);
-}
-
-#if JWK_PREVENT_DUPLICATE_MISSILE_HITS
-uint16_t GenerateMissileGroup()
-{
-	static uint16_t id = 0;
-	if (++id == 0) { ++id; }
-	return id;
-}
-bool RecordMissleGroupHit(const Missile& missile, MissileGroupList& missileGroupsToIgnoreThisTick, MissileGroupRingBuffer& missileGroupsToIgnoreForever)
-{
-	if (missile._missileGroup == 0) {
-		return true; // missile doesn't require deduplication logic.
-	}
-	if (missile._missileGroupIgnoreForever) {
-		if (missileGroupsToIgnoreForever.DoesEntryExist(missile._missileGroup)) {
-			return false; // Missile group already hit this target.  Don't allow another hit.
-		}
-		missileGroupsToIgnoreForever.AddEntry(missile._missileGroup);
-		return true;
-	} else {
-		if (missileGroupsToIgnoreThisTick.DoesEntryExist(missile._missileGroup)) {
-			return false; // Missile group already hit this target this tick.  Don't allow another hit this tick.
-		}
-		missileGroupsToIgnoreThisTick.AddEntry(missile._missileGroup);
-		return true;
-	}
-}
-#endif
-
-void CheckMissileCollision(Missile &missile, DamageType damageType, int minDamage, int maxDamage, bool isDamageShifted, Point position, bool dontDeleteOnCollision)
+static void CheckMissileCollision(Missile &missile, DamageType damageType, int minDamage, int maxDamage, bool isDamageShifted, Point position, bool dontDeleteOnCollision)
 {
 	if (!InDungeonBounds(position))
 		return;
@@ -776,7 +1019,7 @@ void CheckMissileCollision(Missile &missile, DamageType damageType, int minDamag
 		PlaySfxLoc(missileData.miSFX, missile.position.tile);
 }
 
-bool MoveMissile(Missile &missile, tl::function_ref<bool(Point)> checkTile, bool ifCheckTileFailsDontMoveToTile = false)
+static bool MoveMissile(Missile &missile, tl::function_ref<bool(Point)> checkTile, bool ifCheckTileFailsDontMoveToTile = false)
 {
 	Point prevTile = missile.position.tile;
 	missile.position.traveled += missile.position.velocity;
@@ -860,7 +1103,7 @@ bool MoveMissile(Missile &missile, tl::function_ref<bool(Point)> checkTile, bool
 	return true;
 }
 
-void MoveMissileAndCheckMissileCol(Missile &missile, DamageType damageType, int mindam, int maxdam, bool ignoreStart, bool ifCollidesDontMoveToHitTile)
+static void MoveMissileAndCheckMissileCol(Missile &missile, DamageType damageType, int mindam, int maxdam, bool ignoreStart, bool ifCollidesDontMoveToHitTile)
 {
 	auto checkTile = [&](Point tile) {
 		if (ignoreStart && missile.position.start == tile)
@@ -891,7 +1134,7 @@ void MoveMissileAndCheckMissileCol(Missile &missile, DamageType damageType, int 
 	missile.lastCollisionTargetHash = tileTargetHash;
 }
 
-void SetMissAnim(Missile &missile, MissileGraphicID animtype)
+static void SetMissAnim(Missile &missile, MissileGraphicID animtype)
 {
 	int dir = missile._mimfnum;
 
@@ -914,7 +1157,7 @@ void SetMissAnim(Missile &missile, MissileGraphicID animtype)
 	missile._miAnimFrame = 1;
 }
 
-void AddRune(Missile &missile, Point dst, MissileID missileID)
+static void AddRune(Missile &missile, Point dst, MissileID missileID)
 {
 	if (LineClearMissile(missile.position.start, dst)) {
 		std::optional<Point> runePosition = FindClosestValidPosition(
@@ -946,7 +1189,7 @@ void AddRune(Missile &missile, Point dst, MissileID missileID)
 	missile._miDelFlag = true;
 }
 
-bool CheckIfTrig(Point position)
+static bool CheckIfTrig(Point position)
 {
 	for (int i = 0; i < numtrigs; i++) {
 		if (trigs[i].position.WalkingDistance(position) < 2)
@@ -955,7 +1198,7 @@ bool CheckIfTrig(Point position)
 	return false;
 }
 
-bool GuardianTryFireAt(Missile &missile, Point target)
+static bool GuardianTryFireAt(Missile &missile, Point target)
 {
 	Point position = missile.position.tile;
 
@@ -972,17 +1215,8 @@ bool GuardianTryFireAt(Missile &missile, Point target)
 
 	Player &player = Players[missile._misource];
 	Direction dir = GetDirection(position, target);
-#if JWK_EDIT_SPELL_DAMAGE
 	int boltDamage = CalcGuardianDamage(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
 	AddMissile(position, target, dir, MissileID::Firebolt, TARGET_MONSTERS, missile._misource, boltDamage, missile.sourcePlayer()->GetSpellLevel(SpellID::Guardian), &missile);
-#else // original code
-	int dmg = GenerateRnd(10) + (player._pLevel / 2) + 1;
-	dmg = ScaleSpellEffect(dmg, missile._mispllvl);
-	// Note: The original code doesn't actually use this 'dmg' variable ^^
-	// The result of this bug is that the below AddMissile(MissileID::Firebolt) call uses the zero-initialized 'missile._midam' value as damage.
-	// Then, when AddMissile() calls AddFirebolt(), the "if (missile._midam == 0)" code branch computes a new damage value as if the firebolt was player-casted except the player's guardian spell level is used instead of the player's firebolt spell level.
-	AddMissile(position, target, dir, MissileID::Firebolt, TARGET_MONSTERS, missile._misource, missile._midam, missile.sourcePlayer()->GetSpellLevel(SpellID::Guardian), &missile);
-#endif
 	SetMissDir(missile, 2);
 	missile.var2 = 3;
 
@@ -990,7 +1224,7 @@ bool GuardianTryFireAt(Missile &missile, Point target)
 }
 
 /** @brief Sync missile position with parent missile */
-void SyncPositionWithParent(Missile &missile, const AddMissileParameter &parameter)
+static void SyncPositionWithParent(Missile &missile, const AddMissileParameter &parameter)
 {
 	const Missile *parent = parameter.pParent;
 	if (parent == nullptr)
@@ -1000,7 +1234,7 @@ void SyncPositionWithParent(Missile &missile, const AddMissileParameter &paramet
 	missile.position.traveled = parent->position.traveled;
 }
 
-void SpawnLightning(Missile &missile, int dam)
+static void SpawnLightning(Missile &missile, int dam)
 {
 	missile._ticksUntilExpiry--;
 	bool canMissileContinue = MoveMissile(
@@ -1140,8 +1374,6 @@ void SpawnLightning(Missile &missile, int dam)
 	}
 }
 
-} // namespace
-
 #ifdef BUILD_TESTING
 void TestRotateBlockedMissile(Missile &missile)
 {
@@ -1166,9 +1398,12 @@ bool IsMissileBlockedByTile(Point tile)
 
 int GetNumberOfChargedBolts(int spellLevel)
 {
-	// jwk - reduce number of charged bolts per cast since they move slower and stay on screen longer
-	return (spellLevel / 3) + 2;
-	// original code: return (spllvl / 2) + 4;
+#if JWK_EDIT_CHARGED_BOLT
+	// jwk - reduce number of charged bolts per cast since they move slower and stay on screen longer, and each bolt allocates a light
+	return 1;
+#else // original code:
+	return (spllvl / 2) + 4;
+#endif
 }
 
 void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, int *mind, int *maxd)
@@ -1176,30 +1411,20 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 	assert(spellID >= SpellID::FIRST && spellID <= SpellID::LAST);
 	switch (spellID) {
 	case SpellID::Firebolt:
-		//*mind = (player._pMagic / 8) + spellLevel + 1;
-		//*maxd = *mind + 9;
 		*mind = CalcFireBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcFireBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::Healing:
 	case SpellID::HealOther:
-		/// BUGFIX: healing calculation is unused
-		//*mind = AddClassHealingBonus(player._pLevel + spellLevel + 1, player._pHeroClass) - 1;
-		//*maxd = AddClassHealingBonus((4 * player._pLevel) + (6 * spellLevel) + 10, player._pHeroClass) - 1;
 		*mind = CalcHealingAmount(player, player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcHealingAmount(player, player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::RuneOfLight:
 	case SpellID::Lightning:
-		//*mind = 2;
-		//*maxd = 2 + player._pLevel;
 		*mind = CalcLightningDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * CalcLightningLength(spellLevel) >> 6;
 		*maxd = CalcLightningDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * CalcLightningLength(spellLevel) >> 6;
 		break;
 	case SpellID::Flash:
-		//*mind = ScaleSpellEffect(player._pLevel, spellLevel);
-		//*mind += *mind / 2;
-		//*maxd = *mind * 2;
 		// Note: Flash is a damage-over-time effect that lasts 19 ticks
 		*mind = CalcFlashDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 19 >> 6;
 		*maxd = CalcFlashDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 19 >> 6;
@@ -1233,35 +1458,23 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 	case SpellID::FireWall:
 	case SpellID::LightningWall:
 	case SpellID::RingOfFire:
-		//*mind = 2 * player._pLevel + 4;
-		//*maxd = *mind + 36;
 		*mind = CalcFireWallDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * MaxMergeTicksForDamageNumbers >> 6;
 		*maxd = CalcFireWallDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * MaxMergeTicksForDamageNumbers >> 6;
 		break;
 	case SpellID::Fireball:
 	case SpellID::RuneOfFire: {
-		//int base = (2 * player._pLevel) + 4;
-		//*mind = ScaleSpellEffect(base, spellLevel);
-		//*maxd = ScaleSpellEffect(base + 36, spellLevel);
 		*mind = CalcFireBallDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcFireBallDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 	} break;
 	case SpellID::Guardian: {
-		//int base = (player._pLevel / 2) + 1;
-		//*mind = ScaleSpellEffect(base, spellLevel);
-		//*maxd = ScaleSpellEffect(base + 9, spellLevel);
 		*mind = CalcGuardianDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcGuardianDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 	} break;
 	case SpellID::ChainLightning:
-		//*mind = 4;
-		//*maxd = 4 + (2 * player._pLevel);
 		*mind = CalcChainLightningDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * CalcChainLightningLength(spellLevel) >> 6;
 		*maxd = CalcChainLightningDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * CalcChainLightningLength(spellLevel) >> 6;
 		break;
 	case SpellID::FlameWave:
-		//*mind = 6 * (player._pLevel + 1);
-		//*maxd = *mind + 54;
 		*mind = CalcFlameWaveDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcFlameWaveDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
@@ -1269,22 +1482,15 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 	case SpellID::Immolation:
 	case SpellID::RuneOfImmolation:
 	case SpellID::RuneOfNova:
-		//*mind = ScaleSpellEffect((player._pLevel + 5) / 2, spellLevel) * 5;
-		//*maxd = ScaleSpellEffect((player._pLevel + 30) / 2, spellLevel) * 5;
 		*mind = CalcNovaDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcNovaDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::Inferno:
-		//*mind = 3;
-		//*maxd = player._pLevel + 4;
-		//*maxd += *maxd / 2;
 		*mind = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 25 >> 6;
 		*maxd = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 25 >> 6;
 		break;
 	case SpellID::Golem:
 	{
-		//*mind = 11;
-		//*maxd = 17;
 		uint32_t golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage;
 		player.GetGolemStats(spellLevel, golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage);
 		*mind = golemMinDamage;
@@ -1292,34 +1498,22 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 		break;
 	}
 	case SpellID::Apocalypse:
-		//*mind = player._pLevel;
-		//*maxd = *mind * 6;
 		*mind = CalcApocalypseDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcApocalypseDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::Elemental:
-		//*mind = ScaleSpellEffect(2 * player._pLevel + 4, spellLevel);
-		/// BUGFIX: add here '*mind /= 2;'
-		//*maxd = ScaleSpellEffect(2 * player._pLevel + 40, spellLevel);
-		/// BUGFIX: add here '*maxd /= 2;'
 		*mind = CalcElementalDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcElementalDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::ChargedBolt:
-		//*mind = 1;
-		//*maxd = *mind + (player._pMagic / 4);
 		*mind = CalcChargedBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcChargedBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::HolyBolt:
-		//*mind = player._pLevel + 9;
-		//*maxd = *mind + 9;
 		*mind = CalcHolyBoltDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcHolyBoltDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::BloodStar:
-		//*mind = (player._pMagic / 2) + 3 * spellLevel - (player._pMagic / 8);
-		//*maxd = *mind;
 		*mind = CalcBloodStarDamage(player, spellLevel, GenerateRndMin, GenerateRndSumMin);
 		*maxd = CalcBloodStarDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
@@ -1362,227 +1556,6 @@ Direction16 GetDirection16(Point p1, Point p2)
 	if (flipMedian)
 		ret = Direction16Flip(ret, medianPivot);
 	return ret;
-}
-
-bool MonsterHitByMissileFromMonsterOrTrap(int monsterId, Monster* attacker, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
-{
-	auto &monster = Monsters[monsterId];
-
-	if (!monster.isPossibleToHit() || monster.isImmune(missileID, damageType))
-		return false;
-
-	int diceRollToAvoidHit = GenerateRnd(100);
-	int hitChance;
-#if JWK_USE_CONSISTENT_HIT_CHANCE
-	if (attacker) {
-		const MissileData &missileData = GetMissileData(missileID);
-		if (missileData.isArrow()) {
-			hitChance = attacker->toHit(sgGameInitInfo.nDifficulty) - monster.armorClass;
-		} else {
-			hitChance = attacker->toHitWithMagic(sgGameInitInfo.nDifficulty);
-		}
-		hitChance += 2 * (attacker->level(sgGameInitInfo.nDifficulty) - monster.level(sgGameInitInfo.nDifficulty)) - ChanceToMissAtDistance(dist);
-	} else { // monster hit by trap
-		hitChance = 50;
-	}
-#else // original code:
-	hitChance = 90 - monster.armorClass - dist;
-#endif
-	hitChance = clamp(hitChance, 5, 95);
-	if (monster.tryLiftGargoyle())
-		return true;
-	if (diceRollToAvoidHit >= hitChance && monster.mode != MonsterMode::Petrified) {
-#ifdef _DEBUG
-		if (!DebugGodMode)
-#endif
-			return false;
-	}
-
-	bool resist = monster.isResistant(missileID, damageType);
-	int dam = mindam + GenerateRnd(maxdam - mindam + 1);
-	if (!shift)
-		dam <<= 6;
-	if (resist)
-		dam /= 4;
-	ApplyMonsterDamage(damageType, monster, dam, monster.mode == MonsterMode::Petrified ? 100 : hitChance);
-#ifdef _DEBUG
-	if (DebugGodMode)
-		monster.hitPoints = 0;
-#endif
-	if (monster.hitPoints >> 6 <= 0) {
-		MonsterDeath(monster, monster.direction, true);
-#if !JWK_RESISTANT_TARGETS_CAN_BE_STUNNED
-	} else if (resist) {
-		PlayEffect(monster, MonsterSound::Hit);
-#endif
-	} else if (monster.type().type != MT_GOLEM) {
-		M_StartHit(monster, dam);
-	}
-	return true;
-}
-
-// Player hit by missile from monster or trap
-bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, MissileID missileID, int mind, int maxd, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked)
-{
-	*blocked = false;
-
-	Player &player = Players[pnum];
-
-	if (player._pHitPoints >> 6 <= 0) {
-		return false;
-	}
-
-	if (player._pInvincible) {
-		return false;
-	}
-
-	const MissileData &missileData = GetMissileData(missileID);
-
-	if (HasAnyOf(player._pSpellFlags, SpellFlag::Etherealize) && missileData.isArrow()) {
-		return false;
-	}
-
-#if JWK_USE_CONSISTENT_HIT_CHANCE
-	int hitChance = 0;
-	if (missileData.isArrow()) {
-		if (monster) {
-			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) - player.GetArmor() + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel) - ChanceToMissAtDistance(dist);
-		} else { // arrow traps
-			int trapToHit = 100 * (sgGameInitInfo.nDifficulty + 1);
-			hitChance = trapToHit - player.GetArmor() - ChanceToMissAtDistance(dist);
-		}
-	} else if (monster) { // magic spell from monster
-		hitChance = monster->toHitWithMagic(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel) - ChanceToMissAtDistance(dist);
-	}
-	else if (shift) { // magical trap (per-tick damage like flash, lightning, or acid puddle)
-		hitChance = 100;
-	}
-	else { // magical trap (direct damage like fireball)
-		hitChance = 100;
-	}
-#else // original code:
-	int hitChance = 40;
-	if (missileData.isArrow()) {
-		int tac = player.GetArmor();
-		if (monster) {
-			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel - dist) - tac;
-		} else { // arrow traps
-			hitChance = 100 - (tac / 2) - 2 * dist;
-		}
-	} else if (monster != nullptr) {
-		hitChance += 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel - dist);
-	}
-#endif
-
-	int minhit = 10;
-	if (currlevel == 14)
-		minhit = 20;
-	if (currlevel == 15)
-		minhit = 25;
-	if (currlevel == 16)
-		minhit = 30;
-	if (hitChance < minhit) {
-		hitChance = minhit;
-	}
-
-	int blockDifficultyRoll = 100;
-	if ((player._pmode == PM_STAND || player._pmode == PM_ATTACK) && player._pBlockFlag) { // note: You can't block while already blocking another attack
-		blockDifficultyRoll = GenerateRnd(100);
-	}
-
-	if (shift) // we can't block per-tick damage (per-tick damage is shifted but direct damage is not shifted)
-		blockDifficultyRoll = 100;
-	if (missileID == MissileID::AcidPuddle)
-		blockDifficultyRoll = 100;
-
-	int blockChance = monster ? player.GetBlockChance(monster->level(sgGameInitInfo.nDifficulty)) : player.GetBlockChance(player._pLevel);
-
-	int8_t resper;
-	switch (damageType) {
-	case DamageType::Fire:
-		resper = player._pFireResist;
-		break;
-	case DamageType::Lightning:
-		resper = player._pLghtResist;
-		break;
-	case DamageType::Magic:
-	case DamageType::Acid:
-		resper = player._pMagResist;
-		break;
-	default:
-		resper = 0;
-		break;
-	}
-
-	int diceRollToAvoidHit = GenerateRnd(100);
-#ifdef _DEBUG
-	if (DebugGodMode)
-		diceRollToAvoidHit = 1000;
-#endif
-	if (diceRollToAvoidHit >= hitChance) {
-		return false;
-	}
-
-	int dam;
-	if (missileID == MissileID::BoneSpirit) {
-		dam = player._pHitPoints / 3;
-	} else {
-		int trapDamageReduction = 1;
-		if (monster == nullptr) {
-			if (HasAnyOf(player._pIFlags, ItemSpecialEffect::HalfTrapDamage)) {
-				trapDamageReduction *= 2;
-			}
-#if JWK_EDIT_PLAYER_SKILLS
-			if (player._pHeroClass == HeroClass::Rogue && (SDL_GetTicks64() - player._timeOfMostRecentSkillUse < 1000)) {
-				trapDamageReduction *= 2; // rogue takes reduced damage if she tried to disarm the trap
-			}
-#endif
-		}
-		if (!shift) {
-			dam = (mind << 6) + GenerateRnd(((maxd - mind) << 6) + 1);
-			if (monster == nullptr) {
-				dam /= trapDamageReduction;
-			}
-			dam += player._pIGetHit * 64;
-		} else {
-			dam = mind + GenerateRnd(maxd - mind + 1);
-			if (monster == nullptr) {
-				dam /= trapDamageReduction;
-			}
-			dam += player._pIGetHit;
-		}
-
-		dam = std::max(dam, 64);
-	}
-
-#if JWK_RESISTANT_TARGETS_CAN_BLOCK
-	if (blockChance > blockDifficultyRoll) {
-#else // original code
-	if ((resper <= 0 || gbIsHellfire) && blockChance > blockDifficultyRoll) {
-#endif
-		//if (monster != nullptr) {
-		//	mDir = GetDirection(player.position.tile, monster->position.tile);
-		//}
-		Direction dir = mStartPos != Point(0,0) ? GetDirection(player.position.tile, mStartPos) : monster? GetDirection(player.position.tile, monster->position.tile) : player._pdir;
-		*blocked = true;
-		StartPlrBlock(player, dir);
-		return true;
-	}
-
-	// target takes damage
-	if (resper > 0) {
-		dam -= dam * resper / 100;
-	}
-	if (&player == MyPlayer) {
-		ApplyPlrDamage(damageType, player, 0, 0, dam, hitChance, deathReason);
-	}
-	if ((JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) && player._pHitPoints >> 6 > 0) {
-		StartPlrHit(player, dam, false); // stun player if damage is large enough
-	} else if (player._pHitPoints >> 6 > 0) {
-		player.Say(HeroSpeech::ArghClang);
-	}
-
-	return true;
 }
 
 void SetMissDir(Missile &missile, int dir)
@@ -1964,27 +1937,6 @@ void AddWarp(Missile &missile, AddMissileParameter &parameter)
 	}
 }
 
-void AddLightningWallTile(Missile &missile, AddMissileParameter &parameter)
-{
-	UpdateMissileVelocity(missile, parameter.dst, 16);
-	missile._miAnimFrame = GenerateRnd(8) + 1;
-	missile._ticksUntilExpiry = 255 * (missile._mispllvl + 1); // time duration of wall
-	switch (missile.sourceType()) {
-	case MissileSource::Trap:
-		missile.var1 = missile.position.start.x;
-		missile.var2 = missile.position.start.y;
-		break;
-	case MissileSource::Player: {
-		Player &player = *missile.sourcePlayer();
-		missile.var1 = player.position.tile.x;
-		missile.var2 = player.position.tile.y;
-	} break;
-	case MissileSource::Monster:
-		assert(missile.sourceType() != MissileSource::Monster);
-		break;
-	}
-}
-
 void AddBigExplosion(Missile &missile, AddMissileParameter & /*parameter*/)
 {
 	// MissileID::BigExplosion is only created by AddRuneOfFire() or AddOpenNest() in hellfire expansion
@@ -2345,19 +2297,6 @@ void AddNovaBall(Missile &missile, AddMissileParameter &parameter)
 	missile.var2 = position.y;
 }
 
-void AddFireWallTile(Missile &missile, AddMissileParameter &parameter)
-{
-	UpdateMissileVelocity(missile, parameter.dst, 16);
-	int i = missile._mispllvl;
-	missile._ticksUntilExpiry = 10; // time duration of wall
-	if (i > 0)
-		missile._ticksUntilExpiry *= i + 1;
-	if (missile._micaster == TARGET_PLAYERS || missile._misource < 0)
-		missile._ticksUntilExpiry += currlevel;
-	missile._ticksUntilExpiry *= 16;
-	missile.var1 = missile._ticksUntilExpiry - missile._miAnimLen;
-}
-
 void AddFireball(Missile &missile, AddMissileParameter &parameter)
 {
 	if (!parameter.pParent) {
@@ -2371,9 +2310,6 @@ void AddFireball(Missile &missile, AddMissileParameter &parameter)
 	if (missile._micaster == TARGET_MONSTERS) {
 		sp += std::min(missile._mispllvl * 2, 34);
 		Player &player = Players[missile._misource];
-
-		//int dmg = 2 * (player._pLevel + GenerateRndSum(10, 2)) + 4;
-		//missile._midam = ScaleSpellEffect(dmg, missile._mispllvl);
 		missile._midam = CalcFireBallDamage(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
 	}
 	UpdateMissileVelocity(missile, dst, sp);
@@ -2548,9 +2484,6 @@ void AddFlashBottom(Missile &missile, AddMissileParameter &parameter)
 	switch (missile.sourceType()) {
 	case MissileSource::Player: {
 		Player &player = *missile.sourcePlayer();
-		//int dmg = GenerateRndSum(20, player._pLevel + 1) + player._pLevel + 1;
-		//missile._midam = ScaleSpellEffect(dmg, missile._mispllvl);
-		//missile._midam += missile._midam / 2;
 		missile._midam = CalcFlashDamageShifted(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
 	} break;
 	case MissileSource::Monster:
@@ -2970,9 +2903,6 @@ void AddElemental(Missile &missile, AddMissileParameter &parameter)
 	}
 
 	Player &player = Players[missile._misource];
-
-	//int dmg = 2 * (player._pLevel + GenerateRndSum(10, 2)) + 4;
-	//missile._midam = ScaleSpellEffect(dmg, missile._mispllvl) / 2;
 	missile._midam = CalcElementalDamage(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
 
 	UpdateMissileVelocity(missile, dst, 16);
@@ -3050,11 +2980,8 @@ void AddNova(Missile &missile, AddMissileParameter &parameter)
 
 	if (!missile.IsTrap()) {
 		Player &player = Players[missile._misource];
-		//int dmg = GenerateRndSum(6, 5) + player._pLevel + 5;
-		//missile._midam = ScaleSpellEffect(dmg / 2, missile._mispllvl);
 		missile._midam = CalcNovaDamage(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
 	} else {
-		//missile._midam = (currlevel / 2) + GenerateRndSum(3, 3);
 		missile._midam = TrapNovaDamage();
 	}
 
@@ -3166,18 +3093,18 @@ void AddApocalypseBoom(Missile &missile, AddMissileParameter &parameter)
 #endif
 }
 
+#if JWK_EDIT_APOCALYPSE
+
 // This is used for player, trap, and Diablo's apocalypse boom
 void ProcessApocalypseBoom(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
-#if JWK_EDIT_APOCALYPSE // Animate a light explosion.  Looks cool.
+	// Animate a light explosion.  Looks cool.
 	constexpr std::array<uint8_t, 15> animateRadius = { 2, 5, 8, 11, 14, 15, 14, 13, 12, 11, 10, 8, 6, 4, 2 };
 	int animFrame = std::min(14, missile._miAnimLen - missile._ticksUntilExpiry);
 	int lightRadius = animateRadius[animFrame];
 	ChangeLightRadius(missile._mlid, lightRadius);
-#endif
 	if (missile.var1 == 0) {
-#if JWK_EDIT_APOCALYPSE
 		// var6 and var7 indicate we're locked onto a specific target.  If the target is moving, it will have negative ID and positive ID entries in the dMonster/dPlayer array.
 		// The positive entry can be located at either position.tile or position.future depending on the direction the target is moving (southward, northward, sideways).
 		// CheckMissileCollision() only checks for positive ID so we need to call it using the positive entry instead of the negative entry.
@@ -3197,7 +3124,6 @@ void ProcessApocalypseBoom(Missile &missile)
 			}
 		}
 		missile.position.tile = p;
-#endif
 		CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, false, missile.position.tile, true);
 		if (missile._miHitFlag) {
 			missile.var1 = 1; // Stop checking for collisions (limit 1 hit per boom)
@@ -3205,14 +3131,11 @@ void ProcessApocalypseBoom(Missile &missile)
 	}
 	if (missile._ticksUntilExpiry == 0) {
 		missile._miDelFlag = true;
-#if JWK_EDIT_APOCALYPSE
 		AddUnLight(missile._mlid);
-#endif
 	}
 	PutMissile(missile);
 }
 
-#if JWK_EDIT_APOCALYPSE
 // This is the player apocalypse.  Diablo uses AddDiabloApocalypse() instead.
 void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
 {
@@ -3291,6 +3214,22 @@ void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
 void ProcessApocalypse(Missile &missile) {}
 
 #else // original code
+
+// This is used for player, trap, and Diablo's apocalypse boom
+void ProcessApocalypseBoom(Missile &missile)
+{
+	missile._ticksUntilExpiry--;
+	if (missile.var1 == 0) {
+		CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, false, missile.position.tile, true);
+		if (missile._miHitFlag) {
+			missile.var1 = 1; // Stop checking for collisions (limit 1 hit per boom)
+		}
+	}
+	if (missile._ticksUntilExpiry == 0) {
+		missile._miDelFlag = true;
+	}
+	PutMissile(missile);
+}
 
 // This is the player apocalypse.  Diablo uses AddDiabloApocalypse() instead.
 void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
@@ -3799,6 +3738,39 @@ void ProcessAcidPuddle(Missile &missile)
 	PutMissile(missile);
 }
 
+void ProcessLightningWallTile(Missile &missile)
+{
+	missile._ticksUntilExpiry--;
+	int range = missile._ticksUntilExpiry;
+	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, false);
+	if (missile._miHitFlag)
+		missile._ticksUntilExpiry = range;
+	if (missile._ticksUntilExpiry == 0)
+		missile._miDelFlag = true;
+	PutMissile(missile);
+}
+
+void AddLightningWallTile(Missile &missile, AddMissileParameter &parameter)
+{
+	UpdateMissileVelocity(missile, parameter.dst, 16);
+	missile._miAnimFrame = GenerateRnd(8) + 1;
+	missile._ticksUntilExpiry = 255 * (missile._mispllvl + 1); // time duration of wall
+	switch (missile.sourceType()) {
+	case MissileSource::Trap:
+		missile.var1 = missile.position.start.x;
+		missile.var2 = missile.position.start.y;
+		break;
+	case MissileSource::Player: {
+		Player &player = *missile.sourcePlayer();
+		missile.var1 = player.position.tile.x;
+		missile.var2 = player.position.tile.y;
+	} break;
+	case MissileSource::Monster:
+		assert(missile.sourceType() != MissileSource::Monster);
+		break;
+	}
+}
+
 void ProcessFireWallTile(Missile &missile)
 {
 	constexpr int ExpLight[14] = { 2, 3, 4, 5, 5, 6, 7, 8, 9, 10, 11, 12, 12 };
@@ -3825,6 +3797,19 @@ void ProcessFireWallTile(Missile &missile)
 		missile.var2++;
 	}
 	PutMissile(missile);
+}
+
+void AddFireWallTile(Missile &missile, AddMissileParameter &parameter)
+{
+	UpdateMissileVelocity(missile, parameter.dst, 16);
+	int i = missile._mispllvl;
+	missile._ticksUntilExpiry = 10; // time duration of wall
+	if (i > 0)
+		missile._ticksUntilExpiry *= i + 1;
+	if (missile._micaster == TARGET_PLAYERS || missile._misource < 0)
+		missile._ticksUntilExpiry += currlevel;
+	missile._ticksUntilExpiry *= 16;
+	missile.var1 = missile._ticksUntilExpiry - missile._miAnimLen;
 }
 
 void ProcessFireball(Missile &missile)
@@ -3947,18 +3932,6 @@ void ProcessRune(Missile &missile)
 		AddMissile(position, position, dir, static_cast<MissileID>(missile.var1), TARGET_BOTH, missile._misource, missile._midam, missile._mispllvl);
 	}
 
-	PutMissile(missile);
-}
-
-void ProcessLightningWallTile(Missile &missile)
-{
-	missile._ticksUntilExpiry--;
-	int range = missile._ticksUntilExpiry;
-	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, false);
-	if (missile._miHitFlag)
-		missile._ticksUntilExpiry = range;
-	if (missile._ticksUntilExpiry == 0)
-		missile._miDelFlag = true;
 	PutMissile(missile);
 }
 

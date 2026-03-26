@@ -12,8 +12,8 @@
 #include "utils/enum_traits.h"
 
 #define JWK_BLACK_DEATH_NO_PERM_HP_LOSS 1 // Instead of -1HP to your permanent max health, black death does insane damage instead (likely killing the player in one hit).
-#define JWK_3X_MELEE_CRITS 0 // Boost warrior/barbarian critical strike damage from 2x to 3x.
-#define JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE 1 // When a bow is equipped, use the same damage formula for all classes instead of halving non-rogue damage vs mosters.  To compensate rogue, give her a modest critical strike chance with bows.
+#define JWK_EDIT_CRITICAL_STRIKE 1 // Reduce melee critical strike chance for warriors/barbarians from 50% to 30%.  Add a similar critical strike chance for rogues using ranged attacks.
+#define JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE 1 // Use the same ranged attack damage formula for all classes instead of halving damage for non-rogue damage.  To compensate rogue, toggle JWK_EDIT_CRITICAL_STRIKE=1 which gives her a critical strike chance.
 #define JWK_USE_CONSISTENT_HIT_CHANCE 1 // remove the class-specific bonuses to hit chance so everything is based on stats (more consistent and easier for players to understand).
 #define JWK_EDIT_BLOCK_CHANCE 1 // Use new formula based on str/dex instead of purely dex
 #define JWK_EDIT_FAST_BLOCK 1 // Make fastblock -2 frames instead of -4 frames.  This only affects sorcerer because he's the only one who needs -4 frames to reach the block speed limit.
@@ -39,9 +39,9 @@
 #define JWK_EDIT_NOVA 1 // Fire a ring of magic bolts instead of lightning.  Also, allow player to learn the spell.
 #define JWK_EDIT_CHAIN_LIGHTNING 1 // Use completely new chain lightning more like chain lightning in Diablo 2
 #define JWK_EDIT_STONE_CURSE 1 // When casting stone curse, don't target already-cursed monsters (This makes targetting feel much better).  Increase duration every spell level instead of capping it.  Monsters that are stone cursed take reduced damage.
-#define JWK_EDIT_APOCALYPSE 1 // Instead of an overpowered AoE, apocalypse becomes a single target nuke
 #define JWK_EDIT_ELEMENTAL 1 // Make elemental single target instead of AoE.  Fireball does AoE, elemental does homing.  Elemental shouldn't do both otherwise it's just better in all cases.
 #define JWK_EDIT_CHARGED_BOLT 1 // Make bolts more slower and branch more often instead of having multiple bolts take the same path
+#define JWK_EDIT_APOCALYPSE 1 // Instead of an overpowered AoE, apocalypse becomes a single target nuke (still a bit overpowered but not as much)
 #define JWK_APOCALYPSE_NEEDS_LINE_OF_SIGHT 1 // Use the hellfire line-of-sight requirement, otherwise you can kill monsters through walls when they can't attack you
 #define JWK_EDIT_MANA_SHIELD 1 // Rebalance mana shield (absorbs less damage, costs most to cast, also I fixed some bugs with it)
 #define JWK_ALLOW_FASTER_CASTING 1 // If true, items can increases cast speed (but cast speed is capped to the sorcerer's cast speed, much like fastblock is capped to warrior's block speed)
@@ -52,6 +52,7 @@
 #define JWK_EDIT_PLAYER_SKILLS 1 // Change skills staff recharge and item repair so they don't ruin items.  Limit skill uses per hour as balance.  Add a sneak skill which replaces etherealize.
 #define JWK_FIX_LIGHTING 1 // There were multiple lighting bugs.  Light location teleported forward when walking northward but not when walking southward.  Also, vision wasn't shared properly in multiplayer.  Can debug using JWK_DEBUG_SET_LIGHTING_EQUAL_VISION
 #define JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER 1 // If true, show the light radius of remote players.  If false, they are completely dark (original code).
+#define JWK_FIX_NETWORK_SYNC_AND_AUTHORITY 1 // If true, players have consistent authority over their own health,damage,death and also their own golem.  With original code, golem was almost never in sync.
 
 // Reveal each resistance after hitting a monster this many times with that damage type.  Set this to zero if you want the original code instead (reveal resistances all at once after 15 kills).
 // Note: Setting JWK_REVEAL_RESISTANCES_WHEN_DAMAGED > 1 isn't that useful because spells like lighting, flash, firewall, etc. deal multiple hits very quickly.  I'd need to distinguish between damage over time and direct hits.
@@ -61,6 +62,7 @@
 #define JWK_DIABLO_CANT_BE_STUNLOCKED 1 // Similar to hellfire, make Diablo less easy to stunlock
 #define JWK_ALL_MONSTERS_HAVE_125000_HEALTH 0
 
+// god modes
 #define JWK_GOD_MODE_PLAYER_IMMUNE_TO_STUN 0
 #define JWK_GOD_MODE_PLAYER_TAKES_NO_DAMAGE 0 // As a side effect, this also means head/chest armor doesn't get damaged
 #define JWK_GOD_MODE_SPELLS_COST_NOTHING 0 // Don't consume any mana, scrolls, or staff charges when casting a spell

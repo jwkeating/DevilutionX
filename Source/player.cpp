@@ -914,13 +914,15 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 	int dam2 = dam << 6;
 	dam += player._pDamageMod;
 	if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
-		if (GenerateRnd(100) < player._pLevel) {
-#if JWK_3X_MELEE_CRITS
-			dam *= 3;
-#else // original code
+#if JWK_EDIT_CRITICAL_STRIKE
+		if (GenerateRnd(200) < 10 + player._pLevel) { // 5.5% - 30% chance at level 1 - 50
 			dam *= 2;
-#endif
 		}
+#else // original code
+		if (GenerateRnd(100) < player._pLevel) {
+			dam *= 2;
+		}
+#endif
 	}
 
 	ItemType phanditype = ItemType::None;
@@ -1109,13 +1111,15 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 	dam += attacker._pIBonusDamMod + attacker._pDamageMod;
 
 	if (attacker._pHeroClass == HeroClass::Warrior || attacker._pHeroClass == HeroClass::Barbarian) {
-		if (GenerateRnd(100) < attacker._pLevel) {
-#if JWK_3X_MELEE_CRITS
-			dam *= 3;
-#else // original code
+#if JWK_EDIT_CRITICAL_STRIKE
+		if (GenerateRnd(200) < 10 + attacker._pLevel) { // 5.5% - 30% chance at level 1 - 50
 			dam *= 2;
-#endif
 		}
+#else // original code
+		if (GenerateRnd(100) < attacker._pLevel) {
+			dam *= 2;
+		}
+#endif
 	}
 	int skdam = dam << 6;
 	if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::RandomStealLife)) {
@@ -3324,7 +3328,7 @@ void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*
 #if JWK_EDIT_MANA_SHIELD // some of the damage goes to mana, some of it goes to health
 		int manaShieldLevel = player.GetSpellLevel(SpellID::ManaShield);
 		int idealAbsorbPercent = (player._pMaxMana * 100) / (player._pMaxMana + player._pMaxHP);
-		int maxAbsorbPercent = clamp(30 + 2 * manaShieldLevel, 0, 70);
+		int maxAbsorbPercent = clamp(30 + 2 * manaShieldLevel, 0, 66);
 		int absorbPercent = std::min(idealAbsorbPercent, maxAbsorbPercent);
 		int absorbAmount = absorbPercent * totalDamage / 100;
 		if (absorbAmount >= player._pMana) {

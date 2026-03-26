@@ -85,7 +85,7 @@ void LogFailedPacket(const char *condition, const char *name1, T1 value1, const 
 
 // #define LOG_RECEIVED_MESSAGES
 
-uint8_t gbBufferMsgs; // jwk not sure what this is.  Seems like 0 = normal operation, 1 = some type of resync mode, 2 = ??
+uint8_t gbBufferMsgs; // jwk: 0 = normal operation, 1 = some type of resync mode (when a client who is joining a game receives deltas from the host), 2 == ??
 int dwRecCount;
 
 namespace {
@@ -1845,7 +1845,7 @@ size_t OnPlayerDamage(const TCmd *pCmd, Player &player)
 	Player &target = Players[message.bPlr];
 	if (&target == MyPlayer && leveltype != DTYPE_TOWN && gbBufferMsgs != 1) {
 		if (player.isOnActiveLevel() && damage <= 192000 && target._pHitPoints >> 6 > 0) {
-			ApplyPlrDamage(message.damageType, target, 0, 0, damage, 100, DeathReason::Player); // jwk - attacking player could send their hitChance but for pvp, it's probably desirable to omit this information
+			ApplyPlrDamage(message.damageType, target, 0, 0, damage, 100, DeathReason::Player); // jwk - attacker could send their hitChance but it's probably desirable to omit this information in pvp
 		}
 	}
 

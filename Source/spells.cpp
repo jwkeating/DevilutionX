@@ -181,6 +181,8 @@ void ConsumeSpell(Player &player, SpellID spellID, int manaCostMultiplier)
 		}
 		break;
 	}
+	// JWK_FIX_NETWORK_SYNC_AND_AUTHORITY - We don't need to check &player == MyPlayer here because the casting player has already sent a network command to cast the spell, which is like sending the command "I've taken damage."
+	// Assuming mana shield is in sync... all players should be able to resolve the same result.
 	if (manaCostMultiplier != 0) {
 		if (spellID == SpellID::BloodStar) {
 			ApplyPlrDamage(DamageType::Physical, player, 5 * manaCostMultiplier, 0, 0, 100, DeathReason::MonsterOrTrap);
@@ -221,7 +223,7 @@ SpellCheckResult CheckSpell(const Player &player, SpellID spellID, SpellType st,
 	}
 
 	if (st != SpellType::Spell) {
-		__debugbreak(); // jwk - can this ever happen?
+		assert(false); // jwk - can this ever happen?
 	}
 
 #if JWK_EDIT_GOLEM // Allow removing golem for free (no mana cost)

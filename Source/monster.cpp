@@ -4880,9 +4880,10 @@ void SpawnGolem(Player &player, Monster &golem, Point position, Missile &missile
 		    golem.hitPoints,
 		    GetLevelForMultiplayer(player));
 	}
-#if JWK_EDIT_GOLEM // The golem's light will be removed in MonsterDeath()
+#if JWK_EDIT_GOLEM
+	// Add a light to your own golem so your can identify it among other golems.  The light will be removed in MonsterDeath()
 	if (golem.getId() == MyPlayerId) {
-		golem.lightId = AddLight(golem.position.tile, 5);
+		golem.lightId = AddLight(golem.position.tile, 3);
 	}
 #endif	
 }
