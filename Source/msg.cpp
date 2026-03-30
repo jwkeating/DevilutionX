@@ -1946,7 +1946,10 @@ size_t OnChangeInventoryItems(const TCmd *pCmd, int pnum)
 	} else if (&player != MyPlayer && IsItemAvailable(static_cast<BaseItemIdx>(SDL_SwapLE16(message.def.wIndx)))) {
 		Item item {};
 		RecreateItem(message, item);
-		CheckInvSwap(player, item, message.bLoc);
+		if (!CheckInvSwap(player, item, message.bLoc)) {
+			// item is larger than 1x1, and it occupies invalid inventory slots
+			return sizeof(message);
+		}
 	}
 
 	return sizeof(message);

@@ -2632,7 +2632,7 @@ void CreateNewPlayerItems(Player &player)
 			Item club;
 			InitializeItemToDefaultValues(club, IDI_WARRCLUB);
 			GenerateNewSeed(club);
-			AutoPlaceItemInInventorySlot(player, 0, club, true);
+			AutoPlaceItemInInventorySlot(player, 10, club, true);
 		}
 
 		InitializeItemToDefaultValues(player.SpdList[0], IDI_HEAL);
@@ -2701,7 +2701,7 @@ void CreateNewPlayerItems(Player &player)
 	MakeGoldStackForInventory(goldItem, 100);
 
 	player._pNumInv++;
-	player.InvGrid[30] = player._pNumInv;
+	player.InvGrid[0] = player._pNumInv;
 
 	player._pGold = goldItem._ivalue;
 

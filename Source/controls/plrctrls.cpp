@@ -661,7 +661,7 @@ Point GetSlotCoord(int slot)
 }
 
 /**
- * Return the item id of the current slot
+ * Return the item id of the current slot.  0 means no item.  Otherwise, id can be used to get InvList[id - 1]
  */
 int GetItemIdOnSlot(int slot)
 {
@@ -1060,7 +1060,7 @@ void InventoryMove(AxisDirection dir)
 			}
 		}
 		// At this point itemSize is either the size of the cell/item the hand cursor is over, or the size of the item we're currently holding.
-		// mousePos is the center of the top left cell of the item under the hand cursor, or the top left cell of the region that could fit the item we're holding.
+		// mousePos is the center of the bottom left cell of the item under the hand cursor, or the bottom left cell of the region that could fit the item we're holding.
 		// either way we need to offset the mouse position to account for items (we're holding or hovering over) with a dimension larger than a single cell.
 		mousePos.x += ((itemSize.width - 1) * InventorySlotSizeInPixels.width) / 2;
 		mousePos.y += ((itemSize.height - 1) * InventorySlotSizeInPixels.height) / 2;

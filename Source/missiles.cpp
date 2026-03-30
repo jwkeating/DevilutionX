@@ -811,7 +811,7 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 
 	*blocked = false;
 
-	if (target.isOnArenaLevel() && target._pmode == PM_WALK_SIDEWAYS)
+	if (target.isOnArenaLevel() && target._pmode == PM_WALK_SIDEWAYS) // jwk - What is this?  Deliberate miss when walking sideways for pvp balance?
 		return false;
 
 	if (target._pInvincible) {
@@ -904,13 +904,15 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 #if JWK_EDIT_APOCALYPSE
 	if (missileID == MissileID::ApocalypseBoom) {
 		dam -= (dam * target._pFireResist) / 200; // Apocalypse is 50% fire, 50% physical
-		dam /= 2; // Apocalypse does half damage in pvp
+		dam /= 2; // Reduce Apocalypse in pvp (in addition to other damage reduction)
 	}
 #endif
-	// All spells do half damage in pvp - maybe this isn't needed because players can get 75% resist
-	//if (!missileData.isArrow())
-	//	dam /= 2;
-
+#if JWK_REDUCE_DAMAGE_IN_PVP
+	dam /= 2;
+#else // original code
+	if (!missileData.isArrow())
+		dam /= 2;
+#endif
 	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
 		//Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
@@ -3165,7 +3167,7 @@ void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
 			int playerId = abs(dPlayer[p.x][p.y]) - 1;
 			if (playerId >= 0) {
 				targetPlayer = &Players[playerId];
-				if (targetPlayer == MyPlayer)
+				if (targetPlayer == &player)
 					targetPlayer = nullptr;
 			}
 		}

@@ -39,7 +39,7 @@ struct PlayerPack {
 	uint8_t py;
 	uint8_t targx;
 	uint8_t targy;
-	char pName[PlayerNameLength];
+	char pName [PlayerNameLength];
 	uint8_t pClass;
 	uint8_t pBaseStr;
 	uint8_t pBaseMag;
@@ -55,11 +55,11 @@ struct PlayerPack {
 	int32_t pMaxManaBase;
 	uint8_t pSplLvl[37]; // Should be MAX_SPELLS but set to 37 to make save games compatible
 	uint64_t pMemSpells;
-	ItemPack InvBody[NUM_INVLOC];
-	ItemPack InvList[InventoryGridCells];
-	int8_t InvGrid[InventoryGridCells];
+	std::array<ItemPack, NUM_INVLOC> InvBody;
+	std::array<ItemPack, InventoryGridCells> InvList;
+	std::array<int8_t, InventoryGridCells> InvGrid;
 	uint8_t _pNumInv;
-	ItemPack SpdList[MaxBeltItems];
+	std::array<ItemPack, MaxBeltItems> SpdList;
 	int8_t pTownWarps;
 	int8_t pDungMsgs;
 	int8_t pLvlLoad;
@@ -70,13 +70,13 @@ struct PlayerPack {
 	int8_t bIsHellfire;
 	uint8_t reserved; // For future use
 	uint16_t wReflections;
-	uint8_t reserved2[2]; // For future use
-	uint8_t pSplLvl2[10]; // Hellfire spells
+	std::array<uint8_t, 2> reserved2; // For future use
+	std::array<uint8_t, 10> pSplLvl2; // Hellfire spells
 	int16_t wReserved8;   // For future use
 	uint32_t pDiabloKillLevel;
 	uint32_t pDifficulty;
 	uint32_t pDamAcFlags;  // `ItemSpecialEffectHf` is 1 byte but this is 4 bytes.
-	uint8_t reserved3[20]; // For future use
+	std::array<uint8_t, 20> reserved3; // For future use
 };
 
 union ItemNetPack {
@@ -90,7 +90,7 @@ struct PlayerNetPack {
 	uint8_t px;
 	uint8_t py;
 	uint8_t pdir;
-	char pName[PlayerNameLength];
+	char pName [PlayerNameLength];
 	uint8_t pClass;
 	uint8_t pBaseStr;
 	uint8_t pBaseMag;
@@ -103,13 +103,13 @@ struct PlayerNetPack {
 	int32_t pMaxHPBase;
 	int32_t pManaBase;
 	int32_t pMaxManaBase;
-	uint8_t pSplLvl[MAX_SPELLS];
+	std::array<uint8_t, MAX_SPELLS> pSplLvl;
 	uint64_t pMemSpells;
-	ItemNetPack InvBody[NUM_INVLOC];
-	ItemNetPack InvList[InventoryGridCells];
-	int8_t InvGrid[InventoryGridCells];
+	std::array<ItemNetPack, NUM_INVLOC> InvBody;
+	std::array<ItemNetPack, InventoryGridCells> InvList;
+	std::array<int8_t, InventoryGridCells> InvGrid;
 	uint8_t _pNumInv;
-	ItemNetPack SpdList[MaxBeltItems];
+	std::array<ItemNetPack, MaxBeltItems> SpdList;
 	uint8_t pManaShield;
 	uint8_t pSneak;
 	uint16_t wReflections;

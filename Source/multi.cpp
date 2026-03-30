@@ -332,6 +332,9 @@ void BeginTimeout()
 	if (!sgbTimeout) {
 		return;
 	}
+#if JWK_DEBUG_DISABLE_NETWORK_TIMEOUT
+	return;
+#endif
 #ifdef _DEBUG
 	if (DebugDisableNetworkTimeout) {
 		return;

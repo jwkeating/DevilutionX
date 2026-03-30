@@ -56,7 +56,7 @@ const SpellData SpellsData[] = {
 /*SpellID::DoomSerpents*/     { P_("spell", "Doom Serpents"),      IS_CAST2,           0,            0,          0, Lightning,                    -1,         -1,       0, { MissileID::Null,                 MissileID::Null,    },         0,         0,         40,         80 },
 /*SpellID::BloodRitual*/      { P_("spell", "Blood Ritual"),       IS_CAST2,           0,            0,          0, Magic,                        -1,         -1,       0, { MissileID::Null,                 MissileID::Null,    },         0,         0,         40,         80 },
 #if JWK_EDIT_NOVA
-/*SpellID::Nova*/             { P_("spell", "Nova"),               IS_CAST2,        2100,          130,         30, Magic,                        14,         10,      87, { MissileID::Nova,                 MissileID::Null,    },         1,        20,         16,         32 },
+/*SpellID::Nova*/             { P_("spell", "Nova"),               IS_CAST2,        1600,           90,         30, Magic,                        14,         10,      87, { MissileID::Nova,                 MissileID::Null,    },         1,        20,         16,         32 },
 #else //                        sNameText,                         sSFX,      bookCost10,  staffCost10,  sManaCost, flags,                  sBookLvl,  sStaffLvl,  minInt, { sMissiles[2]                                         }   sManaAdj,  sMinMana,  sStaffMin,  sStaffMax
 /*SpellID::Nova*/             { P_("spell", "Nova"),               IS_CAST4,        2100,          130,         60, Magic,                        14,         10,      87, { MissileID::Nova,                 MissileID::Null,    },         3,        35,         16,         32 },
 #endif

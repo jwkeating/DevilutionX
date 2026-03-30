@@ -238,14 +238,14 @@ struct Player {
 #endif
 
 	char _pName[PlayerNameLength];
-	Item InvBody[NUM_INVLOC];
-	Item InvList[InventoryGridCells];
-	Item SpdList[MaxBeltItems];
+	std::array<Item, NUM_INVLOC> InvBody;
+	std::array<Item, InventoryGridCells> InvList;
+	std::array<Item, MaxBeltItems> SpdList;
 	Item HoldItem;
 #if !JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER
 	int lightId;
 #endif
-	int _pNumInv;
+	int _pNumInv; // Number of items in InvList[]
 	int _pStrength;
 	int _pBaseStr;
 	int _pMagic;
@@ -323,7 +323,12 @@ struct Player {
 	int8_t _pHFrames; // num hit recovery frames
 	int8_t _pDFrames; // num death frames
 	int8_t _pBFrames; // num blocking frames
-	int8_t InvGrid[InventoryGridCells];
+
+	// Grid is indexed as InvGrid[x + 10*y] where x in [0,9], y in [0,3].  [0] is bottom left, [9] is bottom right, [30] is upper left, [39] is upper right.
+	// InvGrid[p] == 0 means no item in grid cell p.  InvGrid[p] != 0 means InvList[abs(InvGrid[p]) - 1] is the item at grid cell p.
+	// Items that take 1x1 grid cells use positive index InvGrid[p] > 0.  For larger items like a staff which takes 2x3 grid cells,
+	// InvGrid[p] > 0 is used for the bottom left grid cell of the item, InvGrid[p] < 0 is used for the other grid cells of the item.
+	std::array<int8_t, InventoryGridCells> InvGrid;
 
 	uint8_t currentDungeonLevel;
 	bool plrIsOnSetLevel;
@@ -349,7 +354,7 @@ struct Player {
 	SpellID _pRSpell;
 	SpellType _pRSplType;
 	SpellID _pSBkSpell;
-	uint8_t _pSplLvl[64];
+	std::array<uint8_t, 64> _pSplLvl;
 	/** @brief Bitmask of staff spell */
 	uint64_t _pISpells;
 	/** @brief Bitmask of learned spells */
@@ -378,8 +383,8 @@ struct Player {
 	/** Player's direction when ending movement. Also used for casting direction of SpellID::FireWall. */
 	Direction tempDirection;
 
-	bool _pLvlVisited[NUMLEVELS];
-	bool _pSLvlVisited[NUMLEVELS]; // only 10 used
+	std::array<bool, NUMLEVELS> _pLvlVisited;
+	std::array<bool, NUMLEVELS> _pSLvlVisited; // only 10 used
 
 	item_misc_id _pOilType;
 	uint8_t pTownWarps;
@@ -434,9 +439,9 @@ struct Player {
 			return mostValuableItem;
 		};
 
-		const Item *mostValuableItem = getMostValuableItem(SpdList, SpdList + MaxBeltItems);
-		mostValuableItem = getMostValuableItem(InvBody, InvBody + inv_body_loc::NUM_INVLOC, mostValuableItem);
-		mostValuableItem = getMostValuableItem(InvList, InvList + _pNumInv, mostValuableItem);
+		const Item *mostValuableItem = getMostValuableItem(&SpdList[0], &SpdList[0] + MaxBeltItems);
+		mostValuableItem = getMostValuableItem(&InvBody[0], &InvBody[0] + inv_body_loc::NUM_INVLOC, mostValuableItem);
+		mostValuableItem = getMostValuableItem(&InvList[0], &InvList[0] + _pNumInv, mostValuableItem);
 
 		return mostValuableItem;
 	}

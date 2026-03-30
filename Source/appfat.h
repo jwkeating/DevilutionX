@@ -30,7 +30,7 @@ namespace devilution {
  */
 [[noreturn]] void app_fatal(string_view str);
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALWAYS_LOG_ASSERTION_FAILURES
 /**
  * @brief Show an error and exit the application.
  * @param nLineNo The line number of the assertion

@@ -53,10 +53,10 @@ bool invflag;
  *
  *                 01                   02
  *
- *              07 08 09 10 11 12 13 14 15 16
- *              17 18 19 20 21 22 23 24 25 26
- *              27 28 29 30 31 32 33 34 35 36
  *              37 38 39 40 41 42 43 44 45 46
+ *              27 28 29 30 31 32 33 34 35 36
+ *              17 18 19 20 21 22 23 24 25 26
+ *              07 08 09 10 11 12 13 14 15 16
  *
  * 47 48 49 50 51 52 53 54
  * @endcode
@@ -71,36 +71,6 @@ const Rectangle InvRect[] = {
 	{ {  17,  75 }, { 58, 86 } }, // left hand
 	{ { 248,  75 }, { 58, 87 } }, // right hand
 	{ { 132,  75 }, { 58, 87 } }, // chest
-	{ {  17, 222 }, { 29, 29 } }, // inv row 1
-	{ {  46, 222 }, { 29, 29 } }, // inv row 1
-	{ {  75, 222 }, { 29, 29 } }, // inv row 1
-	{ { 104, 222 }, { 29, 29 } }, // inv row 1
-	{ { 133, 222 }, { 29, 29 } }, // inv row 1
-	{ { 162, 222 }, { 29, 29 } }, // inv row 1
-	{ { 191, 222 }, { 29, 29 } }, // inv row 1
-	{ { 220, 222 }, { 29, 29 } }, // inv row 1
-	{ { 249, 222 }, { 29, 29 } }, // inv row 1
-	{ { 278, 222 }, { 29, 29 } }, // inv row 1
-	{ {  17, 251 }, { 29, 29 } }, // inv row 2
-	{ {  46, 251 }, { 29, 29 } }, // inv row 2
-	{ {  75, 251 }, { 29, 29 } }, // inv row 2
-	{ { 104, 251 }, { 29, 29 } }, // inv row 2
-	{ { 133, 251 }, { 29, 29 } }, // inv row 2
-	{ { 162, 251 }, { 29, 29 } }, // inv row 2
-	{ { 191, 251 }, { 29, 29 } }, // inv row 2
-	{ { 220, 251 }, { 29, 29 } }, // inv row 2
-	{ { 249, 251 }, { 29, 29 } }, // inv row 2
-	{ { 278, 251 }, { 29, 29 } }, // inv row 2
-	{ {  17, 280 }, { 29, 29 } }, // inv row 3
-	{ {  46, 280 }, { 29, 29 } }, // inv row 3
-	{ {  75, 280 }, { 29, 29 } }, // inv row 3
-	{ { 104, 280 }, { 29, 29 } }, // inv row 3
-	{ { 133, 280 }, { 29, 29 } }, // inv row 3
-	{ { 162, 280 }, { 29, 29 } }, // inv row 3
-	{ { 191, 280 }, { 29, 29 } }, // inv row 3
-	{ { 220, 280 }, { 29, 29 } }, // inv row 3
-	{ { 249, 280 }, { 29, 29 } }, // inv row 3
-	{ { 278, 280 }, { 29, 29 } }, // inv row 3
 	{ {  17, 309 }, { 29, 29 } }, // inv row 4
 	{ {  46, 309 }, { 29, 29 } }, // inv row 4
 	{ {  75, 309 }, { 29, 29 } }, // inv row 4
@@ -111,6 +81,36 @@ const Rectangle InvRect[] = {
 	{ { 220, 309 }, { 29, 29 } }, // inv row 4
 	{ { 249, 309 }, { 29, 29 } }, // inv row 4
 	{ { 278, 309 }, { 29, 29 } }, // inv row 4
+	{ {  17, 280 }, { 29, 29 } }, // inv row 3
+	{ {  46, 280 }, { 29, 29 } }, // inv row 3
+	{ {  75, 280 }, { 29, 29 } }, // inv row 3
+	{ { 104, 280 }, { 29, 29 } }, // inv row 3
+	{ { 133, 280 }, { 29, 29 } }, // inv row 3
+	{ { 162, 280 }, { 29, 29 } }, // inv row 3
+	{ { 191, 280 }, { 29, 29 } }, // inv row 3
+	{ { 220, 280 }, { 29, 29 } }, // inv row 3
+	{ { 249, 280 }, { 29, 29 } }, // inv row 3
+	{ { 278, 280 }, { 29, 29 } }, // inv row 3
+	{ {  17, 251 }, { 29, 29 } }, // inv row 2
+	{ {  46, 251 }, { 29, 29 } }, // inv row 2
+	{ {  75, 251 }, { 29, 29 } }, // inv row 2
+	{ { 104, 251 }, { 29, 29 } }, // inv row 2
+	{ { 133, 251 }, { 29, 29 } }, // inv row 2
+	{ { 162, 251 }, { 29, 29 } }, // inv row 2
+	{ { 191, 251 }, { 29, 29 } }, // inv row 2
+	{ { 220, 251 }, { 29, 29 } }, // inv row 2
+	{ { 249, 251 }, { 29, 29 } }, // inv row 2
+	{ { 278, 251 }, { 29, 29 } }, // inv row 2
+	{ {  17, 222 }, { 29, 29 } }, // inv row 1
+	{ {  46, 222 }, { 29, 29 } }, // inv row 1
+	{ {  75, 222 }, { 29, 29 } }, // inv row 1
+	{ { 104, 222 }, { 29, 29 } }, // inv row 1
+	{ { 133, 222 }, { 29, 29 } }, // inv row 1
+	{ { 162, 222 }, { 29, 29 } }, // inv row 1
+	{ { 191, 222 }, { 29, 29 } }, // inv row 1
+	{ { 220, 222 }, { 29, 29 } }, // inv row 1
+	{ { 249, 222 }, { 29, 29 } }, // inv row 1
+	{ { 278, 222 }, { 29, 29 } }, // inv row 1
 	{ { 205,   5 }, { 29, 29 } }, // belt
 	{ { 234,   5 }, { 29, 29 } }, // belt
 	{ { 263,   5 }, { 29, 29 } }, // belt
@@ -129,18 +129,18 @@ OptionalOwnedClxSpriteList pInvCels;
 /**
  * @brief Adds an item to a player's InvGrid array
  * @param player The player reference
- * @param invGridIndex Item's position in InvGrid (this should be the item's topleft grid tile)
+ * @param invGridIndex Item's position in InvGrid (this should be the item's bottom left grid tile)
  * @param invListIndex The item's InvList index (it's expected this already has +1 added to it since InvGrid can't store a 0 index)
  * @param itemSize Size of item
  */
 void AddItemToInvGrid(Player &player, int invGridIndex, int invListIndex, Size itemSize)
 {
-	const int pitch = 10;
+	const int rowSize = 10;
 	for (int y = 0; y < itemSize.height; y++) {
-		int rowGridIndex = invGridIndex + pitch * y;
+		int rowGridIndex = invGridIndex + rowSize * y;
 		for (int x = 0; x < itemSize.width; x++) {
-			if (x == 0 && y == itemSize.height - 1)
-				player.InvGrid[rowGridIndex + x] = invListIndex;
+			if (x == 0 && y == 0)
+				player.InvGrid[rowGridIndex + x] = invListIndex; // bottom left corner of the item
 			else
 				player.InvGrid[rowGridIndex + x] = -invListIndex;
 		}
@@ -292,23 +292,24 @@ int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 	}
 	for (int r = SLOTXY_INV_FIRST; r <= SLOTXY_INV_LAST; r++) {
 		if (InvRect[r].contains(cursorPosition + panelOffset)) {
-			// When trying to paste into the inventory we need to determine the top left cell of the nearest area that could fit the item, not the slot under the center/hot pixel.
+			// When trying to paste into the inventory we need to determine the bottom left cell of the nearest area that could fit the item, not the slot under the center/hot pixel.
 			if (itemSize.height <= 1 && itemSize.width <= 1) {
-				// top left cell of a 1x1 item is the same cell as the hot pixel, no work to do
+				// bottom left cell of a 1x1 item is the same cell as the hot pixel, no work to do
 				return r;
 			}
-			// Otherwise work out how far the central cell is from the top-left cell
+			// Otherwise work out how far the central cell is from the bottom left cell
 			Displacement hotPixelCellOffset = { (itemSize.width - 1) / 2, (itemSize.height - 1) / 2 };
 			// For even dimension items we need to work out if the cursor is in the left/right (or top/bottom) half of the central cell and adjust the offset so the item lands in the area most covered by the cursor.
 			if (itemSize.width % 2 == 0 && InvRect[r].contains(cursorPosition + panelOffset + Displacement { INV_SLOT_HALF_SIZE_PX, 0 })) {
 				// hot pixel was in the left half of the cell, so we want to increase the offset to preference the column to the left
 				hotPixelCellOffset.deltaX++;
 			}
-			if (itemSize.height % 2 == 0 && InvRect[r].contains(cursorPosition + panelOffset + Displacement { 0, INV_SLOT_HALF_SIZE_PX })) {
-				// hot pixel was in the top half of the cell, so we want to increase the offset to preference the row above
+			if (itemSize.height % 2 == 0 && !InvRect[r].contains(cursorPosition + panelOffset + Displacement { 0, INV_SLOT_HALF_SIZE_PX })) {
+				// hot pixel was in the bottom half of the cell, so we want to decrease the offset to preference the row below
 				hotPixelCellOffset.deltaY++;
 			}
-			// Then work out the top left cell of the nearest area that could fit this item (as pasting on the edge of the inventory would otherwise put it out of bounds)
+
+			// Then work out the bottom left cell of the nearest area that could fit this item (as pasting on the edge of the inventory would otherwise put it out of bounds)
 			int hotPixelCell = r - SLOTXY_INV_FIRST;
 			int targetRow = clamp((hotPixelCell / InventorySizeInSlots.width) - hotPixelCellOffset.deltaY, 0, InventorySizeInSlots.height - itemSize.height);
 			int targetColumn = clamp((hotPixelCell % InventorySizeInSlots.width) - hotPixelCellOffset.deltaX, 0, InventorySizeInSlots.width - itemSize.width);
@@ -324,6 +325,7 @@ int FindTargetSlotUnderItemCursor(Point cursorPosition, Size itemSize)
 	return NUM_XY_SLOTS;
 }
 
+// The 'paste' stage of cut/paste
 void CheckInvPaste(Player &player, Point cursorPosition)
 {
 	Size itemSize = GetInventorySize(player.HoldItem);
@@ -370,7 +372,7 @@ void CheckInvPaste(Player &player, Point cursorPosition)
 			for (unsigned rowOffset = 0; rowOffset < static_cast<unsigned>(itemSize.height * InventorySizeInSlots.width); rowOffset += InventorySizeInSlots.width) {
 				for (unsigned columnOffset = 0; columnOffset < static_cast<unsigned>(itemSize.width); columnOffset++) {
 					unsigned testCell = originCell + rowOffset + columnOffset;
-					// FindTargetSlotUnderItemCursor returns the top left slot of the inventory region that fits the item, we can be confident this calculation is not going to read out of range.
+					// FindTargetSlotUnderItemCursor returns the bottom left slot of the inventory region that fits the item, we can be confident this calculation is not going to read out of range.
 					assert(testCell < sizeof(player.InvGrid));
 					if (player.InvGrid[testCell] != 0) {
 						int8_t iv = abs(player.InvGrid[testCell]);
@@ -525,9 +527,7 @@ void CheckInvPaste(Player &player, Point cursorPosition)
 				if (player.HoldItem._itype == ItemType::Gold)
 					player._pGold = CalculateGold(player);
 				for (auto &itemIndex : player.InvGrid) {
-					if (itemIndex == it)
-						itemIndex = 0;
-					if (itemIndex == -it)
+					if (abs(itemIndex) == it)
 						itemIndex = 0;
 				}
 			}
@@ -559,6 +559,7 @@ void CheckInvPaste(Player &player, Point cursorPosition)
 	}
 }
 
+// The 'cut' stage of cut/paste
 void CheckInvCut(Player &player, Point cursorPosition, bool automaticMove, bool dropItem)
 {
 	if (player._pmode > PM_WALK_SIDEWAYS) {
@@ -691,7 +692,7 @@ void CheckInvCut(Player &player, Point cursorPosition, bool automaticMove, bool 
 		int ig = r - SLOTXY_INV_FIRST;
 		int8_t ii = player.InvGrid[ig];
 		if (ii != 0) {
-			int iv = (ii < 0) ? -ii : ii;
+			int iv = abs(ii);
 
 			holdItem = player.InvList[iv - 1];
 			if (automaticMove) {
@@ -1130,7 +1131,7 @@ void DrawInv(const Surface &out)
 	}
 
 	for (int j = 0; j < InventoryGridCells; j++) {
-		if (myPlayer.InvGrid[j] > 0) { // first slot of an item
+		if (myPlayer.InvGrid[j] > 0) { // first slot of an item (bottom left corner)
 			int ii = myPlayer.InvGrid[j] - 1;
 			int cursId = myPlayer.InvList[ii]._iCurs + CURSOR_FIRSTITEM;
 
@@ -1264,12 +1265,12 @@ bool AutoPlaceItemInInventory(Player &player, const Item &item, bool persistItem
 	Size itemSize = GetInventorySize(item);
 
 	if (itemSize.height == 1) {
-		for (int i = 30; i <= 39; i++) {
+		for (int i = 0; i <= 9; i++) {
 			if (AutoPlaceItemInInventorySlot(player, i, item, persistItem))
 				return true;
 		}
 		for (int x = 9; x >= 0; x--) {
-			for (int y = 2; y >= 0; y--) {
+			for (int y = 1; y <= 3; y++) {
 				if (AutoPlaceItemInInventorySlot(player, 10 * y + x, item, persistItem))
 					return true;
 			}
@@ -1278,15 +1279,15 @@ bool AutoPlaceItemInInventory(Player &player, const Item &item, bool persistItem
 	}
 
 	if (itemSize.height == 2) {
-		for (int x = 10 - itemSize.width; x >= 0; x -= itemSize.width) {
-			for (int y = 0; y < 3; y++) {
+		for (int x = 10 - itemSize.width; x >= 0; x--) {
+			for (int y = 2; y >= 0; y--) {
 				if (AutoPlaceItemInInventorySlot(player, 10 * y + x, item, persistItem))
 					return true;
 			}
 		}
 		if (itemSize.width == 2) {
 			for (int x = 7; x >= 0; x -= 2) {
-				for (int y = 0; y < 3; y++) {
+				for (int y = 2; y >= 0; y--) {
 					if (AutoPlaceItemInInventorySlot(player, 10 * y + x, item, persistItem))
 						return true;
 				}
@@ -1296,7 +1297,11 @@ bool AutoPlaceItemInInventory(Player &player, const Item &item, bool persistItem
 	}
 
 	if (itemSize == Size { 1, 3 }) {
-		for (int i = 0; i < 20; i++) {
+		for (int i = 10; i < 20; i++) {
+			if (AutoPlaceItemInInventorySlot(player, i, item, persistItem))
+				return true;
+		}
+		for (int i = 0; i < 10; i++) {
 			if (AutoPlaceItemInInventorySlot(player, i, item, persistItem))
 				return true;
 		}
@@ -1304,12 +1309,11 @@ bool AutoPlaceItemInInventory(Player &player, const Item &item, bool persistItem
 	}
 
 	if (itemSize == Size { 2, 3 }) {
-		for (int i = 0; i < 9; i++) {
+		for (int i = 10; i < 19; i++) {
 			if (AutoPlaceItemInInventorySlot(player, i, item, persistItem))
 				return true;
 		}
-
-		for (int i = 10; i < 19; i++) {
+		for (int i = 0; i < 9; i++) {
 			if (AutoPlaceItemInInventorySlot(player, i, item, persistItem))
 				return true;
 		}
@@ -1393,14 +1397,14 @@ int AddGoldToInventory(Player &player, int value)
 		SetPlrHandGoldCurs(goldItem);
 	}
 
-	// Last row right to left
-	for (int i = 39; i >= 30 && value > 0; i--) {
+	// Bottom row right to left
+	for (int i = 9; i >= 0 && value > 0; i--) {
 		value = CreateGoldItemInInventorySlot(player, i, value);
 	}
 
 	// Remaining inventory in columns, bottom to top, right to left
 	for (int x = 9; x >= 0 && value > 0; x--) {
-		for (int y = 2; y >= 0 && value > 0; y--) {
+		for (int y = 1; y <= 3 && value > 0; y++) {
 			value = CreateGoldItemInInventorySlot(player, 10 * y + x, value);
 		}
 	}
@@ -1438,29 +1442,39 @@ void inv_update_rem_item(Player &player, inv_body_loc iv)
 	CalcPlayerInventory(player, player._pmode != PM_DEATH);
 }
 
-void CheckInvSwap(Player &player, const Item &item, int invGridIndex)
+bool CheckInvSwap(Player &player, const Item &item, int invGridIndex)
 {
-	auto itemSize = GetInventorySize(item);
+	Size itemSize = GetInventorySize(item);
 
 	const int pitch = 10;
-	int invListIndex = [&]() -> int {
-		for (int y = 0; y < itemSize.height; y++) {
-			int rowGridIndex = invGridIndex + pitch * y;
-			for (int x = 0; x < itemSize.width; x++) {
-				int gridIndex = rowGridIndex + x;
-				if (player.InvGrid[gridIndex] != 0)
-					return abs(player.InvGrid[gridIndex]);
+	if (invGridIndex + itemSize.width - 1 + pitch * (itemSize.height - 1) >= InventoryGridCells)
+		return false;
+
+	int invListIndex = 0;
+	for (int y = 0; y < itemSize.height; y++) {
+		int rowGridIndex = invGridIndex + pitch * y;
+		for (int x = 0; x < itemSize.width; x++) {
+			int gridIndex = rowGridIndex + x;
+			if (player.InvGrid[gridIndex] != 0) {
+				int existingItem = abs(player.InvGrid[gridIndex]);
+				if (!invListIndex) {
+					invListIndex = existingItem;
+				} else if (invListIndex != existingItem) {
+					// More than one item exists where we want to place the new item
+					return false;
+				}
 			}
 		}
-		player._pNumInv++;
-		return player._pNumInv;
-	}();
+	}
 
-	if (invListIndex < player._pNumInv) {
-		for (auto &itemIndex : player.InvGrid) {
-			if (itemIndex == invListIndex)
-				itemIndex = 0;
-			if (itemIndex == -invListIndex)
+	if (!invListIndex) {
+		// The inventory is empty where we want to place the new item.  Allocate a new spot.
+		player._pNumInv++;
+		invListIndex = player._pNumInv;
+	} else {
+		// Remove the old location of the existing item
+		for (int8_t& itemIndex : player.InvGrid) {
+			if (abs(itemIndex) == invListIndex)
 				itemIndex = 0;
 		}
 	}
@@ -1470,7 +1484,7 @@ void CheckInvSwap(Player &player, const Item &item, int invGridIndex)
 	for (int y = 0; y < itemSize.height; y++) {
 		int rowGridIndex = invGridIndex + pitch * y;
 		for (int x = 0; x < itemSize.width; x++) {
-			if (x == 0 && y == itemSize.height - 1)
+			if (x == 0 && y == 0)
 				player.InvGrid[rowGridIndex + x] = invListIndex;
 			else
 				player.InvGrid[rowGridIndex + x] = -invListIndex;
@@ -1478,6 +1492,7 @@ void CheckInvSwap(Player &player, const Item &item, int invGridIndex)
 	}
 
 	CalcPlayerInventory(player, true);
+	return true;
 }
 
 void CheckInvRemove(Player &player, int invGridIndex)

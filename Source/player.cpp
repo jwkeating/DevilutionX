@@ -1122,6 +1122,9 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 #endif
 	}
 	int skdam = dam << 6;
+#if JWK_REDUCE_DAMAGE_IN_PVP
+	skdam /= 2;
+#endif
 	if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::RandomStealLife)) {
 #if JWK_BUFF_LIFE_STEAL_CROWN
 		int stealAmount = skdam / 8;

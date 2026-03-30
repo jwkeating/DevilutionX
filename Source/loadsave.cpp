@@ -2317,9 +2317,9 @@ void LoadHeroItems(Player &player)
 
 	gbIsHellfireSaveGame = file.NextBool8();
 
-	LoadMatchingItems(file, player, NUM_INVLOC, player.InvBody);
-	LoadMatchingItems(file, player, InventoryGridCells, player.InvList);
-	LoadMatchingItems(file, player, MaxBeltItems, player.SpdList);
+	LoadMatchingItems(file, player, NUM_INVLOC, &player.InvBody[0]);
+	LoadMatchingItems(file, player, InventoryGridCells, &player.InvList[0]);
+	LoadMatchingItems(file, player, MaxBeltItems, &player.SpdList[0]);
 
 	gbIsHellfireSaveGame = gbIsHellfire;
 }

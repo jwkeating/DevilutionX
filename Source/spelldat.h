@@ -53,6 +53,7 @@
 #define JWK_FIX_LIGHTING 1 // There were multiple lighting bugs.  Light location teleported forward when walking northward but not when walking southward.  Also, vision wasn't shared properly in multiplayer.  Can debug using JWK_DEBUG_SET_LIGHTING_EQUAL_VISION
 #define JWK_ADD_PLAYER_LIGHTS_IN_MULTIPLAYER 1 // If true, show the light radius of remote players.  If false, they are completely dark (original code).
 #define JWK_FIX_NETWORK_SYNC_AND_AUTHORITY 1 // If true, players have consistent authority over their own health,damage,death and also their own golem.  With original code, golem was almost never in sync.
+#define JWK_REDUCE_DAMAGE_IN_PVP 1 // Otherwise players two shot each other.
 
 // Reveal each resistance after hitting a monster this many times with that damage type.  Set this to zero if you want the original code instead (reveal resistances all at once after 15 kills).
 // Note: Setting JWK_REVEAL_RESISTANCES_WHEN_DAMAGED > 1 isn't that useful because spells like lighting, flash, firewall, etc. deal multiple hits very quickly.  I'd need to distinguish between damage over time and direct hits.
@@ -61,6 +62,7 @@
 #define JWK_EDIT_HOLY_BOLT_RESISTANCE 1 // Similar to hellfire, make Diablo/Bone demon resistance to holy bolt.  However, make this resistance 50% instead of 75%.
 #define JWK_DIABLO_CANT_BE_STUNLOCKED 1 // Similar to hellfire, make Diablo less easy to stunlock
 #define JWK_ALL_MONSTERS_HAVE_125000_HEALTH 0
+#define JWK_DEBUG_DISABLE_NETWORK_TIMEOUT 1 // If true, setting breapoints in multiplayer games won't cause players to be dropped (It will just hourglass indefinitely)
 
 // god modes
 #define JWK_GOD_MODE_PLAYER_IMMUNE_TO_STUN 0
