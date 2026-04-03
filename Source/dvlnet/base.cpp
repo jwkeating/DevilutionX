@@ -108,9 +108,8 @@ void base::HandleDisconnect(packet &pkt)
 			playerState.turnQueue.clear();
 		}
 	} else {
-		// jwk - master branch fixes this
-		assert(false);
-		ABORT(); // we were dropped by the owner?!?
+		// jwk - This actually happens, so don't crash
+		//ABORT(); // we were dropped by the owner?!?
 	}
 }
 
