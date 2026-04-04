@@ -277,7 +277,7 @@ enum _cmd_id : uint8_t {
 	//
 	// body (TCmdParam1)
 	CMD_DELBELTITEMS,
-	// Damage target player.
+	// Damage target player (used for pvp)
 	//
 	// body (TCmdDamage)
 	CMD_PLRDAMAGE,
@@ -627,8 +627,9 @@ struct TCmdDelItem {
 struct TCmdDamage {
 	_cmd_id bCmd;
 	uint8_t bPlr;
-	uint32_t dwDam;
+	uint8_t hitChance;
 	DamageType damageType;
+	uint32_t dwDam;
 };
 
 struct TCmdMonDamage {
@@ -763,7 +764,7 @@ void NetSendCmdChItem(bool bHiPri, uint8_t bLoc, bool forceSpellChange = false);
 void NetSendCmdDelItem(bool bHiPri, uint8_t bLoc);
 void NetSendCmdChInvItem(bool bHiPri, int invGridIndex);
 void NetSendCmdChBeltItem(bool bHiPri, int invGridIndex);
-void NetSendCmdDamage(bool bHiPri, uint8_t bPlr, uint32_t dwDam, DamageType damageType);
+void NetSendCmdPvPDamage(bool bHiPri, uint8_t bPlr, uint32_t dwDam, uint8_t hitChance, DamageType damageType);
 void NetSendCmdMonDmg(bool bHiPri, uint16_t wMon, uint32_t dwDam);
 void NetSendCmdString(uint32_t pmask, const char *pszStr);
 void delta_close_portal(int pnum);

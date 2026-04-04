@@ -26,6 +26,7 @@
 #include "monster.h"
 #include "spells.h"
 #include "utils/str_cat.hpp"
+#include "qol/floatingnumbers.h"
 
 namespace devilution {
 
@@ -913,14 +914,29 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 	if (!missileData.isArrow())
 		dam /= 2;
 #endif
+#if JWK_FIX_NETWORK_SYNC_AND_AUTHORITY
+	// At this point, the local player thinks there's a hit.  Since it's not necessarily in sync with other players, let the owner of the missile have authority of the hit logic.
+	// The best everyone else can do is mark the missile as a hit and wait for damage numbers/block result from the missile owner.
+	// I think marking the missile as a miss might be worse because this is the less likely to match the authority, and then local player will see the missile continue and potentially hit something else.
+	// Maybe we could explicitly sync the missile hit flag but the latency won't be instant so players might see the missile transition from miss <-> hit when there's no target at the missile location.
+	// Another option would be to encode the missile's hit chance roll when the missile is created.  Then all players would compute the same miss/hit result versus a specific target.
+	// The symptom of incorrect hit/miss prediction is either:
+	//      - Missile owner sees the missile hit but other players see it pass through the target despite doing damage
+	//      - Missile owner sees the missile miss (pass through target) but other players see it hit and do no damage
+	if (&attacker != MyPlayer)
+		return true;
+#endif
 	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
-		//Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
+		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
+			NetSendCmdPvPDamage(true, p, static_cast<uint8_t>(dir), 0, damageType); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
+		}
 		StartPlrBlock(target, dir);
 		*blocked = true;
 	} else { // target takes damage
 		if (&attacker == MyPlayer) {
-			NetSendCmdDamage(true, p, dam, damageType);
+			NetSendCmdPvPDamage(true, p, dam, hitChance, damageType);
+			AddFloatingNumber(damageType, target, dam, hitChance);
 		}
 		if (JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) {
 			StartPlrHit(target, dam, false);
@@ -2802,8 +2818,8 @@ void AddStoneCurse(Missile &missile, AddMissileParameter &parameter)
 			    return false;
 		    }
 			if (JWK_EDIT_STONE_CURSE && monster.mode == MonsterMode::Petrified) {
-				// This makes it way easier to target monsters in a group.  Since you can't refresh duration on a already-cursed target,
-				// there's no point allowing the user to curse an already-cursed target.  Targetting such a monster just wastes the player's time and mana.
+				// There's no point allowing the player to curse an already-cursed target since you can't refresh the spell duration.
+				// Excluding already-cursed targets makes the spell feel much better instead of wasting the player's clicks and mana.
 				return false;
 			}
 
@@ -3206,7 +3222,7 @@ void AddApocalypse(Missile &missile, AddMissileParameter& parameter)
 
 	int pid = missile._misource;
 	int damage = CalcApocalypseDamage(Players[pid], missile._mispllvl, GenerateRnd, GenerateRndSum);
-	Missile* boom = AddMissile(missile.position.start, targetPosition, Players[pid]._pdir, MissileID::ApocalypseBoom, TARGET_BOTH, pid, damage, 0);
+	Missile* boom = AddMissile(missile.position.start, targetPosition, Players[pid]._pdir, MissileID::ApocalypseBoom, TARGET_MONSTERS, pid, damage, 0);
 	if (boom) {
 		boom->var6 = target.first ? target.first->getId() : -1;  // lock onto target monster
 		boom->var7 = target.second ? target.second->getId() : -1;  // lock onto target player

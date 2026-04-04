@@ -1071,10 +1071,17 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 
 static bool PlayerAttackPlayer(Player &attacker, Player &target)
 {
+#if JWK_FIX_NETWORK_SYNC_AND_AUTHORITY
+	if (&attacker != MyPlayer) {
+		// Unfortunately, Diablo 1 doesn't keep everything in sync so we must choose an authority.  It's generally recommended to let attacker be authority for a better player experience.
+		// If we don't choose an authority then attacker and defender will compute different results, and the player will hit/miss/block on one computer and not the other.
+		// If the local player isn't the authority, we can just return false because the return value is only used to apply weapon durability loss.  Attacker should have authority over this, too.
+		return false;
+	}
+#endif
 	if (target._pInvincible) {
 		return false;
 	}
-
 	if (HasAnyOf(target._pSpellFlags, SpellFlag::Etherealize)) {
 		return false;
 	}
@@ -1100,6 +1107,9 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 
 	if (blockDiceRoll < blockChance) {
 		Direction dir = GetDirection(target.position.tile, attacker.position.tile);
+		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
+			NetSendCmdPvPDamage(true, target.getId(), static_cast<uint8_t>(dir), 0, DamageType::Physical); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
+		}
 		StartPlrBlock(target, dir);
 		return true;
 	}
@@ -1141,7 +1151,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 		}
 		RedrawComponent(PanelDrawComponent::Health);
 	}
-#if JWK_ALLOW_LEECH_IN_PVP // jwk - I added this code to allow life/mana steal in PvP
+#if JWK_ALLOW_LEECH_IN_PVP
 	if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealMana3 | ItemSpecialEffect::StealMana5) && HasNoneOf(attacker._pIFlags, ItemSpecialEffect::NoMana)) {
 		int stealAmount = 0;
 		if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealMana3)) {
@@ -1180,7 +1190,8 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 	}
 #endif
 	if (&attacker == MyPlayer) {
-		NetSendCmdDamage(true, target.getId(), skdam, DamageType::Physical); // jwk - This is where we could send hit chance information for floating damage numbers
+		NetSendCmdPvPDamage(true, target.getId(), skdam, hitChance, DamageType::Physical);
+		AddFloatingNumber(DamageType::Physical, target, skdam, hitChance);
 	}
 	StartPlrHit(target, skdam, false);
 

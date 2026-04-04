@@ -211,7 +211,10 @@ void AddFloatingNumber(DamageType damageType, const Player &player, int damage, 
 		}
 	}
 
-	AddFloatingNumber(player.position.tile, offset, damageType, damage, player.getId(), true, hitChance);
+	if (&player == MyPlayer)
+		AddFloatingNumber(player.position.tile, offset, damageType, damage, player.getId(), true, hitChance);
+	else // pvp damage.  Use negative playerID so it doesn't get confused with monsterID
+		AddFloatingNumber(player.position.tile, offset, damageType, damage, -player.getId(), false, hitChance);
 }
 
 void DrawFloatingNumbers(const Surface &out, Point viewPosition, Displacement offset)

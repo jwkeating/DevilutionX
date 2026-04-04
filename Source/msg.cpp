@@ -1845,7 +1845,20 @@ size_t OnPlayerDamage(const TCmd *pCmd, Player &player)
 	Player &target = Players[message.bPlr];
 	if (&target == MyPlayer && leveltype != DTYPE_TOWN && gbBufferMsgs != 1) {
 		if (player.isOnActiveLevel() && damage <= 192000 && target._pHitPoints >> 6 > 0) {
-			ApplyPlrDamage(message.damageType, target, 0, 0, damage, 100, DeathReason::Player); // jwk - attacker could send their hitChance but it's probably desirable to omit this information in pvp
+#if JWK_FIX_NETWORK_SYNC_AND_AUTHORITY
+			if (message.hitChance > 0) {
+				ApplyPlrDamage(message.damageType, target, 0, 0, damage, message.hitChance, DeathReason::Player);
+			} else { // 0 hit chance means the attack was blocked
+				if ((target._pmode == PM_STAND || target._pmode == PM_ATTACK) && target._pBlockFlag) { // then target can block
+					if (damage < static_cast<uint8_t>(Direction::NoDirection))
+					{
+						StartPlrBlock(target, static_cast<Direction>(damage));
+					}
+				}
+			}
+#else
+			ApplyPlrDamage(message.damageType, target, 0, 0, damage, message.hitChance, DeathReason::Player);
+#endif
 		}
 	}
 
@@ -3122,13 +3135,14 @@ void NetSendCmdChBeltItem(bool bHiPri, int beltIndex)
 		NetSendLoPri(MyPlayerId, (byte *)&cmd, sizeof(cmd));
 }
 
-void NetSendCmdDamage(bool bHiPri, uint8_t bPlr, uint32_t dwDam, DamageType damageType)
+void NetSendCmdPvPDamage(bool bHiPri, uint8_t bPlr, uint32_t dwDam, uint8_t hitChance, DamageType damageType)
 {
 	TCmdDamage cmd;
 
 	cmd.bCmd = CMD_PLRDAMAGE;
 	cmd.bPlr = bPlr;
 	cmd.dwDam = dwDam;
+	cmd.hitChance = hitChance;
 	cmd.damageType = damageType;
 	if (bHiPri)
 		NetSendHiPri(MyPlayerId, (byte *)&cmd, sizeof(cmd));

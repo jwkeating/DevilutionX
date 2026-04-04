@@ -93,7 +93,7 @@ static int ScaleMonsterMaxHpForDifficulty(int maxhpShifted)
 	if (!gbIsMultiplayer) { // Single player game mode.  Note: multiplayer characters aren't single player, even if playing offline or alone.
 		maxhpShifted = std::max(maxhpShifted / 2, 64);
 	}
-#if JWK_ALL_MONSTERS_HAVE_125000_HEALTH
+#if JWK_DEBUG_ALL_MONSTERS_HAVE_125000_HEALTH
 	maxhpShifted = 125000 << 6; // 120000 shows a valid health bar, 130000 doesn't
 #endif
 	return maxhpShifted;

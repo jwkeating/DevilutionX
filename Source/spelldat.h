@@ -61,10 +61,8 @@
 #define JWK_BUFF_UNIQUE_MONSTERS 1 // buffs monster level, health, hit chance, armor, resistances, experience, and loot
 #define JWK_EDIT_HOLY_BOLT_RESISTANCE 1 // Similar to hellfire, make Diablo/Bone demon resistance to holy bolt.  However, make this resistance 50% instead of 75%.
 #define JWK_DIABLO_CANT_BE_STUNLOCKED 1 // Similar to hellfire, make Diablo less easy to stunlock
-#define JWK_ALL_MONSTERS_HAVE_125000_HEALTH 0
-#define JWK_DEBUG_DISABLE_NETWORK_TIMEOUT 1 // If true, setting breapoints in multiplayer games won't cause players to be dropped (It will just hourglass indefinitely)
 
-// god modes
+// god modes and debug modes
 #define JWK_GOD_MODE_PLAYER_IMMUNE_TO_STUN 0
 #define JWK_GOD_MODE_PLAYER_TAKES_NO_DAMAGE 0 // As a side effect, this also means head/chest armor doesn't get damaged
 #define JWK_GOD_MODE_SPELLS_COST_NOTHING 0 // Don't consume any mana, scrolls, or staff charges when casting a spell
@@ -75,6 +73,8 @@
 #define JWK_GOD_MODE_ADJUST_MAG_BY_AMOUNT 0 // Adds this value to your player's magic stat as if you had an item with +magic on it.  The amount can be negative if you want to decrease your stats.
 #define JWK_GOD_MODE_ADJUST_DEX_BY_AMOUNT 0 // Adds this value to your player's dexterity stat as if you had an item with +dexterity on it.  The amount can be negative if you want to decrease your stats.
 #define JWK_GOD_MODE_ADJUST_VIT_BY_AMOUNT 0 // Adds this value to your player's vitality stat as if you had an item with +vitality on it.  The amount can be negative if you want to decrease your stats.
+#define JWK_DEBUG_DISABLE_NETWORK_TIMEOUT 0 // If true, setting breapoints in multiplayer games won't cause players to be dropped (It will just hourglass indefinitely)
+#define JWK_DEBUG_ALL_MONSTERS_HAVE_125000_HEALTH 0 // Useful to testing attacks versus monsters without the monster dying too quickly
 
 
 namespace devilution {
