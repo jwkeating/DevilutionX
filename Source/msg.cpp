@@ -1848,6 +1848,8 @@ size_t OnPlayerDamage(const TCmd *pCmd, Player &player)
 #if JWK_FIX_NETWORK_SYNC_AND_AUTHORITY
 			if (message.hitChance > 0) {
 				ApplyPlrDamage(message.damageType, target, 0, 0, damage, message.hitChance, DeathReason::Player);
+				// Here, we assume JWK_RESISTANT_TARGETS_CAN_BE_STUNNED
+				StartPlrHit(target, damage, false);
 			} else { // 0 hit chance means the attack was blocked
 				if ((target._pmode == PM_STAND || target._pmode == PM_ATTACK) && target._pBlockFlag) { // then target can block
 					if (damage < static_cast<uint8_t>(Direction::NoDirection))

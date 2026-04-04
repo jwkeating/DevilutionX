@@ -66,11 +66,15 @@ const MissileData MissilesData[] = { // This array is indexed by MissileID in sp
 /*Golem*/                   { &AddGolem,               nullptr,                      LS_GOLUM,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 #if JWK_EDIT_PLAYER_SKILLS
 /*Etherealize*/             { &AddSneak,               nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
-#else
+#else // id                   mAddProc,                mProc,                        mlSFX,       miSFX,       mFileNum,                               flags,                 MovementDistribution;
 /*Etherealize*/             { nullptr,                 nullptr,                      LS_ETHEREAL, SFX_NONE,    MissileGraphicID::Etherealize,          Physical,              MissileMovementDistribution::Disabled    },
 #endif
 /*Spurt*/                   { nullptr,                 nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::Spurt,                Physical,              MissileMovementDistribution::Disabled    },
+#if JWK_EDIT_APOCALYPSE
+/*ApocalypseBoom*/          { &AddApocalypseBoom,      &ProcessApocalypseBoom,       SFX_NONE,    SFX_NONE,    MissileGraphicID::ApocalypseBoom,       Fire,                  MissileMovementDistribution::Disabled    },
+#else // id                   mAddProc,                mProc,                        mlSFX,       miSFX,       mFileNum,                               flags,                 MovementDistribution;
 /*ApocalypseBoom*/          { &AddApocalypseBoom,      &ProcessApocalypseBoom,       SFX_NONE,    SFX_NONE,    MissileGraphicID::ApocalypseBoom,       Physical,              MissileMovementDistribution::Disabled    },
+#endif
 /*Healing*/                 { &AddHealing,             nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*FireWallControl*/         { &AddWallControl,         &ProcessWallControl,          SFX_NONE,    SFX_NONE,    MissileGraphicID::FireWall,             Fire | Invisible,      MissileMovementDistribution::Disabled    },
 /*Infravision*/             { &AddInfravision,         &ProcessInfravision,          LS_INFRAVIS, SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
@@ -101,7 +105,11 @@ const MissileData MissilesData[] = { // This array is indexed by MissileID in sp
 /*BoneSpirit*/              { &AddBoneSpirit,          &ProcessBoneSpirit,           LS_BONESP,   LS_BSIMPCT,  MissileGraphicID::BoneSpirit,           Magic,                 MissileMovementDistribution::Blockable   },
 /*WeaponExplosion*/         { &AddWeaponExplosion,     &ProcessWeaponExplosion,      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical,              MissileMovementDistribution::Disabled    },
 /*RedPortal*/               { &AddRedPortal,           &ProcessRedPortal,            LS_SENTINEL, LS_ELEMENTL, MissileGraphicID::RedPortal,            Physical,              MissileMovementDistribution::Disabled    },
+#if JWK_EDIT_APOCALYPSE
+/*DiabloApocalypseBoom*/    { &AddApocalypseBoom,      &ProcessApocalypseBoom,       SFX_NONE,    SFX_NONE,    MissileGraphicID::DiabloApocalypseBoom, Fire,                  MissileMovementDistribution::Disabled    },
+#else // id                   mAddProc,                mProc,                        mlSFX,       miSFX,       mFileNum,                               flags,                 MovementDistribution;
 /*DiabloApocalypseBoom*/    { &AddApocalypseBoom,      &ProcessApocalypseBoom,       SFX_NONE,    SFX_NONE,    MissileGraphicID::DiabloApocalypseBoom, Physical,              MissileMovementDistribution::Disabled    },
+#endif
 /*DiabloApocalypse*/        { &AddDiabloApocalypse,    nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Mana*/                    { &AddMana,                nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Magi*/                    { &AddMagi,                nullptr,                      SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },

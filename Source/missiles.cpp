@@ -188,15 +188,16 @@ static int CalcChainLightningLength(int spellLevel)
 	return 5;
 }
 
-
 static void TagMonsterWithDamageType(Monster& monster, DamageType damageType)
 {
+#if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
 	static_assert((int)DamageType::Fire == 1 && (int)DamageType::Lightning == 2 && (int)DamageType::Magic == 3, "Enum must match array index");
 	if ((int)damageType >= 1 && (int)damageType <= 3) {
 		MonsterID monsterType = monster.type().type;
 		uint8_t& hitCount = MonsterHitWithDamage[monsterType][(int)damageType - 1];
 		if (++hitCount == 0) { hitCount = 0xFF; }
 	}
+#endif
 }
 
 static constexpr Direction16 Direction16Flip(Direction16 x, Direction16 pivot)
@@ -504,11 +505,9 @@ static bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, i
 		return false;
 
 	if (monster.isImmune(missileID, damageType)) {
-#if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
-		if (&player == MyPlayer) {
+		if (JWK_REVEAL_RESISTANCES_WHEN_DAMAGED && &player == MyPlayer) {
 			TagMonsterWithDamageType(monster, damageType);
 		}
-#endif
 		return false;
 	}
 
@@ -598,17 +597,13 @@ static bool MonsterHitByMissileFromPlayer(int pnum, int monsterId, int mindam, i
 		} else if ((monster.resistance & RESIST_FIRE) != 0) {
 			dam = dam * 5 / 8; // 75% of the fire is resisted
 		}
-#if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
-		TagMonsterWithDamageType(monster, DamageType::Fire);
-#endif
 	}
 #endif
-
 	if (&player == MyPlayer) {
 		ApplyMonsterDamage(damageType, monster, dam, monster.mode == MonsterMode::Petrified ? 100 : hitChance);
-#if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
-		TagMonsterWithDamageType(monster, damageType);
-#endif
+		if (JWK_REVEAL_RESISTANCES_WHEN_DAMAGED) {
+			TagMonsterWithDamageType(monster, damageType);
+		}
 	}
 
 	if (monster.hitPoints >> 6 <= 0) {
@@ -698,18 +693,6 @@ bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, M
 		hitChance = minhit;
 	}
 
-	int blockDifficultyRoll = 100;
-	if ((player._pmode == PM_STAND || player._pmode == PM_ATTACK) && player._pBlockFlag) { // note: You can't block while already blocking another attack
-		blockDifficultyRoll = GenerateRnd(100);
-	}
-
-	if (shift) // we can't block per-tick damage
-		blockDifficultyRoll = 100;
-	//if (missileID == MissileID::AcidPuddle)
-	//	blockDifficultyRoll = 100;
-
-	int blockChance = monster ? player.GetBlockChance(monster->level(sgGameInitInfo.nDifficulty)) : player.GetBlockChance(player._pLevel);
-
 	int diceRollToAvoidHit = GenerateRnd(100);
 #ifdef _DEBUG
 	if (DebugGodMode)
@@ -767,15 +750,26 @@ bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, M
 		resper = 0;
 		break;
 	}
+#if JWK_EDIT_APOCALYPSE
+	if (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom) {
+		resper = player._pFireResist / 2; // Apocalypse is 50% fire, 50% physical
+	}
+#endif
+
+	int blockChance, blockDifficultyRoll;
+	if (shift || !player._pBlockFlag || (player._pmode != PM_STAND && player._pmode != PM_ATTACK) || (JWK_EDIT_APOCALYPSE && (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom))) {
+		blockChance = 0;
+		blockDifficultyRoll = 100;
+	} else {
+		blockChance = monster ? player.GetBlockChance(monster->level(sgGameInitInfo.nDifficulty)) : player.GetBlockChance(player._pLevel);
+		blockDifficultyRoll = GenerateRnd(100);
+	}
 
 #if JWK_RESISTANT_TARGETS_CAN_BLOCK
 	if (blockChance > blockDifficultyRoll) {
 #else // original code
 	if ((resper <= 0 || gbIsHellfire) && blockChance > blockDifficultyRoll) {
 #endif
-		//if (monster != nullptr) {
-		//	mDir = GetDirection(player.position.tile, monster->position.tile);
-		//}
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(player.position.tile, mStartPos) : monster? GetDirection(player.position.tile, monster->position.tile) : player._pdir;
 		*blocked = true;
 		StartPlrBlock(player, dir);
@@ -786,11 +780,7 @@ bool PlayerHitByMissile(int pnum, Monster *monster, int dist, Point mStartPos, M
 	if (resper > 0) {
 		dam -= dam * resper / 100;
 	}
-#if JWK_EDIT_APOCALYPSE
-	if (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom) {
-		dam -= (dam * player._pFireResist) / 200; // Apocalypse is 50% fire, 50% physical
-	}
-#endif
+
 	if (&player == MyPlayer) {
 		ApplyPlrDamage(damageType, player, 0, 0, dam, hitChance, deathReason);
 	}
@@ -857,13 +847,6 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 		return false;
 	}
 
-	int blockDifficultyRoll = 100;
-	if (!shift && (target._pmode == PM_STAND || target._pmode == PM_ATTACK) && target._pBlockFlag) {
-		blockDifficultyRoll = GenerateRnd(100);
-	}
-
-	int blockChance = target.GetBlockChance(attacker._pLevel);
-
 	int dam;
 	if (missileID == MissileID::BoneSpirit) {
 		dam = target._pHitPoints / 3;
@@ -899,15 +882,15 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 		resper = 0;
 		break;
 	}
+#if JWK_EDIT_APOCALYPSE
+	if (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom) {
+		resper = target._pFireResist / 2; // Apocalypse is 50% fire, 50% physical
+		dam /= 2; // Reduce apocalypse damage in pvp (in addition to other damage reduction)
+	}
+#endif
 	if (resper > 0) {
 		dam -= (dam * resper) / 100;
 	}
-#if JWK_EDIT_APOCALYPSE
-	if (missileID == MissileID::ApocalypseBoom) {
-		dam -= (dam * target._pFireResist) / 200; // Apocalypse is 50% fire, 50% physical
-		dam /= 2; // Reduce Apocalypse in pvp (in addition to other damage reduction)
-	}
-#endif
 #if JWK_REDUCE_DAMAGE_IN_PVP
 	dam /= 2;
 #else // original code
@@ -926,6 +909,16 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 	if (&attacker != MyPlayer)
 		return true;
 #endif
+
+	int blockChance, blockDifficultyRoll;
+	if (shift || !target._pBlockFlag || (target._pmode != PM_STAND && target._pmode != PM_ATTACK) || (JWK_EDIT_APOCALYPSE && (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom))) {
+		blockChance = 0;
+		blockDifficultyRoll = 100;
+	} else {
+		blockChance = target.GetBlockChance(attacker._pLevel);
+		blockDifficultyRoll = GenerateRnd(100);
+	}
+
 	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {

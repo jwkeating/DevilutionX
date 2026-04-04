@@ -4514,9 +4514,11 @@ void PrintMonstHistory(MonsterID monsterID)
 	}
 
 #if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
-	bool showFire =      MonsterHitWithDamage[monsterID][0] >= JWK_REVEAL_RESISTANCES_WHEN_DAMAGED;
-	bool showLightning = MonsterHitWithDamage[monsterID][1] >= JWK_REVEAL_RESISTANCES_WHEN_DAMAGED;
-	bool showMagic =     MonsterHitWithDamage[monsterID][2] >= JWK_REVEAL_RESISTANCES_WHEN_DAMAGED;
+	// I originally wanted to reveal resistance after N hits but spells like lightning,firewall,etc hit once per tick so this racked up N hits immediately.
+	// To be consistent, we reveal resistances after a single hit.  Same issue in DrawMonsterHealthBar()
+	bool showFire =      MonsterHitWithDamage[monsterID][0] >= 1;
+	bool showLightning = MonsterHitWithDamage[monsterID][1] >= 1;
+	bool showMagic =     MonsterHitWithDamage[monsterID][2] >= 1;
 	int res = (sgGameInitInfo.nDifficulty != DIFF_HELL) ? MonstersData[monsterID].resistance : MonstersData[monsterID].resistanceHell;
 	if ((res & (RESIST_MAGIC | RESIST_FIRE | RESIST_LIGHTNING | IMMUNE_MAGIC | IMMUNE_FIRE | IMMUNE_LIGHTNING)) == 0 && showFire && showLightning && showMagic) {
 		AddPanelString(_("No magic resistance"));
@@ -4978,6 +4980,8 @@ bool Monster::isWalking() const
 
 bool Monster::isImmune(MissileID missileType, DamageType missileElement) const
 {
+	if (missileType == MissileID::ApocalypseBoom)
+		return false;
 	if (((resistance & IMMUNE_MAGIC) != 0 && missileElement == DamageType::Magic)
 	    || ((resistance & IMMUNE_FIRE) != 0 && missileElement == DamageType::Fire)
 	    || ((resistance & IMMUNE_LIGHTNING) != 0 && missileElement == DamageType::Lightning)
@@ -4990,6 +4994,8 @@ bool Monster::isImmune(MissileID missileType, DamageType missileElement) const
 
 bool Monster::isResistant(MissileID missileType, DamageType missileElement) const
 {
+	if (missileType == MissileID::ApocalypseBoom)
+		return false;
 	if (((resistance & RESIST_MAGIC) != 0 && missileElement == DamageType::Magic)
 	    || ((resistance & RESIST_FIRE) != 0 && missileElement == DamageType::Fire)
 	    || ((resistance & RESIST_LIGHTNING) != 0 && missileElement == DamageType::Lightning))

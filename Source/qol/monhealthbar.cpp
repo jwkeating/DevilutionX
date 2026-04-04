@@ -151,7 +151,7 @@ void DrawMonsterHealthBar(const Surface &out)
 	constexpr int permute[] = { 1, 2, 0 }; // permute from FLM to MFL to match original code order of the sprite data
 	MonsterID monsterType = monster.type().type;
 	for (size_t i = 0; i < 3; i++) {
-		if (MonsterHitWithDamage[monsterType][i] >= JWK_REVEAL_RESISTANCES_WHEN_DAMAGED) {
+		if (MonsterHitWithDamage[monsterType][i] >= 1) {
 			int p = permute[i];
 			if ((monster.resistance & immunes[i]) != 0) {
 				RenderClxSprite(out, (*resistance)[p * 2 + 1], position + Displacement { resOffset, height - 6 });
