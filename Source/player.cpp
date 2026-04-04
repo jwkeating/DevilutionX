@@ -277,6 +277,8 @@ static void StartWalk(Player &player, Direction dir, bool pmWillBeCalled)
 		return;
 	}
 
+	AutoPickup(player);
+
 	StartWalkAnimation(player, dir, pmWillBeCalled);
 	HandleWalkMode(player, dir);
 }
