@@ -40,7 +40,12 @@ const char *const HelpText[] = {
 	N_("Z: Zoom Game Screen"),
 	N_("+ / -: Zoom Automap"),
 	N_("1 - 8: Use Belt item"),
-	N_("F5, F6, F7, F8:     Set hotkey for skill or spell"),
+#if JWK_ALLOW_MORE_KEYBINDS
+	N_("F2, F3, F4, F5, F6, F7, F8:   Hotkey for skill, spell, or scroll"),
+#else
+	N_("F5, F6, F7, F8:   Set hotkey for skill or spell"),
+#endif
+	N_("F9, F10, F11, F12:   Quick text message to other players"),
 	N_("Shift + Left Mouse Button: Attack without moving"),
 	N_("Shift + Left Mouse Button (on character screen): Assign all stat points"),
 	N_("Shift + Left Mouse Button (on inventory): Move item to belt or equip/unequip item"),
@@ -86,10 +91,17 @@ const char *const HelpText[] = {
 	N_("Shift + Left-clicking on the 'select current spell' button will clear the readied spell."),
 	"",
 	N_("$Setting Spell Hotkeys:"),
+#if JWK_ALLOW_MORE_KEYBINDS
+	N_("You can assign up to seven Hotkeys for skills, spells or scrolls. "
+	   "Start by opening the 'speedbook' as described in the section above. "
+	   "Press one of the F-keys from F2-F8 after highlighting the spell you "
+	   "wish to assign."),
+#else
 	N_("You can assign up to four Hotkeys for skills, spells or scrolls. "
 	   "Start by opening the 'speedbook' as described in the section above. "
 	   "Press the F5, F6, F7 or F8 keys after highlighting the spell you "
 	   "wish to assign."),
+#endif
 	"",
 	N_("$Spell Books:"),
 	N_("Reading more than one book increases your knowledge of that "
@@ -152,11 +164,9 @@ void DrawHelpSlider(const Surface &out)
 		ClxDraw(out, { sliderXPos, sliderCurrent }, (*pSTextSlidCels)[13]);
 	}
 	ClxDraw(out, { sliderXPos, sliderCurrent }, (*pSTextSlidCels)[10]);
-	// Subtract visible lines from the total number of lines to get the actual
-	// scroll range
+	// Subtract visible lines from the total number of lines to get the actual scroll range
 	const int scrollRange = static_cast<int>(HelpTextLines.size()) - NumVisibleLines();
-	// Subtract the size of the arrow buttons to get the length of the interior
-	// part of the slider
+	// Subtract the size of the arrow buttons to get the length of the interior part of the slider
 	const int sliderLength = sliderCurrent - 12 - sliderStart;
 	ClxDraw(out, { sliderXPos, sliderStart + ((static_cast<int>(SkipLines) * sliderLength) / scrollRange) }, (*pSTextSlidCels)[12]);
 }

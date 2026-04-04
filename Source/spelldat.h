@@ -59,6 +59,7 @@
 #define JWK_EDIT_HOLY_BOLT_RESISTANCE 1 // Similar to hellfire, make Diablo/Bone demon resistance to holy bolt.  However, make this resistance 50% instead of 75%.
 #define JWK_DIABLO_CANT_BE_STUNLOCKED 1 // Similar to hellfire, make Diablo less easy to stunlock
 #define JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS 1 // If true, the guardian will target any players who have their pvp flag enabled (even if the caster doesn't have their flag enabled).  This makes the guardian more of a "defensive guardian" rather than something offensive.
+#define JWK_ALLOW_MORE_KEYBINDS 1 // Instead of just F5-F8, allow F2-F8 for binding spells.  This disables the quicksave/quickload keys F2,F3 in single player games but save/load can be accessed from the ESC menu.  If keybinds aren't working for a pre-existing game, check your diablo.ini file and make sure QuickSpell1=F2,etc and delete any QuickLoad/QuickSave keybinds.
 
 // god modes and debug modes
 #define JWK_GOD_MODE_PLAYER_IMMUNE_TO_STUN 0

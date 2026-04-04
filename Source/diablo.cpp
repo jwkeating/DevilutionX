@@ -1660,7 +1660,11 @@ void InitKeymapActions()
 		    "QuickSpell{}",
 		    N_("Quick spell {}"),
 		    N_("Hotkey for skill or spell."),
+#if JWK_ALLOW_MORE_KEYBINDS
+		    i < 7 ? static_cast<uint32_t>(SDLK_F2) + i : static_cast<uint32_t>(SDLK_UNKNOWN),
+#else
 		    i < 4 ? static_cast<uint32_t>(SDLK_F5) + i : static_cast<uint32_t>(SDLK_UNKNOWN),
+#endif
 		    [i]() {
 			    if (spselflag) {
 				    SetSpeedSpell(i);
@@ -1699,6 +1703,7 @@ void InitKeymapActions()
 	    DisplaySpellsKeyPressed,
 	    nullptr,
 	    CanPlayerTakeAction);
+#if !JWK_ALLOW_MORE_KEYBINDS
 	sgOptions.Keymapper.AddAction(
 	    "QuickSave",
 	    N_("Quick save"),
@@ -1715,6 +1720,7 @@ void InitKeymapActions()
 	    [] { gamemenu_load_game(false); },
 	    nullptr,
 	    [&]() { return !gbIsMultiplayer && gbValidSaveFile && stextflag == TalkID::None && IsGameRunning(); });
+#endif
 #ifndef NOEXIT
 	sgOptions.Keymapper.AddAction(
 	    "QuitGame",

@@ -1500,8 +1500,7 @@ void KeymapperOptions::KeyPressed(uint32_t key) const
 
 	const Action &action = it->second.get();
 
-	// Check that the action can be triggered and that the chat textbox is not
-	// open.
+	// Check that the action can be triggered and that the chat textbox is not open.
 	if (!action.actionPressed || (action.enable && !action.enable()) || talkflag)
 		return;
 
