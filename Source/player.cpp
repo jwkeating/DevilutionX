@@ -3446,17 +3446,7 @@ void RemovePlrMissiles(const Player &player)
 		}
 	}
 #endif
-	for (auto &missile : Missiles) {
-		// We can't just delete every missile that has (missile.sourcePlayer() == &player) because each missile might have custom cleanup to do (removing lights, etc)
-		if (missile._mitype == MissileID::StoneCurse && &Players[missile._misource] == &player) {
-			Monsters[missile.var2].mode = static_cast<MonsterMode>(missile.var1);
-		}
-#if JWK_EDIT_APOCALYPSE // remove any apocalypse boom's that are locked onto this player
-		if (missile._mitype == MissileID::ApocalypseBoom && missile.var7 == player.getId()) {
-			missile.var7 = -1;
-		}
-#endif
-	}
+	RemoveAllMissilesForPlayer(player);
 #if JWK_FIX_LIGHTING
 	UpdateVision = true;
 #endif

@@ -2203,7 +2203,7 @@ void OperateChest(const Player &player, Object &chest, bool sendLootMsg)
 		case 4:  mtype = MissileID::AcidPuddleHuge; mTarget = TARGET_BOTH;    break;
 		case 5:  mtype = MissileID::Fireball;       mTarget = TARGET_BOTH;    break;
 		case 6:  mtype = MissileID::Nova;           mTarget = TARGET_BOTH;    break;
-		case 7:  mtype = MissileID::FlashTop;       mTarget = TARGET_BOTH;    break;
+		case 7:  mtype = MissileID::FlashBottom;    mTarget = TARGET_BOTH;    break;
 		case 8:  mtype = MissileID::ApocalypseBoom; mTarget = TARGET_BOTH;    break;
 		case 9:  mtype = MissileID::RingOfFire;     mTarget = TARGET_BOTH;    break;
 		case 10: mtype = MissileID::StealPotions;   mTarget = TARGET_BOTH;    break;
@@ -2212,9 +2212,9 @@ void OperateChest(const Player &player, Object &chest, bool sendLootMsg)
 			mtype = MissileID::Arrow;
 			mTarget = TARGET_BOTH;
 		}
-		AddMissile(chest.position, player.position.tile, mdir, mtype, mTarget, -1, 0, 0); // sourceID == -1 means trap
-		if (mtype == MissileID::FlashTop) {
-			AddMissile(chest.position, player.position.tile, mdir, MissileID::FlashBottom, mTarget, -1, 0, 0);
+		Missile* missile = AddMissile(chest.position, player.position.tile, mdir, mtype, mTarget, -1, 0, 0); // sourceID == -1 means trap
+		if (missile && mtype == MissileID::FlashBottom) {
+			AddMissile(chest.position, player.position.tile, mdir, MissileID::FlashTop, mTarget, -1, 0, 0, missile);
 		}
 		if (debugRandomTraps) {
 			chest._oVar4 = GenerateRnd(9);

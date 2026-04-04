@@ -16,7 +16,7 @@
 namespace devilution {
 
 Corpse Corpses[MaxCorpses];
-int8_t stonendx;
+int8_t stonendx; // stone cursed corpses
 
 namespace {
 void InitDeadAnimationFromMonster(Corpse &corpse, const CMonster &mon)

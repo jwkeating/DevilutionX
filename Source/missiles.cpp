@@ -797,7 +797,7 @@ static bool PvPHitByMissile(int p, const Player &attacker, int dist, Point mStar
 {
 	Player &target = Players[p];
 
-	if (sgGameInitInfo.bFriendlyFire == 0 && attacker.friendlyMode)
+	if (sgGameInitInfo.bFriendlyFire == 0 && attacker.friendlyMode && (!JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS || missileID != MissileID::GuardianBolt))
 		return false;
 
 	*blocked = false;
@@ -1207,31 +1207,6 @@ static bool CheckIfTrig(Point position)
 			return true;
 	}
 	return false;
-}
-
-static bool GuardianTryFireAt(Missile &missile, Point target)
-{
-	Point position = missile.position.tile;
-
-	if (!LineClearMissile(position, target))
-		return false;
-	int mid = dMonster[target.x][target.y] - 1;
-	if (mid < 0)
-		return false;
-	const Monster &monster = Monsters[mid];
-	if (monster.isPlayerMinion())
-		return false;
-	if (monster.hitPoints >> 6 <= 0)
-		return false;
-
-	Player &player = Players[missile._misource];
-	Direction dir = GetDirection(position, target);
-	int boltDamage = CalcGuardianDamage(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
-	AddMissile(position, target, dir, MissileID::Firebolt, TARGET_MONSTERS, missile._misource, boltDamage, missile.sourcePlayer()->GetSpellLevel(SpellID::Guardian), &missile);
-	SetMissDir(missile, 2);
-	missile.var2 = 3;
-
-	return true;
 }
 
 /** @brief Sync missile position with parent missile */
@@ -2237,7 +2212,6 @@ void AddFirebolt(Missile &missile, AddMissileParameter &parameter)
 		case MissileSource::Player: {
 			const Player &player = *missile.sourcePlayer();
 			missile._midam = CalcFireBoltDamage(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
-			//missile._midam = GenerateRnd(10) + (player._pMagic / 8) + missile._mispllvl + 1;
 		} break;
 
 		case MissileSource::Monster:
@@ -2487,37 +2461,6 @@ void AddTownPortal(Missile &missile, AddMissileParameter &parameter)
 	}
 }
 
-void AddFlashBottom(Missile &missile, AddMissileParameter &parameter)
-{
-	if (!parameter.pParent) {
-		missile._missileGroup = GenerateMissileGroup();
-	}
-	switch (missile.sourceType()) {
-	case MissileSource::Player: {
-		Player &player = *missile.sourcePlayer();
-		missile._midam = CalcFlashDamageShifted(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
-	} break;
-	case MissileSource::Monster:
-		// original code: missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 2;
-		// jwk - buff monster flash.  Now, a level 60 advocate in hell difficulty will do 60*4*19 >> 6 = 71 damage in game
-		// Note: When stun-locking a flash-casting monster, they sometimes do double damage (not sure why)
-		missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 4;
-		break;
-	case MissileSource::Trap:
-		missile._midam = TrapFlashDamage();
-		break;
-	}
-
-	missile._ticksUntilExpiry = 19;
-}
-void AddFlashTop(Missile &missile, AddMissileParameter &parameter)
-{
-	// FlashTop is the same effect as FlashBottom but for the North, NorthEast, East directions (possibly because in 2D rendering, the effect needs to be drawn under/over other objects.  See OperateShrineSparkling() which only spawns FlashBottom)
-	// jwk - The original code neglected to compute a damage value for FlashTop (0 damage) but I fixed this by calling AddFlashBottom to guarantee FlashTop matches FlashBottom:
-	AddFlashBottom(missile, parameter);
-	missile._miPreFlag = true;
-}
-
 void AddManaShield(Missile &missile, AddMissileParameter &parameter)
 {
 	missile._miDelFlag = true;
@@ -2563,57 +2506,6 @@ void AddFlameWave(Missile &missile, AddMissileParameter &parameter)
 	missile.position.offset.deltaY -= 32;
 }
 
-void AddGuardian(Missile &missile, AddMissileParameter &parameter)
-{
-	Player &player = Players[missile._misource];
-
-	std::optional<Point> spawnPosition = FindClosestValidPosition(
-	    [start = missile.position.start](Point target) {
-		    if (!InDungeonBounds(target)) {
-			    return false;
-		    }
-		    if (dMonster[target.x][target.y] != 0) {
-			    return false;
-		    }
-		    if (IsObjectAtPosition(target)) {
-			    return false;
-		    }
-		    if (TileContainsMissile(target)) {
-			    return false;
-		    }
-
-		    int dp = dPiece[target.x][target.y];
-		    if (TileHasAny(dp, TileProperties::Solid | TileProperties::BlockMissile)) {
-			    return false;
-		    }
-
-		    return LineClearMissile(start, target);
-	    },
-	    parameter.dst, 0, 5);
-
-	if (!spawnPosition) {
-		missile._miDelFlag = true;
-		parameter.spellFizzled = true;
-		return;
-	}
-
-	missile._miDelFlag = false;
-	missile.position.tile = *spawnPosition;
-	missile.position.start = *spawnPosition;
-
-	missile._mlid = AddLight(missile.position.tile, 1);
-	missile._ticksUntilExpiry = missile._mispllvl + (player._pLevel / 2); // duration of guardian spell
-
-	if (missile._ticksUntilExpiry > 30)
-		missile._ticksUntilExpiry = 30;
-	missile._ticksUntilExpiry <<= 4;
-	if (missile._ticksUntilExpiry < 30)
-		missile._ticksUntilExpiry = 30;
-
-	missile.var1 = missile._ticksUntilExpiry - missile._miAnimLen;
-	missile.var3 = 1;
-}
-
 void AddChainLightning(Missile &missile, AddMissileParameter &parameter)
 {
 	if (!parameter.pParent) {
@@ -2629,8 +2521,7 @@ void AddChainLightning(Missile &missile, AddMissileParameter &parameter)
 	missile._ticksUntilExpiry = 1;
 }
 
-namespace {
-void InitMissileAnimationFromMonster(Missile &mis, Direction midir, const Monster &mon, MonsterGraphic graphic)
+static void InitMissileAnimationFromMonster(Missile &mis, Direction midir, const Monster &mon, MonsterGraphic graphic)
 {
 	const AnimStruct &anim = mon.type().getAnimData(graphic);
 	mis._mimfnum = static_cast<int32_t>(midir);
@@ -2648,7 +2539,6 @@ void InitMissileAnimationFromMonster(Missile &mis, Direction midir, const Monste
 	mis._miLightFlag = true;
 	mis._ticksUntilExpiry = 256;
 }
-} // namespace
 
 void AddRhino(Missile &missile, AddMissileParameter &parameter)
 {
@@ -3086,8 +2976,14 @@ void ProcessInfravision(Missile &missile)
 	player._pInfraFlag = true;
 	if (missile._ticksUntilExpiry == 0) {
 		missile._miDelFlag = true;
-		player._pInfraFlag = false;
+		RemoveInfravision(missile);
 	}
+}
+
+void RemoveInfravision(Missile &missile)
+{
+	Player &player = Players[missile._misource];
+	player._pInfraFlag = false;
 }
 
 void AddApocalypseBoom(Missile &missile, AddMissileParameter &parameter)
@@ -3119,7 +3015,7 @@ void ProcessApocalypseBoom(Missile &missile)
 		// var6 and var7 indicate we're locked onto a specific target.  If the target is moving, it will have negative ID and positive ID entries in the dMonster/dPlayer array.
 		// The positive entry can be located at either position.tile or position.future depending on the direction the target is moving (southward, northward, sideways).
 		// CheckMissileCollision() only checks for positive ID so we need to call it using the positive entry instead of the negative entry.
-		// See RemovePlrMissiles() which removes any apocalypse boom locked onto a player who leaves the dungeon.
+		// See RemoveAllMissilesForPlayer() which removes any apocalypse boom locked onto a player who leaves the dungeon.
 		WorldTilePosition p = missile.position.tile;
 		if (missile.var6 >= 0) { // target locked on specific monster
 			Monster& monster = Monsters[missile.var6];
@@ -3430,7 +3326,6 @@ void AddHolyBolt(Missile &missile, AddMissileParameter &parameter)
 	missile.var2 = missile.position.start.y;
 	missile._mlid = AddLight(missile.position.start, 8);
 	missile._midam = CalcHolyBoltDamage(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
-	//missile._midam = GenerateRnd(10) + player._pLevel + 9;
 }
 
 void AddResurrect(Missile &missile, AddMissileParameter & /*parameter*/)
@@ -3698,15 +3593,13 @@ void ProcessGenericProjectile(Missile &missile)
 		default:
 			break;
 		}
-		if (missile._mlid != NO_LIGHT)
-			AddUnLight(missile._mlid);
+		AddUnLight(missile._mlid);
 		PutMissile(missile);
 	} else {
 		if (missile.position.tile != Point { missile.var1, missile.var2 }) {
 			missile.var1 = missile.position.tile.x;
 			missile.var2 = missile.position.tile.y;
-			if (missile._mlid != NO_LIGHT)
-				ChangeLight(missile._mlid, missile.position.tile, 8);
+			ChangeLight(missile._mlid, missile.position.tile, 8);
 		}
 		PutMissile(missile);
 	}
@@ -4234,11 +4127,51 @@ void ProcessTownPortal(Missile &missile)
 	PutMissile(missile);
 }
 
+void AddFlashBottom(Missile &missile, AddMissileParameter &parameter)
+{
+	if (!parameter.pParent) {
+		missile._missileGroup = GenerateMissileGroup();
+	}
+	switch (missile.sourceType()) {
+	case MissileSource::Player: {
+		Player &player = *missile.sourcePlayer();
+		missile._midam = CalcFlashDamageShifted(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
+	} break;
+	case MissileSource::Monster:
+		// original code: missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 2;
+		// jwk - buff monster flash.  Now, a level 60 advocate in hell difficulty will do 60*4*19 >> 6 = 71 damage in game
+		// Note: When stun-locking a flash-casting monster, they sometimes do double damage (not sure why)
+		missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 4;
+		break;
+	case MissileSource::Trap:
+		missile._midam = TrapFlashDamage();
+		break;
+	}
+
+	missile._ticksUntilExpiry = 19;
+}
+
+void AddFlashTop(Missile &missile, AddMissileParameter &parameter)
+{
+	// FlashTop is the same effect as FlashBottom but for the North, NorthEast, East directions (possibly because in 2D rendering, the effect needs to be drawn under/over other objects.  See OperateShrineSparkling() which only spawns FlashBottom)
+	// jwk - The original code neglected to compute a damage value for FlashTop (0 damage).  I fixed this by calling AddFlashBottom to guarantee FlashTop matches FlashBottom:
+	AddFlashBottom(missile, parameter);
+	missile._miPreFlag = true;
+
+	// FlashTop should always come paired with FlashBottom because the bottom manages cleanup
+	assert(parameter.pParent && parameter.pParent->_mitype == MissileID::FlashBottom);
+}
+
+void RemoveFlash(Missile &missile)
+{
+	if (missile._micaster == TARGET_MONSTERS && !missile.IsTrap())
+		Players[missile._misource]._pInvincible = false;
+}
+
 void ProcessFlashBottom(Missile &missile)
 {
-	if (missile._micaster == TARGET_MONSTERS) {
-		if (!missile.IsTrap())
-			Players[missile._misource]._pInvincible = true;
+	if (missile._micaster == TARGET_MONSTERS && !missile.IsTrap()) {
+		Players[missile._misource]._pInvincible = true;
 	}
 	missile._ticksUntilExpiry--;
 
@@ -4255,20 +4188,13 @@ void ProcessFlashBottom(Missile &missile)
 
 	if (missile._ticksUntilExpiry == 0) {
 		missile._miDelFlag = true;
-		if (missile._micaster == TARGET_MONSTERS) {
-			if (!missile.IsTrap())
-				Players[missile._misource]._pInvincible = false;
-		}
+		RemoveFlash(missile);
 	}
 	PutMissile(missile);
 }
 
 void ProcessFlashTop(Missile &missile)
 {
-	if (missile._micaster == TARGET_MONSTERS) {
-		if (!missile.IsTrap())
-			Players[missile._misource]._pInvincible = true;
-	}
 	missile._ticksUntilExpiry--;
 
 	constexpr Direction Offsets[] = {
@@ -4281,10 +4207,6 @@ void ProcessFlashTop(Missile &missile)
 
 	if (missile._ticksUntilExpiry == 0) {
 		missile._miDelFlag = true;
-		if (missile._micaster == TARGET_MONSTERS) {
-			if (!missile.IsTrap())
-				Players[missile._misource]._pInvincible = false;
-		}
 	}
 	PutMissile(missile);
 }
@@ -4326,6 +4248,44 @@ void ProcessFlameWave(Missile &missile)
 	missile.position.tile += Direction::South;
 	missile.position.offset.deltaY -= 32;
 	PutMissile(missile);
+}
+
+static bool GuardianTryFireAt(Missile &missile, Point target)
+{
+	Point position = missile.position.tile;
+
+	if (!LineClearMissile(position, target))
+		return false;
+
+	Player &caster = Players[missile._misource];
+#if JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS // include hostile players (those with pvp flag on) in the list of targets to shoot at
+	bool foundMonster = false;
+	int mid = dMonster[target.x][target.y] - 1;
+	if (mid < 0 || Monsters[mid].isPlayerMinion() || (Monsters[mid].hitPoints >> 6) <= 0) {
+		// No monster to target at this tile.  Look for a target player instead.
+		// if (caster.friendlyMode) { return false; } <-- Could uncomment this line to avoid targetting players if the caster is not flagged pvp
+		int pid = dPlayer[target.x][target.y] - 1;
+		if (pid < 0 || pid == missile._misource || Players[pid].friendlyMode || (Players[pid]._pHitPoints >> 6) <= 0)
+			return false;
+	}
+#else // original code (only shoot at monsters but any player who steps in the firebolt path can still be hit if the caster is flagged pvp)
+	int mid = dMonster[target.x][target.y] - 1;
+	if (mid < 0)
+		return false;
+	const Monster &monster = Monsters[mid];
+	if (monster.isPlayerMinion())
+		return false;
+	if (monster.hitPoints >> 6 <= 0)
+		return false;
+#endif
+
+	Direction dir = GetDirection(position, target);
+	int boltDamage = CalcGuardianDamage(caster, missile._mispllvl, GenerateRnd, GenerateRndSum);
+	AddMissile(position, target, dir, MissileID::GuardianBolt, TARGET_MONSTERS, missile._misource, boltDamage, missile.sourcePlayer()->GetSpellLevel(SpellID::Guardian), &missile);
+	SetMissDir(missile, 2);
+	missile.var2 = 3;
+
+	return true;
 }
 
 void ProcessGuardian(Missile &missile)
@@ -4397,6 +4357,57 @@ void ProcessGuardian(Missile &missile)
 	}
 
 	PutMissile(missile);
+}
+
+void AddGuardian(Missile &missile, AddMissileParameter &parameter)
+{
+	Player &player = Players[missile._misource];
+
+	std::optional<Point> spawnPosition = FindClosestValidPosition(
+	    [start = missile.position.start](Point target) {
+		    if (!InDungeonBounds(target)) {
+			    return false;
+		    }
+		    if (dMonster[target.x][target.y] != 0) {
+			    return false;
+		    }
+		    if (IsObjectAtPosition(target)) {
+			    return false;
+		    }
+		    if (TileContainsMissile(target)) {
+			    return false;
+		    }
+
+		    int dp = dPiece[target.x][target.y];
+		    if (TileHasAny(dp, TileProperties::Solid | TileProperties::BlockMissile)) {
+			    return false;
+		    }
+
+		    return LineClearMissile(start, target);
+	    },
+	    parameter.dst, 0, 5);
+
+	if (!spawnPosition) {
+		missile._miDelFlag = true;
+		parameter.spellFizzled = true;
+		return;
+	}
+
+	missile._miDelFlag = false;
+	missile.position.tile = *spawnPosition;
+	missile.position.start = *spawnPosition;
+
+	missile._mlid = AddLight(missile.position.tile, 1);
+	missile._ticksUntilExpiry = missile._mispllvl + (player._pLevel / 2); // duration of guardian spell
+
+	if (missile._ticksUntilExpiry > 30)
+		missile._ticksUntilExpiry = 30;
+	missile._ticksUntilExpiry <<= 4;
+	if (missile._ticksUntilExpiry < 30)
+		missile._ticksUntilExpiry = 30;
+
+	missile.var1 = missile._ticksUntilExpiry - missile._miAnimLen;
+	missile.var3 = 1;
 }
 
 void ProcessChainLightning(Missile &missile)
@@ -4534,10 +4545,21 @@ void ProcessTeleport(Missile &missile)
 	}
 }
 
+void RemoveStoneCurse(Missile &missile)
+{
+	Monster& monster = Monsters[missile.var2];
+	if (monster.hitPoints > 0) {
+		monster.mode = static_cast<MonsterMode>(missile.var1);
+		monster.animInfo.isPetrified = false;
+	} else {
+		AddCorpse(monster.position.tile, stonendx, monster.direction);
+	}
+}
+
 void ProcessStoneCurse(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
-	auto &monster = Monsters[missile.var2];
+	Monster& monster = Monsters[missile.var2];
 	if (monster.hitPoints == 0 && missile._miAnimType != MissileGraphicID::StoneCurseShatter) {
 		missile._mimfnum = 0;
 		missile._miDrawFlag = true;
@@ -4556,13 +4578,8 @@ void ProcessStoneCurse(Missile &missile)
 	}
 
 	if (missile._ticksUntilExpiry == 0) {
+		RemoveStoneCurse(missile);
 		missile._miDelFlag = true;
-		if (monster.hitPoints > 0) {
-			monster.mode = static_cast<MonsterMode>(missile.var1);
-			monster.animInfo.isPetrified = false;
-		} else {
-			AddCorpse(monster.position.tile, stonendx, monster.direction);
-		}
 	}
 	if (missile._miAnimType == MissileGraphicID::StoneCurseShatter)
 		PutMissile(missile);
@@ -4651,6 +4668,18 @@ void ProcessFlameWaveControl(Missile &missile)
 		missile._miDelFlag = true;
 }
 
+
+void RemoveRage(Missile &missile)
+{
+	Player &player = Players[missile._misource];
+	player._pSpellFlags &= ~SpellFlag::RageActive;
+	player._pSpellFlags &= ~SpellFlag::RageCooldown;
+
+	// The player isn't necessarily leaving the game.  They could just be leaving the zone.
+	// We want to restore their stats but we don't want to apply damage if they leave the zone.
+	CalcPlayerPowerFromItems(player, true);
+}
+
 void ProcessRage(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
@@ -4660,7 +4689,6 @@ void ProcessRage(Missile &missile)
 	}
 
 	Player &player = Players[missile._misource];
-
 	int hpdif = player._pMaxHP - player._pHitPoints;
 
 	if (HasAnyOf(player._pSpellFlags, SpellFlag::RageActive)) {
@@ -4919,6 +4947,25 @@ void ProcessRedPortal(Missile &missile)
 		AddUnLight(missile._mlid);
 	}
 	PutMissile(missile);
+}
+
+void RemoveAllMissilesForPlayer(const Player& player)
+{
+	for (Missile &missile : Missiles) {
+		if (missile.sourcePlayer() == &player) {
+			const MissileData &missileData = GetMissileData(missile._mitype);
+			if (missileData.mRemoveProc != nullptr) {
+				missileData.mRemoveProc(missile);
+			}
+			AddUnLight(missile._mlid);
+			missile._miDelFlag = true;
+		}
+#if JWK_EDIT_APOCALYPSE // remove any apocalypse boom's that are locked onto this player
+		if (missile._mitype == MissileID::ApocalypseBoom && missile.var7 == player.getId()) {
+			missile.var7 = -1;
+		}
+#endif
+	}
 }
 
 static void DeleteMissiles()

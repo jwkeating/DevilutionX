@@ -58,6 +58,7 @@
 #define JWK_BUFF_UNIQUE_MONSTERS 1 // buffs monster level, health, hit chance, armor, resistances, experience, and loot
 #define JWK_EDIT_HOLY_BOLT_RESISTANCE 1 // Similar to hellfire, make Diablo/Bone demon resistance to holy bolt.  However, make this resistance 50% instead of 75%.
 #define JWK_DIABLO_CANT_BE_STUNLOCKED 1 // Similar to hellfire, make Diablo less easy to stunlock
+#define JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS 1 // If true, the guardian will target any players who have their pvp flag enabled (even if the caster doesn't have their flag enabled).  This makes the guardian more of a "defensive guardian" rather than something offensive.
 
 // god modes and debug modes
 #define JWK_GOD_MODE_PLAYER_IMMUNE_TO_STUN 0
@@ -157,6 +158,7 @@ enum class MissileID : int8_t {
 	// clang-format off
 	Arrow,
 	Firebolt,
+	GuardianBolt, // jwk added
 	Guardian,
 	Phasing,
 	NovaBall,

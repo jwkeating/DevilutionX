@@ -398,7 +398,13 @@ void AddDiabloApocalypse(Missile &missile, AddMissileParameter &parameter);
 Missile *AddMissile(Point src, Point dst, Direction midir, MissileID mitype,
     mienemy_type micaster, int sourceID, int midam, int spllvl,
     Missile *parent = nullptr, std::optional<_sfx_id> lSFX = std::nullopt);
-void ProcessSneak(Missile &missile);
+
+void RemoveAllMissilesForPlayer(const Player& player);
+void RemoveStoneCurse(Missile &missile);
+void RemoveInfravision(Missile &missile);
+void RemoveFlash(Missile &missile);
+void RemoveRage(Missile &missile);
+
 void ProcessElementalArrow(Missile &missile);
 void ProcessArrow(Missile &missile);
 void ProcessGenericProjectile(Missile &missile);

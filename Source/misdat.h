@@ -134,6 +134,7 @@ use_enum_as_flags(MissileDataFlags);
 struct MissileData {
 	void (*mAddProc)(Missile &, AddMissileParameter &);
 	void (*mProc)(Missile &);
+	void (*mRemoveProc)(Missile &);
 	_sfx_id mlSFX;
 	_sfx_id miSFX;
 	MissileGraphicID mFileNum;
