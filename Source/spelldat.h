@@ -14,7 +14,7 @@
 #define JWK_BLACK_DEATH_NO_PERM_HP_LOSS 1 // Instead of -1HP to your permanent max health, black death does insane damage instead (likely killing the player in one hit).
 #define JWK_EDIT_CRITICAL_STRIKE 1 // Reduce melee critical strike chance for warriors/barbarians from 50% to 30%.  Add a similar critical strike chance for rogues using ranged attacks.
 #define JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE 1 // Use the same ranged attack damage formula for all classes instead of halving damage for non-rogue damage.  To compensate rogue, toggle JWK_EDIT_CRITICAL_STRIKE=1 which gives her a critical strike chance.
-#define JWK_USE_CONSISTENT_HIT_CHANCE 1 // remove the class-specific bonuses to hit chance so everything is based on stats (more consistent and easier for players to understand).
+#define JWK_EDIT_HIT_CHANCE 1 // If defined==2: consistent formula for everything.  If defined==1: Spells always hit, ranged has no distance penalty.  In both cases, remove the class-specific bonuses to hit chance so everything is based on stats (more consistent and easier for players to understand).
 #define JWK_EDIT_BLOCK_CHANCE 1 // Use new formula based on str/dex instead of purely dex
 #define JWK_EDIT_FAST_BLOCK 1 // Make fastblock -2 frames instead of -4 frames.  This only affects sorcerer because he's the only one who needs -4 frames to reach the block speed limit.
 #define JWK_RESISTANT_TARGETS_CAN_BLOCK 1 // If true, resistance doesn't affect blocking.  If false (original code), having fire/lightning/magic resistance (even 1%) prevents your character from blocking the attack.

@@ -92,8 +92,9 @@ void UpdateFloatingText(FloatingNumber &num)
 		//num.text = fmt::format("{:.2f}", num.value / 64.0);
 		num.text = ""; // don't show damage numbers less than 1
 	} else {
-		if (gPrintHitChance && num.hitChance > 0 && num.hitChance < 100) {
-			// could use UiFlags::ColorGold
+		if (gPrintHitChance && num.hitChance < 95) {
+			// Only print hit chance if the hit chance isn't capped.
+			// We could use UiFlags::ColorGold to indicate < 95% instead of printing the actual number
 			num.text = StrCat(num.value >> 6, " (", num.hitChance, "%)");
 		} else {
 			num.text = StrCat(num.value >> 6);

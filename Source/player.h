@@ -39,7 +39,7 @@ constexpr uint8_t MaxSpellLevel = 15;
 constexpr int PlayerNameLength = 32;
 
 constexpr size_t NumHotkeys = 12;
-constexpr int BaseHitChance = JWK_USE_CONSISTENT_HIT_CHANCE ? 30 : 50;
+constexpr int BaseHitChance = JWK_EDIT_HIT_CHANCE ? 30 : 50;
 
 /** Walking directions */
 enum {
@@ -528,7 +528,7 @@ struct Player {
 	 */
 	int GetMeleeToHit() const
 	{
-#if JWK_USE_CONSISTENT_HIT_CHANCE // use the same formula for melee and range (melee uses str, ranged uses dex)
+#if JWK_EDIT_HIT_CHANCE // use the same formula for melee and range (melee uses str, ranged uses dex)
 		// Note: Hit chance is modified by: hitChance += 2 * (attacker.level - target.level)
 		// See MonsterAttackPlayer(), PlayerAttackPlayer(), and PlayerAttackMonster
 		int hitChance = _pStrength + _pIBonusToHit + BaseHitChance;
@@ -559,7 +559,7 @@ struct Player {
 	 */
 	int GetRangedToHit() const
 	{
-#if JWK_USE_CONSISTENT_HIT_CHANCE // use the same formula for melee and range (melee uses str, ranged uses dex)
+#if JWK_EDIT_HIT_CHANCE // use the same formula for melee and range (melee uses str, ranged uses dex)
 		// See hit chance formulas in MonsterHitByMissileFromPlayer(), MonsterHitByMissileFromMonsterOrTrap(), PlayerHitByMissle(), and PvPHitByMissile()
 		int hitChance = _pDexterity + _pIBonusToHit + BaseHitChance;
 		//int hitChance = _pLevel + _pDexterity + _pIBonusToHit + BaseHitChance;
@@ -587,7 +587,7 @@ struct Player {
 	 */
 	int GetMagicToHit() const
 	{
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE
 		int hitChance = _pMagic + BaseHitChance;
 #else // original code:
 		int hitChance = _pMagic + BaseHitChance;

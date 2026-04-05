@@ -377,7 +377,7 @@ static int ProjectileMonsterDamage(Missile &missile)
 	return monster.minDamage + GenerateRnd(monster.maxDamage - monster.minDamage + 1);
 }
 
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE == 2
 static int ChanceToMissAtDistance(int distance)
 {
 	distance = std::max(0, distance - 5);
@@ -433,7 +433,6 @@ static bool RecordMissleGroupHit(const Missile& missile, MissileGroupList& missi
 }
 #endif
 
-
 bool MonsterHitByMissileFromMonsterOrTrap(Monster& monster, Monster* attacker, int mindam, int maxdam, int dist, MissileID missileID, DamageType damageType, bool shift)
 {
 	if (!monster.isPossibleToHit() || monster.isImmune(missileID, damageType))
@@ -441,7 +440,20 @@ bool MonsterHitByMissileFromMonsterOrTrap(Monster& monster, Monster* attacker, i
 
 	int diceRollToAvoidHit = GenerateRnd(100);
 	int hitChance;
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE == 1
+	const MissileData &missileData = GetMissileData(missileID);
+	if (missileData.isArrow()) {
+		if (attacker) {
+			hitChance = attacker->toHit(sgGameInitInfo.nDifficulty) - monster.armorClass;
+			hitChance += 2 * (attacker->level(sgGameInitInfo.nDifficulty) - monster.level(sgGameInitInfo.nDifficulty));
+			hitChance = clamp(hitChance, 5, 95);
+		} else { // monster hit by arrow trap
+			hitChance = 100;
+		}
+	} else { // spells always hit
+		hitChance = 100;
+	}
+#elif JWK_EDIT_HIT_CHANCE == 2
 	if (shift) {
 		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
 	} else {
@@ -510,7 +522,15 @@ static bool MonsterHitByMissileFromPlayer(const Player& player, Monster& monster
 	int hitChance = 0;
 	const MissileData &missileData = GetMissileData(missileID);
 
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE == 1
+	if (missileData.isArrow()) {
+		hitChance = player.GetRangedPiercingToHit() - player.CalculateArmorAfterPierce(monster.armorClass, false);
+		hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty));
+		hitChance = clamp(hitChance, 5, 95);
+	} else { // spells always hit
+		hitChance = 100;
+	}
+#elif JWK_EDIT_HIT_CHANCE == 2
 	if (shift) {
 		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
 	} else {
@@ -642,7 +662,18 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 		return false;
 	}
 
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE == 1
+	int hitChance = 100; // spells always hit
+	if (missileData.isArrow()) {
+		if (monster) {
+			hitChance = monster->toHit(sgGameInitInfo.nDifficulty) - player.GetArmor() + 2 * (monster->level(sgGameInitInfo.nDifficulty) - player._pLevel);
+		} else { // arrow traps
+			int trapToHit = 100 * (sgGameInitInfo.nDifficulty + 1);
+			hitChance = trapToHit - player.GetArmor();
+		}
+		hitChance = std::min(hitChance, 95);
+	}
+#elif JWK_EDIT_HIT_CHANCE == 2
 	int hitChance = 0;
 	if (shift) {
 		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
@@ -817,7 +848,13 @@ static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Po
 	int diceRollToAvoidHit = GenerateRnd(100);
 
 	int hitChance;
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE == 1
+	hitChance = 100; // spells always hit
+	if (missileData.isArrow()) {
+		hitChance = attacker.GetRangedToHit() - target.GetArmor() + 2 * (attacker._pLevel - target._pLevel);
+		hitChance = std::min(hitChance, 95);
+	}
+#elif JWK_EDIT_HIT_CHANCE == 2
 	if (shift) {
 		hitChance = 100; // damage over time effects should hit every tick.  This makes floating damage numbers merge into a single value.
 	} else {

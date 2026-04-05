@@ -889,7 +889,7 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 	}
 
 	hitChance += player.GetMeleePiercingToHit() - player.CalculateArmorAfterPierce(monster.armorClass, true);
-#if JWK_USE_CONSISTENT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
+#if JWK_EDIT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
 	hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty));
 #endif
 	hitChance = clamp(hitChance, 5, 95);
@@ -1091,7 +1091,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 	int diceRollToAvoidHit = GenerateRnd(100);
 
 	int hitChance = attacker.GetMeleeToHit() - target.GetArmor();
-#if JWK_USE_CONSISTENT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
+#if JWK_EDIT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
 	hitChance += 2 * (attacker._pLevel - target._pLevel);
 #endif
 	hitChance = clamp(hitChance, 5, 95);

@@ -120,7 +120,7 @@ bool ScaleAllMonsterHealthForMultiplayer()
 
 namespace {
 
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE
 // When a monster attacks a monster (golem, berserk, etc), these difficulty values apply so we probably want similar increases for ToHit bonus and AC
 constexpr int MonsterBaseHitChanceWithMagic = 100; // will be modified by monster level, target level, and distance
 constexpr int MonsterBaseHitChance = 30; // in addition to whatever bonus in MonstersData table
@@ -1238,7 +1238,7 @@ void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent,
 	hitChancePercent += 2 * (monster.level(sgGameInitInfo.nDifficulty) - player._pLevel) - ac;
 
 	int minhitChance = GetMinHitChance();
-#if JWK_USE_CONSISTENT_HIT_CHANCE // allow natural dodge like all other cases
+#if JWK_EDIT_HIT_CHANCE // allow natural dodge like all other cases
 	hitChancePercent = clamp(hitChancePercent, minhitChance, 95);
 #else // original code
 	if (hitChancePercent < minhitChance) { hitChancePercent = minhitChance; }
@@ -1334,7 +1334,7 @@ void MonsterAttackMonster(Monster &attacker, Monster &target, int hitChancePerce
 	if (target.tryLiftGargoyle())
 		return;
 
-#if JWK_USE_CONSISTENT_HIT_CHANCE
+#if JWK_EDIT_HIT_CHANCE
 	hitChancePercent += 2 * (attacker.level(sgGameInitInfo.nDifficulty) - target.level(sgGameInitInfo.nDifficulty)) - target.armorClass;
 	int minHitChance = target.isPlayerMinion() ? GetMinHitChance() : 5;
 	hitChancePercent = clamp(hitChancePercent, minHitChance, 95);
