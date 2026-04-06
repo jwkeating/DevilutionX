@@ -3871,7 +3871,7 @@ void ApplyMonsterDamage(DamageType damageType, Monster &monster, int damage, int
 {
 #if JWK_EDIT_STONE_CURSE
 	if (monster.mode == MonsterMode::Petrified) {
-		damage /= 2;
+		damage /= Monster::StoneCurseDamageFactor;
 	}
 #endif
 	AddFloatingNumber(damageType, monster, damage, hitChanceForUI);

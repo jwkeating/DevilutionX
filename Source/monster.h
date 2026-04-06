@@ -313,6 +313,8 @@ struct Monster { // note: missing field _mAFNum
 	 */
 	void petrify();
 
+	static const int StoneCurseDamageFactor = 2;
+
 	const CMonster &type() const
 	{
 		return LevelMonsterTypes[levelType];

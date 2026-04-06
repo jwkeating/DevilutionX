@@ -579,10 +579,13 @@ static bool MonsterHitByMissileFromPlayer(const Player& player, Monster& monster
 #if JWK_EDIT_BONE_SPIRIT
 		assert(mindam > 0 && mindam < 100); // interpret mindam as a percent of max HP
 		int boneHpCap = std::min(monster.maxHitPoints - 64, monster.maxHitPoints * (100 - mindam) / 100);
-		if (monster.hitPoints > boneHpCap)
+		if (monster.hitPoints > boneHpCap) {
 			dam = monster.hitPoints - boneHpCap;
-		else
+			if (JWK_EDIT_STONE_CURSE)
+				dam *= Monster::StoneCurseDamageFactor;
+		} else {
 			dam = 0;
+		}
 #else // original code
 		dam = monster.hitPoints / 3;
 #endif
