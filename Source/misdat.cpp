@@ -103,7 +103,11 @@ const MissileData MissilesData[] = { // This array is indexed by MissileID in sp
 /*HealOther*/               { &AddHealOther,           nullptr,                      nullptr,                 SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical | Invisible,  MissileMovementDistribution::Disabled    },
 /*Elemental*/               { &AddElemental,           &ProcessElemental,            nullptr,                 LS_ELEMENTL, SFX_NONE,    MissileGraphicID::Elemental,            Fire,                  MissileMovementDistribution::Unblockable },
 /*ResurrectBeam*/           { &AddResurrectBeam,       &ProcessResurrectBeam,        nullptr,                 SFX_NONE,    SFX_NONE,    MissileGraphicID::Resurrect,            Physical,              MissileMovementDistribution::Disabled    },
+#if JWK_EDIT_BONE_SPIRIT
+/*BoneSpirit*/              { &AddBoneSpirit,          &ProcessBoneSpirit,           nullptr,                 LS_BONESP,   LS_BSIMPCT,  MissileGraphicID::BoneSpirit,           Physical,              MissileMovementDistribution::Blockable   },
+#else
 /*BoneSpirit*/              { &AddBoneSpirit,          &ProcessBoneSpirit,           nullptr,                 LS_BONESP,   LS_BSIMPCT,  MissileGraphicID::BoneSpirit,           Magic,                 MissileMovementDistribution::Blockable   },
+#endif
 /*WeaponExplosion*/         { &AddWeaponExplosion,     &ProcessWeaponExplosion,      nullptr,                 SFX_NONE,    SFX_NONE,    MissileGraphicID::None,                 Physical,              MissileMovementDistribution::Disabled    },
 /*RedPortal*/               { &AddRedPortal,           &ProcessRedPortal,            nullptr,                 LS_SENTINEL, LS_ELEMENTL, MissileGraphicID::RedPortal,            Physical,              MissileMovementDistribution::Disabled    },
 #if JWK_EDIT_APOCALYPSE

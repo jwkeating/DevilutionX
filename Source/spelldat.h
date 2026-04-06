@@ -37,6 +37,8 @@
 #define JWK_ITEMS_HAVE_REDUCED_RESALE_VALUE 1 // If true, vendors won't pay the player huge amounts of gold for valuable items
 #define JWK_EDIT_SPELL_COSTS 1 // rebalance spell mana costs
 #define JWK_EDIT_NOVA 1 // Fire a ring of magic bolts instead of lightning.  Also, allow player to learn the spell.
+#define JWK_EDIT_INFERNO 0 // Basically the same spell but I rewrote the logic to make the damage formula much simpler and easier to tune.
+#define JWK_EDIT_BONE_SPIRIT 1 // Instead of doing 1/3 HP as magic damage (which is either overpowered or useless if immune), make bone spirit remove the top x% of a target's HP but it does nothing if the target is already below that threshold.  Physical effect but undead/diablo are immune.
 #define JWK_EDIT_CHAIN_LIGHTNING 1 // Use completely new chain lightning more like chain lightning in Diablo 2
 #define JWK_EDIT_STONE_CURSE 1 // When casting stone curse, don't target already-cursed monsters (This makes targetting feel much better).  Increase duration every spell level instead of capping it.  Monsters that are stone cursed take reduced damage.
 #define JWK_EDIT_ELEMENTAL 1 // Make elemental single target instead of AoE.  Fireball does AoE, elemental does homing.  Elemental shouldn't do both otherwise it's just better in all cases.

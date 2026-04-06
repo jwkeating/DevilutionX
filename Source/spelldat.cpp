@@ -98,7 +98,11 @@ const SpellData SpellsData[] = {
 #else //                        sNameText,                         sSFX,      bookCost10,  staffCost10,  sManaCost, flags,                  sBookLvl,  sStaffLvl,  minInt, { sMissiles[2]                                         }   sManaAdj,  sMinMana,  sStaffMin,  sStaffMax
 /*SpellID::BloodStar*/        { P_("spell", "Blood Star"),         IS_CAST2,        2750,          180,         25, Magic,                        14,         13,      70, { MissileID::BloodStar,            MissileID::Null,    },         2,        14,         20,         60 },
 #endif
+#if JWK_EDIT_BONE_SPIRIT
+/*SpellID::BoneSpirit*/       { P_("spell", "Bone Spirit"),        IS_CAST2,        1150,           80,         28, Magic,                         9,          7,      34, { MissileID::BoneSpirit,           MissileID::Null,    },         1,        16,         20,         60 },
+#else
 /*SpellID::BoneSpirit*/       { P_("spell", "Bone Spirit"),        IS_CAST2,        1150,           80,         24, Magic,                         9,          7,      34, { MissileID::BoneSpirit,           MissileID::Null,    },         1,        12,         20,         60 },
+#endif
 /*SpellID::Mana*/             { P_("spell", "Mana"),               IS_CAST8,         100,            5,        255, Magic | AllowedInTown,        -1,          5,      17, { MissileID::Mana,                 MissileID::Null,    },         3,         1,         12,         24 },
 /*SpellID::Magi*/             { P_("spell", "the Magi"),           IS_CAST8,       10000,           20,        255, Magic | AllowedInTown,        -1,         20,      45, { MissileID::Magi,                 MissileID::Null,    },         3,         1,         15,         30 },
 /*SpellID::Jester*/           { P_("spell", "the Jester"),         IS_CAST8,       10000,           20,        255, Magic | Targeted,             -1,          4,      30, { MissileID::Jester,               MissileID::Null,    },         3,         1,         15,         30 },

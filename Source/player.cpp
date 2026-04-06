@@ -3002,9 +3002,11 @@ void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags,
 			}
 		}
 
+		if (totplrs == 0) // A quest monster can die for plot reasons instead of dying from player damage
+			return;
+
 		// Instead of dividing experience by the number of players, we award better than 1/2, 1/3, 1/4 experience to discourage solo kills,
 		// encourage multiplayer, and offset the overhead of coordinating multiplayer games compared to single player.
-		assert(totplrs != 0);
 		if (totplrs == 2)
 			monsterExp = monsterExp * 3 / 4;  // better than 1/2
 		else if (totplrs == 3)
@@ -3021,6 +3023,8 @@ void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags,
 			totplrs++;
 		}
 	}
+	if (totplrs == 0)
+		return;
 	assert(totplrs != 0);
 	monsterExp /= totplrs;
 #endif

@@ -121,10 +121,15 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcInfernoDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
+#if JWK_EDIT_INFERNO
+	//return 10000; // This does 3125 dmage for first puff
+	return ScaleSpellEffect(generateRndSumFunc(20, 5) + player._pLevel, spellLevel) * 3;
+#else
 	// "return (N << 6);" does (20 to 30) * N total damage to the target depending on 1,2,3 tile distance
 	return ScaleSpellEffect(generateRndSumFunc(20, 5) + player._pLevel, spellLevel) * 3;
 	// original code: int i = generateRndFunc(player._pLevel) + generateRndFunc(2);
 	// original code: return 8 * i + 16 + ((8 * i + 16) / 2);
+#endif
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFlashDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
@@ -144,7 +149,7 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcBloodStarDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 	// note: player._pHitPoints is shifted << 6
-	return ScaleSpellEffect(((50 + player._pLevel) * (300 + player._pMagic) * player._pHitPoints) >> 16, spellLevel) / 128;
+	return ScaleSpellEffect(((50 + player._pLevel) * (300 + player._pMagic) * std::min(player._pHitPoints, player._pMana)) >> 16, spellLevel) / 128;
 	// original code: return 3 * spellLevel - (player._pMagic / 8) + (player._pMagic / 2);
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcApocalypseDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
@@ -187,6 +192,11 @@ static int CalcChainLightningLength(int spellLevel)
 	// We want a short bolt so the bolt can be seen bouncing between targets
 	return 5;
 }
+#if JWK_EDIT_BONE_SPIRIT
+static int CalcBoneSpiritHpPercent(int spellLevel) {
+	return spellLevel + 5;
+}
+#endif
 
 static void TagMonsterWithDamageType(Monster& monster, DamageType damageType)
 {
@@ -566,7 +576,16 @@ static bool MonsterHitByMissileFromPlayer(const Player& player, Monster& monster
 	int dam;
 	if (missileID == MissileID::BoneSpirit) {
 		shift = true; // produce a shifted << 6 damage.  Note: hitPoints is already a shifted value.
+#if JWK_EDIT_BONE_SPIRIT
+		assert(mindam > 0 && mindam < 100); // interpret mindam as a percent of max HP
+		int boneHpCap = std::min(monster.maxHitPoints - 64, monster.maxHitPoints * (100 - mindam) / 100);
+		if (monster.hitPoints > boneHpCap)
+			dam = monster.hitPoints - boneHpCap;
+		else
+			dam = 0;
+#else // original code
 		dam = monster.hitPoints / 3;
+#endif
 	} else {
 		dam = mindam + GenerateRnd(maxdam - mindam + 1);
 	}
@@ -644,7 +663,7 @@ static bool MonsterHitByMissileFromPlayer(const Player& player, Monster& monster
 }
 
 // Player hit by missile from monster or trap
-bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStartPos, MissileID missileID, int mind, int maxd, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked)
+bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStartPos, MissileID missileID, int mindam, int maxdam, DamageType damageType, bool shift, DeathReason deathReason, bool *blocked)
 {
 	*blocked = false;
 
@@ -728,7 +747,17 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 
 	int dam;
 	if (missileID == MissileID::BoneSpirit) {
+#if JWK_EDIT_BONE_SPIRIT
+		shift = true; // make it unblockable
+		assert(mindam > 0 && mindam < 100); // interpret mindam as a percent of max HP
+		int boneHpCap = std::min(player._pMaxHP - 64, player._pMaxHP * (100 - mindam) / 100);
+		if (player._pHitPoints > boneHpCap)
+			dam = player._pHitPoints - boneHpCap;
+		else
+			dam = 0;
+#else // original code
 		dam = player._pHitPoints / 3;
+#endif
 	} else {
 		int trapDamageReduction = 1;
 		if (monster == nullptr) {
@@ -742,13 +771,13 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 #endif
 		}
 		if (!shift) {
-			dam = (mind << 6) + GenerateRnd(((maxd - mind) << 6) + 1);
+			dam = (mindam << 6) + GenerateRnd(((maxdam - mindam) << 6) + 1);
 			if (monster == nullptr) {
 				dam /= trapDamageReduction;
 			}
 			dam += player._pIGetHit * 64;
 		} else {
-			dam = mind + GenerateRnd(maxd - mind + 1);
+			dam = mindam + GenerateRnd(maxdam - mindam + 1);
 			if (monster == nullptr) {
 				dam /= trapDamageReduction;
 			}
@@ -777,11 +806,12 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 #if JWK_EDIT_APOCALYPSE
 	if (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom) {
 		resper = player._pFireResist / 2; // Apocalypse is 50% fire, 50% physical
+		shift = true; // make it unblockable
 	}
 #endif
 
 	int blockChance, blockDifficultyRoll;
-	if (shift || !player._pBlockFlag || (player._pmode != PM_STAND && player._pmode != PM_ATTACK) || (JWK_EDIT_APOCALYPSE && (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom))) {
+	if (shift || !player._pBlockFlag || (player._pmode != PM_STAND && player._pmode != PM_ATTACK)) {
 		blockChance = 0;
 		blockDifficultyRoll = 100;
 	} else {
@@ -822,13 +852,16 @@ static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Po
 {
 	*blocked = false;
 
-	bool canHit = sgGameInitInfo.bFriendlyFire || !attacker.friendlyMode
-		|| missileID == MissileID::FireWallSingleTile || missileID == MissileID::LightningWallSingleTile
-		|| (JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS && missileID == MissileID::GuardianBolt && !target.friendlyMode);
+	bool isWallSpell = missileID == MissileID::FireWallSingleTile || missileID == MissileID::LightningWallSingleTile;
+
+	bool canHit = isWallSpell || sgGameInitInfo.bFriendlyFire || !attacker.friendlyMode || (JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS && missileID == MissileID::GuardianBolt && !target.friendlyMode);
 
 	if (!canHit)
 		return false;
 
+	if (&target == &attacker && !isWallSpell)
+		return false;
+	
 	if (target.isOnArenaLevel() && target._pmode == PM_WALK_SIDEWAYS) // jwk - What is this?  Deliberate miss when walking sideways for pvp balance?
 		return false;
 
@@ -882,7 +915,17 @@ static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Po
 
 	int dam;
 	if (missileID == MissileID::BoneSpirit) {
+#if JWK_EDIT_BONE_SPIRIT
+		shift = true; // make it unblockable
+		assert(mindam > 0 && mindam < 100); // interpret mindam as a percent of max HP
+		int boneHpCap = std::min(target._pMaxHP - 64, target._pMaxHP * (100 - mindam) / 100);
+		if (target._pHitPoints > boneHpCap)
+			dam = target._pHitPoints - boneHpCap;
+		else
+			dam = 0;
+#else // original code
 		dam = target._pHitPoints / 3;
+#endif
 	} else {
 		dam = mindam + GenerateRnd(maxdam - mindam + 1);
 		if (missileData.isArrow() && damageType == DamageType::Physical) {
@@ -919,17 +962,20 @@ static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Po
 	if (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom) {
 		resper = target._pFireResist / 2; // Apocalypse is 50% fire, 50% physical
 		dam /= 2; // Reduce apocalypse damage in pvp (in addition to other damage reduction)
+		shift = true; // make it unblockable
 	}
 #endif
 	if (resper > 0) {
 		dam -= (dam * resper) / 100;
 	}
+	if (!JWK_EDIT_BONE_SPIRIT || missileID != MissileID::BoneSpirit) {
 #if JWK_REDUCE_DAMAGE_IN_PVP
-	dam /= 2;
-#else // original code
-	if (!missileData.isArrow())
 		dam /= 2;
+#else // original code
+		if (!missileData.isArrow())
+			dam /= 2;
 #endif
+	}
 #if JWK_FIX_NETWORK_SYNC_AND_AUTHORITY
 	// At this point, the local player thinks there's a hit.  Since it's not necessarily in sync with other players, let the owner of the missile have authority of the hit logic.
 	// The best everyone else can do is mark the missile as a hit and wait for damage numbers/block result from the missile owner.
@@ -944,7 +990,7 @@ static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Po
 #endif
 
 	int blockChance, blockDifficultyRoll;
-	if (shift || !target._pBlockFlag || (target._pmode != PM_STAND && target._pmode != PM_ATTACK) || (JWK_EDIT_APOCALYPSE && (missileID == MissileID::ApocalypseBoom || missileID == MissileID::DiabloApocalypseBoom))) {
+	if (shift || !target._pBlockFlag || (target._pmode != PM_STAND && target._pmode != PM_ATTACK)) {
 		blockChance = 0;
 		blockDifficultyRoll = 100;
 	} else {
@@ -1457,6 +1503,12 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 		*mind = CalcFlashDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 19 >> 6;
 		*maxd = CalcFlashDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 19 >> 6;
 		break;
+	case SpellID::BoneSpirit:
+#if JWK_EDIT_BONE_SPIRIT
+		*mind = CalcBoneSpiritHpPercent(spellLevel);
+		*maxd = *mind;
+		break;
+#endif
 	case SpellID::Identify:
 	case SpellID::TownPortal:
 	case SpellID::StoneCurse:
@@ -1474,7 +1526,6 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 	case SpellID::TrapDisarm:
 	case SpellID::Resurrect:
 	case SpellID::Telekinesis:
-	case SpellID::BoneSpirit:
 	case SpellID::Warp:
 	case SpellID::Reflect:
 	case SpellID::Berserk:
@@ -1514,8 +1565,14 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 		*maxd = CalcNovaDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::Inferno:
+#if JWK_EDIT_INFERNO // jwk##
 		*mind = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 25 >> 6;
 		*maxd = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 25 >> 6;
+		*maxd = *maxd * 3 / 2; // See ProcessInfernoControl() which scales the damage by 150% for the middle puff
+#else
+		*mind = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 25 >> 6;
+		*maxd = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 25 >> 6;
+#endif
 		break;
 	case SpellID::Golem:
 	{
@@ -3245,43 +3302,6 @@ void AddDiabloApocalypse(Missile &missile, AddMissileParameter & /*parameter*/)
 	missile._miDelFlag = true;
 }
 
-void AddInferno(Missile &missile, AddMissileParameter &parameter)
-{
-	missile.var2 = 5 * missile._midam;
-	missile.position.start = parameter.dst;
-
-	SyncPositionWithParent(missile, parameter);
-
-	missile._ticksUntilExpiry = missile.var2 + 20;
-	missile._mlid = AddLight(missile.position.start, 1);
-	if (missile._micaster == TARGET_MONSTERS) {
-		//int i = GenerateRnd(Players[missile._misource]._pLevel) + GenerateRnd(2);
-		//missile._midam = 8 * i + 16 + ((8 * i + 16) / 2);
-		missile._midam = CalcInfernoDamageShifted(Players[missile._misource], missile._mispllvl, GenerateRnd, GenerateRndSum);
-	} else {
-		auto &monster = Monsters[missile._misource];
-		missile._midam = monster.minDamage + GenerateRnd(monster.maxDamage - monster.minDamage + 1);
-		missile._midam = (missile._midam >> 6) / 25; // jwk - buff monster inferno (note: _midam is assumed shifted for inferno so the damage per tick is _midam >> 6)
-		// ^ This is bugged.  It does 0 damage, and gets rounded up to 1 damage per tick later.  Correct form is:
-		// missile._midam = (missile._midam << 6) / 25; // jwk - buff monster inferno.  _midam is damage per tick (assumed to be shifted)
-	}
-}
-
-void AddInfernoControl(Missile &missile, AddMissileParameter &parameter)
-{
-	Point dst = parameter.dst;
-	if (missile.position.start == parameter.dst) {
-		dst += parameter.midir;
-	}
-	UpdateMissileVelocity(missile, dst, 32);
-	missile.var1 = missile.position.start.x;
-	missile.var2 = missile.position.start.y;
-	missile._ticksUntilExpiry = 256;
-	if (!parameter.pParent) {
-		missile._missileGroup = GenerateMissileGroup();
-	}
-}
-
 void ProcessChargedBolt(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
@@ -3398,25 +3418,6 @@ void AddTelekinesis(Missile &missile, AddMissileParameter & /*parameter*/)
 	missile._miDelFlag = true;
 	if (&player == MyPlayer)
 		NewCursor(CURSOR_TELEKINESIS);
-}
-
-void AddBoneSpirit(Missile &missile, AddMissileParameter &parameter)
-{
-	if (!parameter.pParent) {
-		missile._missileGroup = GenerateMissileGroup();
-	}
-	Point dst = parameter.dst;
-	if (missile.position.start == dst) {
-		dst += parameter.midir;
-	}
-	UpdateMissileVelocity(missile, dst, 16);
-	SetMissDir(missile, GetDirection(missile.position.start, dst));
-	missile._ticksUntilExpiry = 256;
-	missile.var1 = missile.position.start.x;
-	missile.var2 = missile.position.start.y;
-	missile.var4 = dst.x;
-	missile.var5 = dst.y;
-	missile._mlid = AddLight(missile.position.start, 8);
 }
 
 void AddRedPortal(Missile &missile, AddMissileParameter & /*parameter*/)
@@ -4806,6 +4807,18 @@ void ProcessRage(Missile &missile)
 void ProcessInferno(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
+#if JWK_EDIT_INFERNO
+	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, true);
+	int lightRadius = missile._miAnimFrame;
+	if (lightRadius > 11)
+		lightRadius = 24 - lightRadius;
+	if (missile._ticksUntilExpiry > 0) {
+		ChangeLightRadius(missile._mlid, lightRadius);
+	} else {
+		missile._miDelFlag = true;
+		AddUnLight(missile._mlid);
+	}
+#else
 	missile.var2--;
 	int k = missile._ticksUntilExpiry;
 	CheckMissileCollision(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, true, missile.position.tile, false);
@@ -4825,11 +4838,79 @@ void ProcessInferno(Missile &missile)
 	}
 	if (missile.var2 <= 0)
 		PutMissile(missile);
+#endif
+}
+
+void AddInferno(Missile &missile, AddMissileParameter &parameter)
+{
+#if JWK_EDIT_INFERNO
+	missile._ticksUntilExpiry = 20;
+	missile._mlid = AddLight(missile.position.start, 1);
+#else
+	missile.var2 = 5 * missile._midam;
+	missile.position.start = parameter.dst;
+
+	SyncPositionWithParent(missile, parameter);
+
+	missile._ticksUntilExpiry = missile.var2 + 20;
+	missile._mlid = AddLight(missile.position.start, 1);
+	if (missile._micaster == TARGET_MONSTERS) {
+		missile._midam = CalcInfernoDamageShifted(Players[missile._misource], missile._mispllvl, GenerateRnd, GenerateRndSum);
+	} else {
+		auto &monster = Monsters[missile._misource];
+		missile._midam = monster.minDamage + GenerateRnd(monster.maxDamage - monster.minDamage + 1);
+		missile._midam = (missile._midam << 6) / 25; // jwk - buff monster inferno.  _midam is damage per tick (assumed to be shifted)
+	}
+#endif
 }
 
 void ProcessInfernoControl(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
+#if JWK_EDIT_INFERNO
+	// In this edited version, Inferno creates non-moving puffs, similar to apocalypse boom.
+	// Create one puff at distance 1, one puff at distance 2, and one puff at distance 3.
+	Point spawnPoint;
+	int damageMultiplier = 0;
+	Direction dir = static_cast<Direction>(missile.var3);
+	if (missile._ticksUntilExpiry == 8) {
+		spawnPoint = Point { missile.var1, missile.var2 } + dir;
+		damageMultiplier = 2;
+	} else if (missile._ticksUntilExpiry == 4) {
+		spawnPoint = Point { missile.var1, missile.var2 } + dir + dir;
+		damageMultiplier = 3;
+	} else if (missile._ticksUntilExpiry == 0) {
+		spawnPoint = Point { missile.var1, missile.var2 } + dir + dir + dir;
+		damageMultiplier = 2;
+		missile._miDelFlag = true;
+	}
+	if (damageMultiplier) {
+		int damageShifted;
+		if (missile._micaster == TARGET_MONSTERS) {
+			damageShifted = CalcInfernoDamageShifted(Players[missile._misource], missile._mispllvl, GenerateRnd, GenerateRndSum);
+		} else {
+			Monster& monster = Monsters[missile._misource];
+			damageShifted = monster.minDamage + GenerateRnd(monster.maxDamage - monster.minDamage + 1);
+			damageShifted = missile._midam << 1; // (missile._midam << 6) / 32; // jwk# tune this
+		}
+		damageShifted = damageShifted * damageMultiplier / 2;
+		int id = dPiece[spawnPoint.x][spawnPoint.y];
+		if (!TileHasAny(id, TileProperties::BlockMissile)) {
+			AddMissile(
+			    spawnPoint,
+			    spawnPoint,
+			    dir,
+			    MissileID::Inferno,
+			    missile._micaster,
+			    missile._misource,
+			    damageShifted,
+			    missile._mispllvl,
+			    &missile);
+		} else {
+			missile._miDelFlag = true;
+		}
+	}
+#else
 	missile.position.traveled += missile.position.velocity;
 	UpdateMissilePos(missile);
 	if (missile.position.tile != Point { missile.var1, missile.var2 }) {
@@ -4854,6 +4935,27 @@ void ProcessInfernoControl(Missile &missile)
 	}
 	if (missile._ticksUntilExpiry == 0 || missile.var3 == 3)
 		missile._miDelFlag = true;
+#endif
+}
+
+void AddInfernoControl(Missile &missile, AddMissileParameter &parameter)
+{
+#if JWK_EDIT_INFERNO
+	missile.var3 = static_cast<int>(parameter.midir);
+	missile._ticksUntilExpiry = 9;
+#else // original code
+	Point dst = parameter.dst;
+	if (missile.position.start == parameter.dst) {
+		dst += parameter.midir;
+	}
+	UpdateMissileVelocity(missile, dst, 32);
+	missile._ticksUntilExpiry = 256;
+#endif
+	missile.var1 = missile.position.start.x;
+	missile.var2 = missile.position.start.y;
+	if (!parameter.pParent) {
+		missile._missileGroup = GenerateMissileGroup();
+	}
 }
 
 void ProcessHolyBolt(Missile &missile)
@@ -4964,7 +5066,7 @@ void ProcessBoneSpirit(Missile &missile)
 		}
 		PutMissile(missile);
 	} else {
-		MoveMissileAndCheckMissileCol(missile, GetMissileData(missile._mitype).damageType(), 0, 0, false, false);
+		MoveMissileAndCheckMissileCol(missile, GetMissileData(missile._mitype).damageType(), missile._midam, missile._midam, false, false);
 		Point c = missile.position.tile;
 		if (missile.var3 == 0 && c == Point { missile.var4, missile.var5 })
 			missile.var3 = 1;
@@ -5014,6 +5116,31 @@ void ProcessBoneSpirit(Missile &missile)
 	}
 }
 
+void AddBoneSpirit(Missile &missile, AddMissileParameter &parameter)
+{
+	if (!parameter.pParent) {
+		missile._missileGroup = GenerateMissileGroup();
+	}
+	Point dst = parameter.dst;
+	if (missile.position.start == dst) {
+		dst += parameter.midir;
+	}
+	UpdateMissileVelocity(missile, dst, 16);
+	SetMissDir(missile, GetDirection(missile.position.start, dst));
+	missile._ticksUntilExpiry = 256;
+	missile.var1 = missile.position.start.x;
+	missile.var2 = missile.position.start.y;
+	missile.var4 = dst.x;
+	missile.var5 = dst.y;
+	missile._mlid = AddLight(missile.position.start, 8);
+#if JWK_EDIT_BONE_SPIRIT
+	if (missile.IsTrap())
+		missile._midam = 25; // 25% max health
+	else
+		missile._midam = CalcBoneSpiritHpPercent(missile._mispllvl);
+#endif
+}
+
 void ProcessResurrectBeam(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
@@ -5047,7 +5174,7 @@ void ProcessRedPortal(Missile &missile)
 void RemoveAllMissilesForPlayer(const Player& player)
 {
 	for (Missile &missile : Missiles) {
-		if (missile.sourcePlayer() == &player) {
+		if (missile.sourcePlayer() == &player && missile._mitype != MissileID::TownPortal) {
 			const MissileData &missileData = GetMissileData(missile._mitype);
 			if (missileData.mRemoveProc != nullptr) {
 				missileData.mRemoveProc(missile);

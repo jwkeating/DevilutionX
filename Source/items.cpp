@@ -1399,7 +1399,7 @@ static void AddSpellChargesToStaff(Item &item, int maxlvl, bool decreaseChanceOf
 	int v = item._iCharges * GetSpellData(chosenSpell).staffCost() / 5;
 #if JWK_INCREASE_VALUE_OF_STAFF_CHARGES_IF_SPELL_CANT_BE_LEARNED
 	if (GetSpellBookLevel(item._iSpell, true) < 0) { // then spell can't be learned
-		v *= 5;
+		v *= 3;
 	}
 #endif
 	item._ivalue += v;

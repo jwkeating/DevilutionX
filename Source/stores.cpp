@@ -955,8 +955,8 @@ static void AddStoreHoldRecharge(const Item& item, int8_t i)
 	storehold[storenumh] = item;
 #if JWK_EDIT_RECHARGE_COST_AT_WITCH
 	int costPerCharge = GetSpellData(item._iSpell).staffCost10;
-	if (JWK_INCREASE_VALUE_OF_STAFF_CHARGES_IF_SPELL_CANT_BE_LEARNED && GetSpellBookLevel(item._iSpell, true) < 0) { // then spell can't be learned so we shouldn't charge more for recharge
-		costPerCharge *= 5;
+	if (JWK_INCREASE_VALUE_OF_STAFF_CHARGES_IF_SPELL_CANT_BE_LEARNED && GetSpellBookLevel(item._iSpell, true) < 0) { // then spell can't be learned so we should charge more for recharge
+		costPerCharge *= 3;
 	}
 	// Unlike original code, we don't charge extra if your staff has other properties.  Charging extra to recharge a better staff might make players prefer weaker staves.
 	storehold[storenumh]._ivalue = costPerCharge * (storehold[storenumh]._iMaxCharges - storehold[storenumh]._iCharges);

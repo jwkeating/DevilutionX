@@ -4989,6 +4989,10 @@ bool Monster::isImmune(MissileID missileType, DamageType missileElement) const
 		return true;
 	if (missileType == MissileID::HolyBolt && type().type != MT_DIABLO && data().monsterClass != MonsterClass::Undead)
 		return true;
+#if JWK_EDIT_BONE_SPIRIT
+	if (missileType == MissileID::BoneSpirit && (type().type == MT_DIABLO || data().monsterClass == MonsterClass::Undead))
+		return true;
+#endif
 	return false;
 }
 

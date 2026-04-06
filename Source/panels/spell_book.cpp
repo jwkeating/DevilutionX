@@ -226,7 +226,13 @@ void DrawSpellBook(const Surface &out)
 						player.GetGolemStats(spellLevel, golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage);
 						PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "{:d} Hp, {:d}-{:d} Dmg")), golemMaxHP >> 6, golemMinDamage, golemMaxDamage), UiFlags::AlignRight);
 					} else if (spellID == SpellID::BoneSpirit) {
+#if JWK_EDIT_BONE_SPIRIT
+						int min, max;
+						GetSpellStatsForUI(player, spellID, spellLevel, &min, &max);
+						PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "Removes {:d}% health")), min), UiFlags::AlignRight);
+#else
 						PrintSBookStr(out, line1, _(/* TRANSLATORS: UI constraints, keep short please.*/ "Dmg: 1/3 target hp"), UiFlags::AlignRight);
+#endif
 					} else {
 						int min, max;
 						GetSpellStatsForUI(player, spellID, spellLevel, &min, &max);
