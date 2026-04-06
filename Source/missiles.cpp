@@ -709,9 +709,9 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 	int minhit = 10;
 	if (currlevel == 14)
 		minhit = 20;
-	if (currlevel == 15)
+	else if (currlevel == 15)
 		minhit = 25;
-	if (currlevel == 16)
+	else if (currlevel == 16)
 		minhit = 30;
 	if (hitChance < minhit) {
 		hitChance = minhit;
@@ -806,7 +806,8 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 	}
 
 	if (&player == MyPlayer) {
-		ApplyPlrDamage(damageType, player, 0, 0, dam, hitChance, deathReason);
+		int attackerIdForUI = monster ? monster->getId() : player.getId();
+		ApplyPlrDamage(damageType, player, 0, 0, dam, hitChance, attackerIdForUI, deathReason);
 	}
 	if ((JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) && player._pHitPoints >> 6 > 0) {
 		StartPlrHit(player, dam, false); // stun player if damage is large enough
@@ -954,14 +955,14 @@ static bool PvPHitByMissile(Player& target, const Player &attacker, int dist, Po
 	if ((JWK_RESISTANT_TARGETS_CAN_BLOCK || resper == 0) && blockChance > blockDifficultyRoll) {
 		Direction dir = mStartPos != Point(0,0) ? GetDirection(target.position.tile, mStartPos) : target._pdir;
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
-			NetSendCmdPvPDamage(true, target.getId(), static_cast<uint8_t>(dir), 0, damageType); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
+			NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), static_cast<uint8_t>(dir), 0, damageType); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
 		}
 		StartPlrBlock(target, dir);
 		*blocked = true;
 	} else { // target takes damage
 		if (&attacker == MyPlayer) {
-			NetSendCmdPvPDamage(true, target.getId(), dam, hitChance, damageType);
-			AddFloatingNumber(damageType, target, dam, hitChance);
+			NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), dam, hitChance, damageType);
+			AddFloatingNumber(damageType, target, attacker.getId(), dam, hitChance);
 		}
 		if (JWK_RESISTANT_TARGETS_CAN_BE_STUNNED || resper == 0) {
 			StartPlrHit(target, dam, false);
@@ -1607,7 +1608,7 @@ void InitMissiles()
 				if (missile.sourcePlayer() == MyPlayer) {
 					int missingHP = myPlayer._pMaxHP - myPlayer._pHitPoints;
 					CalcPlayerPowerFromItems(myPlayer, true);
-					ApplyPlrDamage(DamageType::Physical, myPlayer, 0, 1, missingHP + missile.var2, 100, DeathReason::MonsterOrTrap);
+					ApplyPlrDamage(DamageType::Physical, myPlayer, 0, 1, missingHP + missile.var2, 100, myPlayer.getId(), DeathReason::MonsterOrTrap);
 				}
 			}
 		}
@@ -3261,6 +3262,8 @@ void AddInferno(Missile &missile, AddMissileParameter &parameter)
 		auto &monster = Monsters[missile._misource];
 		missile._midam = monster.minDamage + GenerateRnd(monster.maxDamage - monster.minDamage + 1);
 		missile._midam = (missile._midam >> 6) / 25; // jwk - buff monster inferno (note: _midam is assumed shifted for inferno so the damage per tick is _midam >> 6)
+		// ^ This is bugged.  It does 0 damage, and gets rounded up to 1 damage per tick later.  Correct form is:
+		// missile._midam = (missile._midam << 6) / 25; // jwk - buff monster inferno.  _midam is damage per tick (assumed to be shifted)
 	}
 }
 
@@ -4795,7 +4798,7 @@ void ProcessRage(Missile &missile)
 	}
 
 	CalcPlayerPowerFromItems(player, true);
-	ApplyPlrDamage(DamageType::Physical, player, 0, 1, hpdif, 100, DeathReason::MonsterOrTrap);
+	ApplyPlrDamage(DamageType::Physical, player, 0, 1, hpdif, 100, player.getId(), DeathReason::MonsterOrTrap);
 	RedrawEverything();
 	player.Say(HeroSpeech::HeavyBreathing);
 }

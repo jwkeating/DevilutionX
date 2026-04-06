@@ -1822,15 +1822,19 @@ size_t OnPlayerDeath(const TCmd *pCmd, size_t pnum)
 
 size_t OnPlayerDamage(const TCmd *pCmd, Player &player)
 {
-	const auto &message = *reinterpret_cast<const TCmdDamage *>(pCmd);
+	const TCmdDamage& message = *reinterpret_cast<const TCmdDamage *>(pCmd);
 	const uint32_t damage = SDL_SwapLE32(message.dwDam);
 
-	Player &target = Players[message.bPlr];
+	// extract players from the bit-packed byte (see NetSendCmdPvPDamage())
+	int targetPlayer = message.bPlr & 0xF;
+	int attackerPlayer = message.bPlr >> 4;
+
+	Player &target = Players[targetPlayer];
 	if (&target == MyPlayer && leveltype != DTYPE_TOWN && gbBufferMsgs != 1) {
 		if (player.isOnActiveLevel() && damage <= 192000 && target._pHitPoints >> 6 > 0) {
 #if JWK_FIX_NETWORK_SYNC_AND_AUTHORITY
 			if (message.hitChance > 0) {
-				ApplyPlrDamage(message.damageType, target, 0, 0, damage, message.hitChance, DeathReason::Player);
+				ApplyPlrDamage(message.damageType, target, 0, 0, damage, message.hitChance, attackerPlayer, DeathReason::Player);
 				// Here, we assume JWK_RESISTANT_TARGETS_CAN_BE_STUNNED
 				StartPlrHit(target, damage, false);
 			} else { // 0 hit chance means the attack was blocked
@@ -1842,7 +1846,7 @@ size_t OnPlayerDamage(const TCmd *pCmd, Player &player)
 				}
 			}
 #else
-			ApplyPlrDamage(message.damageType, target, 0, 0, damage, message.hitChance, DeathReason::Player);
+			ApplyPlrDamage(message.damageType, target, 0, 0, damage, message.hitChance, attackerPlayer, DeathReason::Player);
 #endif
 		}
 	}
@@ -3120,12 +3124,12 @@ void NetSendCmdChBeltItem(bool bHiPri, int beltIndex)
 		NetSendLoPri(MyPlayerId, (byte *)&cmd, sizeof(cmd));
 }
 
-void NetSendCmdPvPDamage(bool bHiPri, uint8_t bPlr, uint32_t dwDam, uint8_t hitChance, DamageType damageType)
+void NetSendCmdPvPDamage(bool bHiPri, uint8_t targetPlayer, uint8_t attackerPlayer, uint32_t dwDam, uint8_t hitChance, DamageType damageType)
 {
 	TCmdDamage cmd;
 
 	cmd.bCmd = CMD_PLRDAMAGE;
-	cmd.bPlr = bPlr;
+	cmd.bPlr = targetPlayer + (attackerPlayer << 4); // bit pack both player IDs into one byte (see OnPlayerDamage())
 	cmd.dwDam = dwDam;
 	cmd.hitChance = hitChance;
 	cmd.damageType = damageType;

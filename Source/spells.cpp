@@ -185,10 +185,10 @@ void ConsumeSpell(Player &player, SpellID spellID, int manaCostMultiplier)
 	// Assuming mana shield is in sync... all players should be able to resolve the same result.
 	if (manaCostMultiplier != 0) {
 		if (spellID == SpellID::BloodStar) {
-			ApplyPlrDamage(DamageType::Physical, player, 5 * manaCostMultiplier, 0, 0, 100, DeathReason::MonsterOrTrap);
+			ApplyPlrDamage(DamageType::Physical, player, 5 * manaCostMultiplier, 0, 0, 100, player.getId(), DeathReason::MonsterOrTrap);
 		}
 		if (spellID == SpellID::BoneSpirit) {
-			ApplyPlrDamage(DamageType::Physical, player, 6 * manaCostMultiplier, 0, 0, 100, DeathReason::MonsterOrTrap);
+			ApplyPlrDamage(DamageType::Physical, player, 6 * manaCostMultiplier, 0, 0, 100, player.getId(), DeathReason::MonsterOrTrap);
 		}
 	}
 }

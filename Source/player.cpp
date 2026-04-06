@@ -997,7 +997,7 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 		if (HasAnyOf(player.pDamAcFlags, ItemSpecialEffectHf::Peril)) {
 			dam2 += player._pIGetHit << 6;
 			if (dam2 >= 0) {
-				ApplyPlrDamage(DamageType::Physical, player, 0, 1, dam2, 100, DeathReason::MonsterOrTrap);
+				ApplyPlrDamage(DamageType::Physical, player, 0, 1, dam2, 100, player.getId(), DeathReason::MonsterOrTrap);
 			}
 			dam *= 2;
 		}
@@ -1110,7 +1110,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 	if (blockDiceRoll < blockChance) {
 		Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
-			NetSendCmdPvPDamage(true, target.getId(), static_cast<uint8_t>(dir), 0, DamageType::Physical); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
+			NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), static_cast<uint8_t>(dir), 0, DamageType::Physical); // 0 hit chance informs the target the attack was blocked (otherwise defender won't see their own block)
 		}
 		StartPlrBlock(target, dir);
 		return true;
@@ -1192,8 +1192,8 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 	}
 #endif
 	if (&attacker == MyPlayer) {
-		NetSendCmdPvPDamage(true, target.getId(), skdam, hitChance, DamageType::Physical);
-		AddFloatingNumber(DamageType::Physical, target, skdam, hitChance);
+		NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), skdam, hitChance, DamageType::Physical);
+		AddFloatingNumber(DamageType::Physical, target, attacker.getId(), skdam, hitChance);
 	}
 	StartPlrHit(target, skdam, false);
 
@@ -3321,11 +3321,11 @@ void StripTopGold(Player &player)
 	player._pGold = CalculateGold(player);
 }
 
-void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*= 0*/, int frac /*= 0*/, int hitChanceForUI, DeathReason deathReason /*= DeathReason::MonsterOrTrap*/)
+void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*= 0*/, int frac /*= 0*/, int hitChanceForUI, int attackerForUI, DeathReason deathReason /*= DeathReason::MonsterOrTrap*/)
 {
 	int totalDamage = (dam << 6) + frac;
 	if (&player == MyPlayer && player._pHitPoints > 0) {
-		AddFloatingNumber(damageType, player, totalDamage, hitChanceForUI);
+		AddFloatingNumber(damageType, player, attackerForUI, totalDamage, hitChanceForUI);
 	}
 
 	if (JWK_GOD_MODE_PLAYER_TAKES_NO_DAMAGE) {
@@ -3587,7 +3587,7 @@ void ProcessPlayers()
 
 			if (&player == MyPlayer) {
 				if (HasAnyOf(player._pIFlags, ItemSpecialEffect::DrainLife) && leveltype != DTYPE_TOWN) {
-					ApplyPlrDamage(DamageType::Physical, player, 0, 0, 4, 100, DeathReason::MonsterOrTrap);
+					ApplyPlrDamage(DamageType::Physical, player, 0, 0, 4, 100, player.getId(), DeathReason::MonsterOrTrap);
 				}
 				if (HasAnyOf(player._pIFlags, ItemSpecialEffect::NoMana) && player._pManaBase > 0) {
 					player._pManaBase -= player._pMana;

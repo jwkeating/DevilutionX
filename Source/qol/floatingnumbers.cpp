@@ -155,8 +155,10 @@ void AddFloatingNumber(Point pos, Displacement offset, DamageType type, int valu
 
 	if (!gDebugAttackRate) {
 		for (auto &num : FloatingQueue) {
-			//if (num.numberFloatsDown == numberFloatsDown && num.type == type && num.index == index && (nowTicks - num.lastMergeTime) <= 100) {
-			if (num.numberFloatsDown == numberFloatsDown && num.type == type && num.hitChance == hitChance && num.index == index && (gnTotalGameLogicStepsExecuted - num.mostRecentMergeTick) <= 1 && gnTotalGameLogicStepsExecuted < num.lastMergeTickAllowed) {
+			// Ideally we want a mergeThreadhold of 1 tick but per-tick damage (like lightning bolt) is sent over the network in pvp so it doesn't necessarily arrive every tick.
+			// We need a slightly larger threshold so the damage ticks merge.  Also, even on the local computer, inferno needs a few ticks to merge.
+			constexpr int mergeThreshold = 5;
+			if (num.numberFloatsDown == numberFloatsDown && num.type == type && num.hitChance == hitChance && num.index == index && (gnTotalGameLogicStepsExecuted - num.mostRecentMergeTick) <= mergeThreshold && gnTotalGameLogicStepsExecuted < num.lastMergeTickAllowed) {
 				num.value += value;
 				//num.lastMergeTick = nowTicks;
 				num.mostRecentMergeTick = gnTotalGameLogicStepsExecuted;
@@ -196,7 +198,7 @@ void AddFloatingNumber(DamageType damageType, const Monster &monster, int damage
 	AddFloatingNumber(monster.position.tile, offset, damageType, damage, monster.getId(), monster.isPlayerMinion(), hitChance);
 }
 
-void AddFloatingNumber(DamageType damageType, const Player &player, int damage, int hitChance)
+void AddFloatingNumber(DamageType damageType, const Player &player, int attacker, int damage, int hitChance)
 {
 	if (*sgOptions.Gameplay.enableFloatingNumbers == FloatingNumbers::Off)
 		return;
@@ -212,10 +214,13 @@ void AddFloatingNumber(DamageType damageType, const Player &player, int damage, 
 		}
 	}
 
-	if (&player == MyPlayer)
-		AddFloatingNumber(player.position.tile, offset, damageType, damage, player.getId(), true, hitChance);
-	else // pvp damage.  Use negative playerID so it doesn't get confused with monsterID
+	if (&player == MyPlayer) {
+		// local player took damage from an attacker/trap/self harm.  Use attacker ID to distinguish damage from difference sources so damage numbers don't merge.
+		AddFloatingNumber(player.position.tile, offset, damageType, damage, attacker, true, hitChance);
+	} else {
+		// local player damaged 'player' in pvp.  Use negative playerID of the target to prevent damage numbers from merging (can't use positive player ID because there could be a monster with the same ID)
 		AddFloatingNumber(player.position.tile, offset, damageType, damage, -player.getId(), false, hitChance);
+	}
 }
 
 void DrawFloatingNumbers(const Surface &out, Point viewPosition, Displacement offset)

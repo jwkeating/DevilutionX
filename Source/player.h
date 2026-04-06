@@ -520,7 +520,11 @@ struct Player {
 	 */
 	int GetArmor() const
 	{
+#if JWK_EDIT_HIT_CHANCE
+		return _pIBonusAC + _pIAC + _pDexterity / 4;
+#else // original code
 		return _pIBonusAC + _pIAC + _pDexterity / 5;
+#endif
 	}
 
 	/**
@@ -852,7 +856,7 @@ void NextPlrLevel(Player &player);
 #endif
 void AddPlrExperience(Player &player, int lvl, int exp);
 void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags, WorldTilePosition monsterLocation);
-void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*=0*/, int frac /*=0*/, int hitChanceForUI, DeathReason deathReason);
+void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*=0*/, int frac /*=0*/, int hitChanceForUI, int attackerForUI, DeathReason deathReason);
 void InitPlayer(Player &player, bool FirstTime);
 void InitMultiView();
 void PlrClrTrans(Point position);

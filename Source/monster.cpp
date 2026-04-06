@@ -1286,7 +1286,7 @@ void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent,
 			int reflectedDamage = CheckReflect(monster, player, dam);
 			dam = std::max(dam - reflectedDamage, 0);
 		}
-		ApplyPlrDamage(DamageType::Physical, player, 0, 0, dam, hitChancePercent, DeathReason::MonsterOrTrap);
+		ApplyPlrDamage(DamageType::Physical, player, 0, 0, dam, hitChancePercent, monster.getId(), DeathReason::MonsterOrTrap);
 	}
 
 	// Reflect can also kill a monster, so make sure the monster is still alive

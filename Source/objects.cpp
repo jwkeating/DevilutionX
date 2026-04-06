@@ -1794,7 +1794,7 @@ void UpdateBurningCrossDamage(Object &cross)
 	if (myPlayer.position.tile != cross.position + Displacement { 0, -1 })
 		return;
 
-	ApplyPlrDamage(DamageType::Fire, myPlayer, 0, 0, damage[leveltype - 1], 100, DeathReason::MonsterOrTrap);
+	ApplyPlrDamage(DamageType::Fire, myPlayer, 0, 0, damage[leveltype - 1], 100, myPlayer.getId(), DeathReason::MonsterOrTrap);
 	if (myPlayer._pHitPoints >> 6 > 0) {
 		myPlayer.Say(HeroSpeech::Argh);
 	}
