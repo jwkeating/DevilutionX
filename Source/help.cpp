@@ -106,6 +106,9 @@ const char *const HelpText[] = {
 	N_("$Spell Books:"),
 	N_("Reading more than one book increases your knowledge of that "
 	   "spell, allowing you to cast the spell more effectively."),
+	"",
+	N_("$Slash commands:"),
+	N_("Press <enter> to type a message.  Type /help for a list of slash commands."),
 };
 
 std::vector<std::string> HelpTextLines;

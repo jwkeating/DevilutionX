@@ -1565,7 +1565,7 @@ void GetSpellStatsForUI(const Player& player, SpellID spellID, int spellLevel, i
 		*maxd = CalcNovaDamage(player, spellLevel, GenerateRndMax, GenerateRndSumMax);
 		break;
 	case SpellID::Inferno:
-#if JWK_EDIT_INFERNO // jwk##
+#if JWK_EDIT_INFERNO
 		*mind = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMin, GenerateRndSumMin) * 25 >> 6;
 		*maxd = CalcInfernoDamageShifted(player, spellLevel, GenerateRndMax, GenerateRndSumMax) * 25 >> 6;
 		*maxd = *maxd * 3 / 2; // See ProcessInfernoControl() which scales the damage by 150% for the middle puff

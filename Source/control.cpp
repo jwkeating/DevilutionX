@@ -355,8 +355,9 @@ std::string TextCmdHelp(const string_view parameter)
 		std::string ret;
 		StrAppend(ret, _("Available Commands:"));
 		for (const TextCmdItem &textCmd : TextCmdList) {
-			StrAppend(ret, " ", _(textCmd.text));
+			StrAppend(ret, "\n", _(textCmd.text));
 		}
+		StrAppend(ret, "\n", _("Type /help /commandname for help with a specific command."));
 		return ret;
 	}
 	auto textCmdIterator = std::find_if(TextCmdList.begin(), TextCmdList.end(), [&](const TextCmdItem &elem) { return elem.text == parameter; });
@@ -434,6 +435,7 @@ std::string TextCmdArenaPot(const string_view parameter)
 		}
 	}
 
+	StrAppend(ret, _("Potion(s) created."));
 	return ret;
 }
 
@@ -446,7 +448,7 @@ std::string TextCmdInspect(const string_view parameter)
 	}
 
 	if (parameter.empty()) {
-		StrAppend(ret, _("Stopped inspecting players."));
+		StrAppend(ret, _("No player specified to inspect."));
 		InspectPlayer = MyPlayer;
 		return ret;
 	}
@@ -543,6 +545,7 @@ bool CheckTextCommand(const string_view text)
 
 	auto textCmdIterator = std::find_if(TextCmdList.begin(), TextCmdList.end(), [&](const TextCmdItem &elem) { return text.find(elem.text) == 0 && (text.length() == elem.text.length() || text[elem.text.length()] == ' '); });
 	if (textCmdIterator == TextCmdList.end()) {
+		CancelCurrentDiabloMsg();
 		InitDiabloMsg(StrCat(_("Command \""), text, "\" is unknown."));
 		return true;
 	}
@@ -552,8 +555,10 @@ bool CheckTextCommand(const string_view text)
 	if (text.length() > (textCmd.text.length() + 1))
 		parameter = text.substr(textCmd.text.length() + 1);
 	const std::string result = textCmd.actionProc(parameter);
-	if (result != "")
-		InitDiabloMsg(result);
+	if (result != "") {
+		CancelCurrentDiabloMsg();
+		InitDiabloMsg(result, 10000);
+	}
 	return true;
 }
 
