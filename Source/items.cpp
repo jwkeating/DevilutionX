@@ -2271,20 +2271,20 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 		okForMonk = true;
 	}
 	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Axe || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Axe) {
-		player._pDamageMod = player._pLevel * player._pStrength / 75;
+		player._pDamageMod = player._pLevel * player._pStrength / 100;
 	}
 	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Sword || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Sword) { // note: swords do 150%x to animals, 66% to undead
-		player._pDamageMod = player._pLevel * player._pStrength / 100 + player._pLevel * player._pDexterity / 200;
+		player._pDamageMod = player._pLevel * player._pStrength / 125 + player._pLevel * player._pDexterity / 250;
 	}
 	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Mace || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Mace) { // note: maces do 66% to animals, 150% to undead
-		player._pDamageMod = player._pLevel * player._pStrength / 100 + player._pLevel * player._pDexterity / 200;
+		player._pDamageMod = player._pLevel * player._pStrength / 125 + player._pLevel * player._pDexterity / 250;
 	}
 	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) { // unarmed with shield
 		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
 	}
 	else { // completely unarmed
 		if (player._pHeroClass == HeroClass::Monk) {
-			player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 150;
+			player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
 		} else {
 			player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 300;
 		}

@@ -291,54 +291,100 @@ static void StartAttack(Player &player, Direction d, bool includesFirstFrame)
 	}
 
 	int8_t skippedAnimationFrames = 0;
+	const auto flags = player._pIFlags;
 #if JWK_USE_CONSISTENT_FASTER_ATTACK
-	if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastestAttack)) {
-		skippedAnimationFrames = 4; // The original code used 3 here, which seemed like a bug.
-	} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FasterAttack)) {
-		skippedAnimationFrames = 3;
-	} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastAttack)) {
-		skippedAnimationFrames = 2;
-	} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::QuickAttack)) {
-		skippedAnimationFrames = 1;
-	}
-	if (!includesFirstFrame) {
-		// This is the case where you attack while standing still (your sustained swing rate as opposed to your first attack after your character walks to a target, or potentially after your character gets hit?)
-		// We skip one less frame in the sustained-swing-rate case because otherwise players swing too fast.  The original code does the same.
-		// This means "Quick attack" has no effect on sustained swing rate but it still makes your first attack faster.  This makes sense because QuickAttack weapons are called "of readiness"
-		// FastestAttack will provide a sustained -3 frame speedup, FasterAttack a sustained -2, and FastAttack a sustained -1.
-		// To test, see gDebugAttackRate in floatingnumbers.cpp
-		skippedAnimationFrames = std::max(0, skippedAnimationFrames - 1);
-	}
 	// Unarmed swing speed in frames (game ticks): Warrior/Barbarian=9.  Rogue/Bard=10.  Monk=7.  Sorcerer=12 (or 9 if he equpips a shield!)
-	// Sword swing speed in frames (game ticks): Warrior/Barbarian=9.  Rogue/Bard=10.  Sorcerer/Monk=12.
-	// Mace swing speed in frames (game ticks): Warrior=9.  Barbarian=8.  Rogue/Bard=10.  Sorcerer/Monk=12.
+	// Staff swing speed in frames (game ticks): Warrior/Barbarian=11.  Rogue/Bard=11.  Monk=8.  Sorcerer=12.
+	// Sword swing speed in frames (game ticks): Warrior/Barbarian=9.  Rogue/Bard=10.  Monk/Sorcerer=12.
+	// Mace swing speed in frames (game ticks): Warrior=9.  Barbarian=8.  Rogue/Bard=10.  Monk/Sorcerer=12.
 	// Axe swing speed in frames (game ticks): Warrior=10.  Barbarian=8.  Rogue/Bard=13.  Monk=14.  Sorcerer=16.
-	// Swing speed is uncapped but no class swings faster than 4 frames.  Only unarmed Monk with haste, but he can't obtain haste on his weapon if he's unarmed.
+	// We can edit the above defaults by adding skipped frames.
+	// Similar to sorcerer's casting and rogue's range attacks, make warrior, barbarian, and monk have fastest attack by default with their preferred weapons.
+	// We cap swing speed to that value so they can't swing any faster.  This means warrior/barbarian get no benefit from swords/maces/axes that have a haste suffix.
+	// This is both a nerf and a buff.  It's a melee class nerf because other classes like rogue can equip a haste sword and swing as fast as warrior.
+	// However, it's also a melee class buff because now warrior isn't obligated to use haste weapons, and warriors can make use of other good suffixes like life steal.
+	bool swingSpeedCapped = false;
+	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Staff) {
+		if (player._pHeroClass == HeroClass::Sorcerer) {
+			skippedAnimationFrames = includesFirstFrame ? 4 : 3; // swing at 9 frames
+			swingSpeedCapped = true;
+		} else if (player._pHeroClass == HeroClass::Monk) {
+			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 6 frames
+			swingSpeedCapped = true;
+		}
+	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Axe || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Axe) {
+		if (player._pHeroClass == HeroClass::Warrior) {
+			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 8 frames
+			swingSpeedCapped = true;
+		} else if (player._pHeroClass == HeroClass::Barbarian) {
+			skippedAnimationFrames = includesFirstFrame ? 2 : 1; // swing at 7 frames (6 frames is overpowered)
+			swingSpeedCapped = true;
+		}
+	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Sword || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Sword) {
+		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
+			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
+			swingSpeedCapped = true;
+		}
+	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Mace || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Mace) {
+		if (player._pHeroClass == HeroClass::Warrior) {
+			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
+			swingSpeedCapped = true;
+		} else if (player._pHeroClass == HeroClass::Barbarian) {
+			skippedAnimationFrames = includesFirstFrame ? 2 : 1; // swing at 7 frames (6 frames is overpowered)
+			swingSpeedCapped = true;
+		}
+	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) { // unarmed with shield
+		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
+			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
+			swingSpeedCapped = true;
+		} else if (player._pHeroClass == HeroClass::Sorcerer || player._pHeroClass == HeroClass::Monk) {
+			// no adjustments needed (sorcerer already swings at 9, and monk doesn't punch at 6 frames if he equips a shield)
+			swingSpeedCapped = true;
+		}
+	} else { // completely unarmed
+		if (player._pHeroClass == HeroClass::Monk) {
+			skippedAnimationFrames = includesFirstFrame ? 2 : 1; // swing at 6 frames
+			swingSpeedCapped = true;
+		} else if (player._pHeroClass == HeroClass::Sorcerer) {
+			skippedAnimationFrames = includesFirstFrame ? 4 : 3; // swing at 9 frames
+			swingSpeedCapped = true;
+		} else if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
+			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
+			swingSpeedCapped = true;
+		}
+	}
+	// if (!includesFirstFrame) {
+	// This is the case where you attack while standing still (your sustained swing rate as opposed to your first attack after your character walks to a target, or potentially after your character gets hit?)
+	// One less frame is skipped for sustained swing rate because otherwise players swing too fast.
+	// This means "Quick attack" has no effect on sustained swing rate but it still makes your first attack faster.  This makes sense because QuickAttack weapons are called "of readiness"
+	// FastestAttack provides a sustained -3 frame speedup, FasterAttack a sustained -2, and FastAttack a sustained -1.
+	// To test, see gDebugAttackRate in floatingnumbers.cpp
+	//}
+	if (!swingSpeedCapped) {
+		if (HasAnyOf(flags, ItemSpecialEffect::FastestAttack)) {
+			skippedAnimationFrames = includesFirstFrame ? 4 : 3; // <-- Fix haste bug.  This allows Rogue/Bard to equip a haste sword/mace and swing at 7 frames
+		} else if (HasAnyOf(flags, ItemSpecialEffect::FasterAttack)) {
+			skippedAnimationFrames = includesFirstFrame ? 3 : 2;
+		} else if (HasAnyOf(flags, ItemSpecialEffect::FastAttack)) {
+			skippedAnimationFrames = includesFirstFrame ? 2 : 1;
+		} else if (HasAnyOf(flags, ItemSpecialEffect::QuickAttack)) {
+			skippedAnimationFrames = includesFirstFrame ? 1 : 0;
+		}
+	}
+	// After all the above logic, no class swings faster than 7 frames except monk with a staff (6 frames), or unarmed monk (6 frames).
 #else // original code:
-	if (includesFirstFrame) {
-		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastestAttack) && HasAnyOf(player._pIFlags, ItemSpecialEffect::QuickAttack | ItemSpecialEffect::FastAttack)) {
-			// Combining Fastest Attack with any other attack speed modifier skips over the fourth frame, reducing the effectiveness of Fastest Attack.
-			// Faster Attack makes up for this by also skipping the sixth frame so this case only applies when using Quick or Fast Attack modifiers.
-			skippedAnimationFrames = 3;
-		} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastestAttack)) {
-			skippedAnimationFrames = 4;
-		} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FasterAttack)) {
-			skippedAnimationFrames = 3;
-		} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastAttack)) {
-			skippedAnimationFrames = 2;
-		} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::QuickAttack)) {
-			skippedAnimationFrames = 1;
-		}
-	} else {
-		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FasterAttack)) {
-			// The combination of Faster and Fast Attack doesn't result in more skipped frames, because the second frame skip of Faster Attack is not triggered.
-			skippedAnimationFrames = 2;
-		} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastAttack)) {
-			skippedAnimationFrames = 1;
-		} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastestAttack)) {
-			// Fastest Attack is skipped if Fast or Faster Attack is also specified, because both skip the frame that triggers Fastest Attack skipping.
-			skippedAnimationFrames = 2;
-		}
+	// In the original code, the fastest swing for warrior is 7 (not 6, due to haste bug).  Swing speed is uncapped so an unarmed monk could swing at 5 frames if he somehow obtained haste without equipping a weapon.
+	// If the first frame is not included in vanilla, the skip logic for the first frame will not be executed.
+	// This will result in a different and slower attack speed.
+	if (HasAnyOf(flags, ItemSpecialEffect::FastestAttack)) {
+		// If the fastest attack logic is trigger frames in vanilla two frames are skipped, so missing the first frame reduces the skip logic by two frames.
+		skippedAnimationFrames = includesFirstFrame ? 4 : 2; // <-- haste bug (sustained swing rate of fastest attack is the same as faster attack)
+	} else if (HasAnyOf(flags, ItemSpecialEffect::FasterAttack)) {
+		skippedAnimationFrames = includesFirstFrame ? 3 : 2;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::FastAttack)) {
+		skippedAnimationFrames = includesFirstFrame ? 2 : 1;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::QuickAttack)) {
+		skippedAnimationFrames = includesFirstFrame ? 1 : 0;
 	}
 #endif
 

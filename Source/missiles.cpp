@@ -5123,6 +5123,7 @@ void AddBoneSpirit(Missile &missile, AddMissileParameter &parameter)
 {
 	if (!parameter.pParent) {
 		missile._missileGroup = GenerateMissileGroup();
+		missile._missileGroupIgnoreForever = true;
 	}
 	Point dst = parameter.dst;
 	if (missile.position.start == dst) {
