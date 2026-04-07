@@ -2973,19 +2973,18 @@ void AddPlrExperience(Player &player, int monsterlvl, int exp)
 
 	int clampedPlayerLevel = clamp<int>(player._pLevel, 1, MaxCharacterLevel);
 #if JWK_EDIT_EXP_GAIN
-	// Monster is -10 => 0 exp.
-	// Monster is -5 => 1/2 exp.
-	// Monster is same level => regular exp.
-	// Monster is +5 => 1.5x exp.
-	// Monster is +10 => double exp.
-	// Monster is +15 => 2.5x exp.
-	// etc
-	uint32_t cappedLevelDiff = 10; // if monsters are this far below player level, player gets 0 experience.
-	uint32_t levelFactor = std::max<int>(cappedLevelDiff + monsterlvl - clampedPlayerLevel, 0);
-	uint32_t levelAdjustedExp = ((uint32_t)exp) * levelFactor / cappedLevelDiff;
-	uint32_t diabloExp = Monster::ScaleExp(MonstersData[MT_DIABLO].exp, sgGameInitInfo.nDifficulty, false);
-	uint32_t maxExpAllowed = std::min<uint32_t>(diabloExp, ExpLvlsTbl[clampedPlayerLevel] / 20); // at most 20% of your experience bar per kill
-	uint32_t clampedExp = std::min(levelAdjustedExp, maxExpAllowed);
+	constexpr uint32_t levelDiffForZeroExp = 16; // if monsters are this far below player level, player gets 0 experience.
+	uint32_t levelAdjustedExp;
+	if (clampedPlayerLevel <= monsterlvl) {
+		// Don't award more than full experience when monster is higher level than player because higher level monsters already give more experience.
+		levelAdjustedExp = (uint32_t)exp;
+	} else if (clampedPlayerLevel - monsterlvl >= levelDiffForZeroExp) {
+		// Monsters that are too easy give no experience (otherwise players can just AoE farm low level zones)
+		levelAdjustedExp = 0;
+	} else { // lerp between 0 exp and full exp
+		levelAdjustedExp = ((uint32_t)exp) * (levelDiffForZeroExp - (clampedPlayerLevel - monsterlvl)) / levelDiffForZeroExp;
+	}
+	uint32_t clampedExp = std::min(levelAdjustedExp, ExpLvlsTbl[clampedPlayerLevel] / 20); // at most 1/20 of your experience bar
 #else // original code
 	uint32_t clampedExp = std::max(static_cast<int>(exp * (1 + (monsterlvl - clampedPlayerLevel) / 10.0)), 0);
 	if (gbIsMultiplayer) {
@@ -3026,39 +3025,34 @@ void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags,
 	// One option is to give all players experience as if they killed the monster solo (don't divide experience among players).
 	// Another option (the Diablo 2 solution) is to give monsters 50% more experience per extra player in the game, and then divide up the experience.
 	// However, unlike Diablo 2, Diablo 1 doesn't give you experience for being nearby.  We add proximity experience here.
-	Displacement distanceToMonster = Point(MyPlayer->position.tile) - Point(monsterLocation);
-	int sqrDistance = distanceToMonster.deltaX * distanceToMonster.deltaX + distanceToMonster.deltaY * distanceToMonster.deltaY;
-	
-	bool inRange = sqrDistance <= 25 * 25;
-	bool hitMonster = (whoHitMonsterFlags & (1 << MyPlayerId)) == 0;
-
-	if (!inRange && !hitMonster)
-		return;
-
-	if (!hitMonster) {
-		// All players get a minimum amount of experience for just being nearby.
-		// This doesn't subtract from the experience awarded to players who actually defeated the monster.
-		AddPlrExperience(*MyPlayer, monsterLevel, monsterExp / 4);
-	}
-	else { // share experience among eligible players
+	bool hitMonster = ((1 << MyPlayerId) & whoHitMonsterFlags) != 0;
+	if (hitMonster) { // share experience among eligible players
 		int totplrs = 0;
 		for (size_t i = 0; i < Players.size(); i++) {
 			if (((1 << i) & whoHitMonsterFlags) != 0) {
 				totplrs++;
 			}
 		}
-
-		if (totplrs == 0) // A quest monster can die for plot reasons instead of dying from player damage
-			return;
-
+		assert(totplrs > 0);
 		// Instead of dividing experience by the number of players, we award better than 1/2, 1/3, 1/4 experience to discourage solo kills,
 		// encourage multiplayer, and offset the overhead of coordinating multiplayer games compared to single player.
-		if (totplrs == 2)
+		if (totplrs == 2) {
 			monsterExp = monsterExp * 3 / 4;  // better than 1/2
-		else if (totplrs == 3)
+		} else if (totplrs == 3) {
 			monsterExp = monsterExp * 2 / 3;  // better than 1/3
-		else if (totplrs == 4)
+		} else if (totplrs == 4) {
 			monsterExp = monsterExp * 1 / 2;  // better than 1/4
+		}
+		AddPlrExperience(*MyPlayer, monsterLevel, monsterExp);
+	} else {
+		// All players get a minimum amount of experience for just being nearby.
+		// This doesn't subtract from the experience awarded to players who actually damaged the monster.
+		Displacement distanceToMonster = Point(MyPlayer->position.tile) - Point(monsterLocation);
+		int sqrDistance = distanceToMonster.deltaX * distanceToMonster.deltaX + distanceToMonster.deltaY * distanceToMonster.deltaY;
+		bool inRange = sqrDistance <= 25 * 25;
+		if (inRange) {
+			AddPlrExperience(*MyPlayer, monsterLevel, monsterExp / 4);
+		}
 	}
 #else // original code (Local player only gets experience if they damaged the monster)
 	if ((whoHitMonsterFlags & (1 << MyPlayerId)) == 0)
@@ -3073,14 +3067,14 @@ void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags,
 		return;
 	assert(totplrs != 0);
 	monsterExp /= totplrs;
-#endif
 	AddPlrExperience(*MyPlayer, monsterLevel, monsterExp);
+#endif
 }
 
 #if JWK_EDIT_PLAYER_SKILLS
 Uint64 Player::GetSkillCooldownMilliseconds()
 {
-	if (_pHeroClass == HeroClass::Sorcerer) { return (1000*60)*30; }
+	if (_pHeroClass == HeroClass::Sorcerer) { return (1000*60)*20; }
 	else if (_pHeroClass == HeroClass::Warrior) { return (1000*60)*20; }
 	else { return 0; }
 }

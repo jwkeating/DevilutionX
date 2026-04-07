@@ -194,7 +194,7 @@ static int CalcChainLightningLength(int spellLevel)
 }
 #if JWK_EDIT_BONE_SPIRIT
 static int CalcBoneSpiritHpPercent(int spellLevel) {
-	return spellLevel + 5;
+	return spellLevel + 10;
 }
 #endif
 
