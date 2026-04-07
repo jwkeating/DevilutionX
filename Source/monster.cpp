@@ -4494,15 +4494,16 @@ void M_FallenFear(Point position)
 	}
 }
 
-void PrintMonstHistory(MonsterID monsterID)
+void PrintMonstHistory(const Monster& monster)
 {
+	MonsterID monsterID = monster.type().type;
 	if (*sgOptions.Gameplay.showMonsterType) {
 		AddPanelString(fmt::format(fmt::runtime(_("Type: {:s}  Kills: {:d}")), GetMonsterTypeText(MonstersData[monsterID]), MonsterKillCounts[monsterID]));
 	} else {
 		AddPanelString(fmt::format(fmt::runtime(_("Total kills: {:d}")), MonsterKillCounts[monsterID]));
 	}
 
-	int whenToRevealHp = JWK_REVEAL_RESISTANCES_WHEN_DAMAGED ? 5 : 30;
+	int whenToRevealHp = JWK_REVEAL_RESISTANCES_WHEN_DAMAGED ? 3 : 30;
 	if (MonsterKillCounts[monsterID] >= whenToRevealHp) {
 		int minHPShifted = ScaleMonsterMaxHpForDifficulty(MonstersData[monsterID].hitPointsMinimum << 6);
 		int maxHPShifted = ScaleMonsterMaxHpForDifficulty(MonstersData[monsterID].hitPointsMaximum << 6);
@@ -4510,7 +4511,7 @@ void PrintMonstHistory(MonsterID monsterID)
 			minHPShifted += minHPShifted * (GetNumActivePlayers() - 1) / 2;
 			maxHPShifted += maxHPShifted * (GetNumActivePlayers() - 1) / 2;
 		}
-		AddPanelString(fmt::format(fmt::runtime(_("Level: {:d}  Hit Points: {:d}-{:d}")), MonstersData[monsterID].level, minHPShifted >> 6, maxHPShifted >> 6));
+		AddPanelString(fmt::format(fmt::runtime(_("Level: {:d}  Hit Points: {:d}-{:d}")), monster.level(sgGameInitInfo.nDifficulty), minHPShifted >> 6, maxHPShifted >> 6));
 	}
 
 #if JWK_REVEAL_RESISTANCES_WHEN_DAMAGED
