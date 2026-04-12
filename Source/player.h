@@ -275,11 +275,15 @@ struct Player {
 	int _pIBonusAC;
 	int _pIBonusDamMod; // items that have stats like "+7 damage"
 	int _pIGetHit;
-	int _pArmorPierce; // Also called "enhanced accuracy"
-	int _pIFMinDam;
-	int _pIFMaxDam;
-	int _pILMinDam;
-	int _pILMaxDam;
+	int _pArmorPierce;
+	uint16_t _pIFMinDam; // min fire damage from items
+	uint16_t _pIFMaxDam; // max fire damage from items
+	uint16_t _pILMinDam; // min lightning damage from items
+	uint16_t _pILMaxDam; // max lightning damage from items
+	uint16_t _pIMMinDam; // min magic damage from items
+	uint16_t _pIMMaxDam; // max magic damage from items
+	uint8_t _pIThornsMin;
+	uint8_t _pIThornsMax;
 	uint32_t _pExperience;
 	uint32_t _pNextExper;
 #if JWK_EDIT_PLAYER_SKILLS
@@ -547,18 +551,6 @@ struct Player {
 	}
 
 	/**
-	 * @brief Return player's melee to hit value, including armor piercing
-	 */
-	int GetMeleePiercingToHit() const
-	{
-		int hitChance = GetMeleeToHit();
-		// in hellfire armor piercing ignores % of enemy armor instead, no way to include it here
-		if (!JWK_USE_HELLFIRE_ARMOR_PIERCE && !gbIsHellfire)
-			hitChance += _pArmorPierce;
-		return hitChance;
-	}
-
-	/**
 	 * @brief Return player's ranged to hit value
 	 */
 	int GetRangedToHit() const
@@ -574,15 +566,6 @@ struct Player {
 		} else if (_pHeroClass == HeroClass::Warrior || _pHeroClass == HeroClass::Bard)
 			hitChance += 10;
 #endif
-		return hitChance;
-	}
-
-	int GetRangedPiercingToHit() const
-	{
-		int hitChance = GetRangedToHit();
-		// in hellfire armor piercing ignores % of enemy armor instead, no way to include it here
-		if (!JWK_USE_HELLFIRE_ARMOR_PIERCE && !gbIsHellfire)
-			hitChance += _pArmorPierce;
 		return hitChance;
 	}
 
@@ -633,7 +616,7 @@ struct Player {
 	}
 
 	/**
-	 * @brief Return monster armor value after including player's armor piercing % (hellfire only)
+	 * @brief Return monster armor value after including player's armor piercing
 	 * @param monsterArmor - monster armor before applying % armor pierce
 	 * @param isMelee - indicates if it's melee or ranged combat
 	 */
@@ -641,15 +624,13 @@ struct Player {
 	{
 		int tmac = monsterArmor;
 		if (_pArmorPierce > 0) {
-			if (JWK_USE_HELLFIRE_ARMOR_PIERCE || gbIsHellfire) {
-				int pIEnAc = _pArmorPierce - 1;
-				if (pIEnAc > 0)
-					tmac >>= pIEnAc;
-				else
-					tmac -= tmac / 4;
-			}
-			if (isMelee && _pHeroClass == HeroClass::Barbarian) {
-				tmac -= monsterArmor / 8;
+			if (_pArmorPierce == 1) {
+				tmac = tmac * 3 / 4;
+			} else if (_pArmorPierce == 2) {
+				tmac = tmac * 2 / 3;
+			} else {
+				assert(_pArmorPierce == 3);
+				tmac = tmac * 1 / 2;
 			}
 		}
 		if (tmac < 0)
@@ -707,6 +688,8 @@ struct Player {
 		_pHitPoints = _pMaxHP;
 		_pHPBase = _pMaxHPBase;
 	}
+
+	void DoLifeAndManaSteal(int damage);
 
 	/**
 	 * @brief Restores between 1/8 (inclusive) and 1/4 (exclusive) of the players max Mana (further adjusted by class).
@@ -812,6 +795,8 @@ struct Player {
 
 	/** @brief Returns a character's mana based on starting mana, character level, and base magic. */
 	int32_t calculateBaseMana() const;
+
+	int CalcManaShieldAbsorbPercent() const;
 
 	void GetGolemStats(int spellLevel, uint32_t& outMaxHP, uint32_t& outArmor, uint32_t& outHitChance, uint32_t& outMinDamage, uint32_t& outMaxDamage) const;
 	uint32_t GetGolemToHit() const;

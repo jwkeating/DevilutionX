@@ -55,7 +55,7 @@
 #include "utils/string_or_view.hpp"
 #include "utils/utf8.hpp"
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 #include "debug.h"
 #endif
 
@@ -564,7 +564,7 @@ bool CheckTextCommand(const string_view text)
 
 void ResetTalkMsg()
 {
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 	if (CheckDebugTextCommand(TalkMessage))
 		return;
 #endif
@@ -1633,7 +1633,7 @@ void DiabloHotkeyMsg(uint32_t dwMsg)
 
 	for (auto &msg : sgOptions.Chat.szHotKeyMsgs[dwMsg]) {
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 		if (CheckDebugTextCommand(msg))
 			continue;
 #endif

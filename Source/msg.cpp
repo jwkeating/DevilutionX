@@ -1764,7 +1764,7 @@ size_t OnAwakeGolem(const TCmd *pCmd, size_t pnum)
 		} else if (&player != MyPlayer) {
 			// Check if this player already has an active golem
 			for (auto &missile : Missiles) {
-				if (missile._mitype == MissileID::Golem && &Players[missile._misource] == &player) {
+				if (missile._mitype == MissileID::Golem && &Players[missile._miSourceID] == &player) {
 					return sizeof(message);
 				}
 			}
@@ -2145,7 +2145,7 @@ size_t OnActivatePortal(const TCmd *pCmd, size_t pnum)
 			} else if (player.isOnActiveLevel()) {
 				bool addPortal = true;
 				for (auto &missile : Missiles) {
-					if (missile._mitype == MissileID::TownPortal && &Players[missile._misource] == &player) {
+					if (missile._mitype == MissileID::TownPortal && &Players[missile._miSourceID] == &player) {
 						addPortal = false;
 						break;
 					}

@@ -7,7 +7,7 @@
 
 #include <algorithm>
 #include <bitset>
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 #include <random>
 #endif
 #include <climits>
@@ -364,11 +364,8 @@ static bool IsPrefixValidForItemType(int i, AffixItemType flgs, bool hellfireIte
 	AffixItemType itemTypes = ItemPrefixes[i].PLIType;
 
 	if (!hellfireItem) {
-		if (i >= 83 && i <= 85)
+		if (i == Prefix_Jesters || i == Prefix_Crystalline || i == Prefix_Doppelgangers)
 			return false;
-
-		if (i >= 12 && i <= 20)
-			itemTypes &= ~AffixItemType::Staff;
 	}
 
 	return HasAnyOf(flgs, itemTypes);
@@ -378,23 +375,15 @@ static bool IsSuffixValidForItemType(int i, AffixItemType flgs, bool hellfireIte
 {
 	AffixItemType itemTypes = ItemSuffixes[i].PLIType;
 
-	if (!JWK_ALLOW_FASTER_CASTING && i == 98)
+	if (!JWK_ALLOW_FASTER_CASTING && i == Suffix_Casting)
 		return false;
 
-	if (!JWK_ALLOW_MANA_COST_MODIFIER && i >= 99 && i <= 101)
+	if (!JWK_ALLOW_MANA_COST_MODIFIER && (i == Suffix_Mistakes || i == Suffix_Channeling || i == Suffix_Evocation))
 		return false;
 
 	if (!hellfireItem) {
-		if (i >= 95 && i <= 97) {
+		if (i == Suffix_Devastation || i == Suffix_Decay || i == Suffix_Peril) {
 			return false;
-		}
-		if ((i >=  0 && i <=  1)
-         || (i >= 14 && i <= 15)
-         || (i >= 21 && i <= 22)
-         || (i >= 34 && i <= 36)
-         || (i >= 41 && i <= 44)
-         || (i >= 60 && i <= 63)) {
-			itemTypes &= ~AffixItemType::Staff;
 		}
 	}
 
@@ -874,21 +863,15 @@ static int AddItemPowerToItem(Item &item, ItemPower &power)
 		item._iCharges = power.param2;
 		item._iMaxCharges = power.param2;
 		break;
-	case IPL_FIREDAM:
+	case IPL_FIRE_DAM:
 		item._iFlags |= ItemSpecialEffect::FireDamage;
-		item._iFlags &= ~ItemSpecialEffect::LightningDamage;
 		item._iFMinDam = power.param1;
 		item._iFMaxDam = power.param2;
-		item._iLMinDam = 0;
-		item._iLMaxDam = 0;
 		break;
-	case IPL_LIGHTDAM:
+	case IPL_LIGHTNING_DAM:
 		item._iFlags |= ItemSpecialEffect::LightningDamage;
-		item._iFlags &= ~ItemSpecialEffect::FireDamage;
 		item._iLMinDam = power.param1;
 		item._iLMaxDam = power.param2;
-		item._iFMinDam = 0;
-		item._iFMaxDam = 0;
 		break;
 	case IPL_STR:
 		item._iPLStr += r;
@@ -982,29 +965,23 @@ static int AddItemPowerToItem(Item &item, ItemPower &power)
 		break;
 	case IPL_FIRE_ARROWS:
 		item._iFlags |= ItemSpecialEffect::FireArrows;
-		item._iFlags &= ~ItemSpecialEffect::LightningArrows;
 		item._iFMinDam = power.param1;
 		item._iFMaxDam = power.param2;
-		item._iLMinDam = 0;
-		item._iLMaxDam = 0;
 		break;
-	case IPL_LIGHT_ARROWS:
+	case IPL_LIGHTNING_ARROWS:
 		item._iFlags |= ItemSpecialEffect::LightningArrows;
-		item._iFlags &= ~ItemSpecialEffect::FireArrows;
 		item._iLMinDam = power.param1;
 		item._iLMaxDam = power.param2;
-		item._iFMinDam = 0;
-		item._iFMaxDam = 0;
 		break;
-	case IPL_FIREBALL:
-		item._iFlags |= (ItemSpecialEffect::LightningArrows | ItemSpecialEffect::FireArrows);
-		item._iFMinDam = power.param1;
-		item._iFMaxDam = power.param2;
-		item._iLMinDam = 0;
-		item._iLMaxDam = 0;
+	case IPL_POISON_ARROWS:
+		item._iFlags |= ItemSpecialEffect::PoisonArrows;
+		item._iMMinDam = power.param1;
+		item._iMMaxDam = power.param2;
 		break;
 	case IPL_THORNS:
 		item._iFlags |= ItemSpecialEffect::Thorns;
+		item._iThornsMin = power.param1;
+		item._iThornsMax = power.param2;
 		break;
 	case IPL_NOMANA:
 		item._iFlags |= ItemSpecialEffect::NoMana;
@@ -1096,20 +1073,6 @@ static int AddItemPowerToItem(Item &item, ItemPower &power)
 		break;
 	case IPL_INVCURS:
 		item._iCurs = power.param1;
-		break;
-	case IPL_ADDACLIFE:
-		item._iFlags |= (ItemSpecialEffect::LightningArrows | ItemSpecialEffect::FireArrows);
-		item._iFMinDam = power.param1;
-		item._iFMaxDam = power.param2;
-		item._iLMinDam = 1;
-		item._iLMaxDam = 0;
-		break;
-	case IPL_ADDMANAAC:
-		item._iFlags |= (ItemSpecialEffect::LightningDamage | ItemSpecialEffect::FireDamage);
-		item._iFMinDam = power.param1;
-		item._iFMaxDam = power.param2;
-		item._iLMinDam = 2;
-		item._iLMaxDam = 0;
 		break;
 	case IPL_FIRERES_CURSE:
 		item._iPLFR -= r;
@@ -1299,7 +1262,7 @@ static void GenerateItemAffixes(int minlvl, int maxlvl, AffixItemType flgs, bool
 	bool allocatePrefix = FlipCoin(4);
 	bool allocateSuffix = !FlipCoin(3);
 	if (!allocatePrefix && !allocateSuffix) {
-		// At least try and give each item a prefix or suffix
+		// Ensure the item has at least one affix
 		if (FlipCoin())
 			allocatePrefix = true;
 		else
@@ -2141,12 +2104,16 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	int manaCostMod = 0;
 
 	int spllvladd = 0; // increased spell level
-	int enac = 0;      // enhanced accuracy (armor penetration)
+	int armorPierce = 0;
+	int thornsMin = 0;
+	int thornsMax = 0;
 
 	int fmin = 0; // minimum fire damage
 	int fmax = 0; // maximum fire damage
 	int lmin = 0; // minimum lightning damage
 	int lmax = 0; // maximum lightning damage
+	int mmin = 0; // minimum magic damage
+	int mmax = 0; // maximum magic damage
 
 	for (auto &item : player.InvBody) {
 		if (!item.isEmpty() && item._iStatFlag) {
@@ -2186,11 +2153,15 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 				ihp += item._iPLHP;
 				imana += item._iPLMana;
 				spllvladd += item._iSplLvlAdd;
-				enac += item._iPLArmorPierce;
+				armorPierce += item._iPLArmorPierce;
 				fmin += item._iFMinDam;
 				fmax += item._iFMaxDam;
 				lmin += item._iLMinDam;
 				lmax += item._iLMaxDam;
+				mmin += item._iMMinDam;
+				mmax += item._iMMaxDam;
+				thornsMin += item._iThornsMin;
+				thornsMax += item._iThornsMax;
 			}
 		}
 	}
@@ -2280,7 +2251,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 		player._pDamageMod = player._pLevel * player._pStrength / 125 + player._pLevel * player._pDexterity / 250;
 	}
 	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) { // unarmed with shield
-		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
+		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 250;
 	}
 	else { // completely unarmed
 		if (player._pHeroClass == HeroClass::Monk) {
@@ -2350,7 +2321,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	EnsureValidReadiedSpell(player);
 
 	player._pISplLvlAdd = spllvladd;
-	player._pArmorPierce = enac;
+	player._pArmorPierce = armorPierce;
 
 	if (player._pHeroClass == HeroClass::Barbarian) {
 		mr += player._pLevel;
@@ -2395,6 +2366,10 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	player._pIFMaxDam = fmax;
 	player._pILMinDam = lmin;
 	player._pILMaxDam = lmax;
+	player._pIMMinDam = mmin;
+	player._pIMMaxDam = mmax;
+	player._pIThornsMin = thornsMin;
+	player._pIThornsMax = thornsMax;
 
 	player._pBlockFlag = false;
 	if (player._pHeroClass == HeroClass::Monk) {
@@ -3483,12 +3458,12 @@ bool DoOil(Player &player, int cii)
 		return _("Extra charges");
 	case IPL_SPELL:
 		return fmt::format(fmt::runtime(ngettext("{:d} {:s} charge", "{:d} {:s} charges", item._iMaxCharges)), item._iMaxCharges, pgettext("spell", GetSpellData(item._iSpell).sNameText));
-	case IPL_FIREDAM:
+	case IPL_FIRE_DAM:
 		if (item._iFMinDam == item._iFMaxDam)
 			return fmt::format(fmt::runtime(_("Fire hit damage: {:d}")), item._iFMinDam);
 		else
 			return fmt::format(fmt::runtime(_("Fire hit damage: {:d}-{:d}")), item._iFMinDam, item._iFMaxDam);
-	case IPL_LIGHTDAM:
+	case IPL_LIGHTNING_DAM:
 		if (item._iLMinDam == item._iLMaxDam)
 			return fmt::format(fmt::runtime(_("Lightning hit damage: {:d}")), item._iLMinDam);
 		else
@@ -3534,18 +3509,18 @@ bool DoOil(Player &player, int cii)
 			return fmt::format(fmt::runtime(_("fire arrows damage: {:d}")), item._iFMinDam);
 		else
 			return fmt::format(fmt::runtime(_("fire arrows damage: {:d}-{:d}")), item._iFMinDam, item._iFMaxDam);
-	case IPL_LIGHT_ARROWS:
+	case IPL_LIGHTNING_ARROWS:
 		if (item._iLMinDam == item._iLMaxDam)
 			return fmt::format(fmt::runtime(_("lightning arrows damage {:d}")), item._iLMinDam);
 		else
 			return fmt::format(fmt::runtime(_("lightning arrows damage {:d}-{:d}")), item._iLMinDam, item._iLMaxDam);
-	case IPL_FIREBALL:
-		if (item._iFMinDam == item._iFMaxDam)
-			return fmt::format(fmt::runtime(_("fireball damage: {:d}")), item._iFMinDam);
+	case IPL_POISON_ARROWS:
+		if (item._iMMinDam == item._iMMaxDam)
+			return fmt::format(fmt::runtime(_("poison arrows damage {:d}")), item._iMMinDam);
 		else
-			return fmt::format(fmt::runtime(_("fireball damage: {:d}-{:d}")), item._iFMinDam, item._iFMaxDam);
+			return fmt::format(fmt::runtime(_("poison arrows damage {:d}-{:d}")), item._iMMinDam, item._iMMaxDam);
 	case IPL_THORNS:
-		return _("attacker takes 1-3 damage");
+		return fmt::format(fmt::runtime(_("attacker takes {:d}-{:d} damage")), item._iThornsMin, item._iThornsMax);
 	case IPL_NOMANA:
 		return _("user loses all mana");
 	case IPL_ABSHALFTRAP:
@@ -3621,13 +3596,6 @@ bool DoOil(Player &player, int cii)
 		return _("no strength requirement");
 	case IPL_INVCURS:
 		return { string_view(" ") };
-	case IPL_ADDACLIFE:
-		if (item._iFMinDam == item._iFMaxDam)
-			return fmt::format(fmt::runtime(_("lightning damage: {:d}")), item._iFMinDam);
-		else
-			return fmt::format(fmt::runtime(_("lightning damage: {:d}-{:d}")), item._iFMinDam, item._iFMaxDam);
-	case IPL_ADDMANAAC:
-		return _("charged bolts on hits");
 	case IPL_DEVASTATION:
 		return _("occasional triple damage");
 	case IPL_DECAY:
@@ -4698,7 +4666,7 @@ void PutItemRecord(uint32_t nSeed, uint16_t wCI, int nIndex)
 	}
 }
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 std::mt19937 RngForItemGen; // use a RNG with good statistical properties to seed the diablo RNG
 #if JWK_USE_BETTER_RANDOM_NUMBERS
 std::uniform_int_distribution<uint32_t> DistributionForItemGen;

@@ -99,17 +99,25 @@ static int ScaleMonsterMaxHpForDifficulty(int maxhpShifted)
 	return maxhpShifted;
 }
 
-// Scales the health of all Diablo's monsters using the same formula as Diablo 2 (50% buff to health per extra player).  See also: AddPlrMonstExper()
+// Scales the health of all Diablo's monsters using the same formula as Diablo 2 (50% buff to health per extra player).
+void Monster::UpdateMonsterHealthForMultiplayer()
+{
+#if JWK_BUFF_MONSTERS_IN_MULTIPLAYER
+	if (getId() >= MAX_PLAYERS) { // don't scale golem health
+		int scaledMaxHp = maxHitPointsPreMultiplayerScale + maxHitPointsPreMultiplayerScale * (GetNumActivePlayers() - 1) / 2;
+		int64_t scaledHp = (static_cast<int64_t>(hitPoints) * static_cast<int64_t>(scaledMaxHp)) / static_cast<int64_t>(maxHitPoints);
+		maxHitPoints = scaledMaxHp;
+		hitPoints = std::max(static_cast<int>(scaledHp), 64); // it's a shifted value so 64 => 1
+	}
+#endif
+}
 bool ScaleAllMonsterHealthForMultiplayer()
 {
 #if JWK_BUFF_MONSTERS_IN_MULTIPLAYER
 	// Ignore player golems which are the first MAX_PLAYERS monsters
 	for (size_t i = MAX_PLAYERS; i < ActiveMonsterCount; i++) {
 		Monster& monster = Monsters[ActiveMonsters[i]];
-		int newMaxHp = monster.maxHitPointsPreMultiplayerScale + monster.maxHitPointsPreMultiplayerScale * (GetNumActivePlayers() - 1) / 2;
-		int64_t newHp = (static_cast<int64_t>(monster.hitPoints) * static_cast<int64_t>(newMaxHp)) / static_cast<int64_t>(monster.maxHitPoints);
-		monster.maxHitPoints = newMaxHp;
-		monster.hitPoints = std::max(static_cast<int>(newHp), 1);
+		monster.UpdateMonsterHealthForMultiplayer();
 	}
 	return true;
 #else
@@ -232,9 +240,10 @@ void InitMonster(Monster &monster, Direction rd, size_t typeIndex, Point positio
 	}
 
 	int maxhp = monster.data().hitPointsMinimum + GenerateRnd(monster.data().hitPointsMaximum - monster.data().hitPointsMinimum + 1);
-	monster.maxHitPoints = ScaleMonsterMaxHpForDifficulty(maxhp << 6);
-	monster.maxHitPointsPreMultiplayerScale = monster.maxHitPoints;
+	monster.maxHitPointsPreMultiplayerScale = ScaleMonsterMaxHpForDifficulty(maxhp << 6);
+	monster.maxHitPoints = monster.maxHitPointsPreMultiplayerScale;
 	monster.hitPoints = monster.maxHitPoints;
+	monster.UpdateMonsterHealthForMultiplayer();
 
 	if (sgGameInitInfo.nDifficulty == DIFF_NIGHTMARE) {
 		monster.minDamage = 2 * (monster.minDamage + 2);
@@ -321,8 +330,10 @@ void PlaceGroup(size_t typeIndex, unsigned num, Monster *leader = nullptr, bool 
 			PlaceMonster(ActiveMonsterCount, typeIndex, { xp, yp });
 			if (leader != nullptr) {
 				auto &minion = Monsters[ActiveMonsterCount];
-				minion.maxHitPoints *= 2;
+				minion.maxHitPointsPreMultiplayerScale *= 2;
+				minion.maxHitPoints = minion.maxHitPointsPreMultiplayerScale;
 				minion.hitPoints = minion.maxHitPoints;
+				minion.UpdateMonsterHealthForMultiplayer();
 				minion.intelligence = leader->intelligence;
 
 				if (leashed) {
@@ -1202,20 +1213,30 @@ int GetMinHitChance()
 	}
 }
 
-int CheckReflect(Monster &monster, Player &player, int dam)
+static int CheckReflect(Monster& monster, Player& target, int damageToTarget)
 {
-	player.wReflections--;
-	if (player.wReflections <= 0)
-		NetSendCmdParam1(true, CMD_SETREFLECT, 0);
-	// reflects 20-30% damage
-	int mdam = dam * (20 + GenerateRnd(10)) / 100;
-	ApplyMonsterDamage(DamageType::Physical, monster, mdam, 100);
-	if (monster.hitPoints >> 6 <= 0)
-		M_StartKill(monster, player);
-	else
-		M_StartHit(monster, player, mdam);
+	int thornsDamage = 0;
+	if (HasAnyOf(target._pIFlags, ItemSpecialEffect::Thorns)) {
+		thornsDamage += GenerateRndInRange(target._pIThornsMin, target._pIThornsMax) << 6;
+	}
 
-	return mdam;
+	int reflectedDamage = 0;
+	if (target.wReflections > 0) {
+		target.wReflections--;
+		if (target.wReflections <= 0)
+			NetSendCmdParam1(true, CMD_SETREFLECT, 0);
+		reflectedDamage = damageToTarget * (20 + GenerateRnd(11)) / 100;
+	}
+
+	int damageToMonster = thornsDamage + reflectedDamage;
+	if (damageToMonster) {
+		ApplyMonsterDamage(DamageType::Physical, monster, damageToMonster, 100);
+		if (monster.hitPoints >> 6 <= 0)
+			M_StartKill(monster, target);
+		else
+			M_StartHit(monster, target, damageToMonster);
+	}
+	return reflectedDamage;
 }
 
 void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent, int minDam, int maxDam)
@@ -1250,10 +1271,11 @@ void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent,
 	int blockChance = player.GetBlockChance(monster.level(sgGameInitInfo.nDifficulty));
 	if (diceRollToAvoidHit >= hitChancePercent)
 		return;
+
 	if (blockDiceRoll < blockChance) {
 		Direction dir = GetDirection(player.position.tile, monster.position.tile);
 		StartPlrBlock(player, dir);
-		if (&player == MyPlayer && player.wReflections > 0) {
+		if (&player == MyPlayer) {
 			int dam = GenerateRnd(((maxDam - minDam) << 6) + 1) + (minDam << 6);
 			dam = std::max(dam + (player._pIGetHit << 6), 64);
 			CheckReflect(monster, player, dam);
@@ -1282,21 +1304,9 @@ void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent,
 	int dam = (minDam << 6) + GenerateRnd(((maxDam - minDam) << 6) + 1);
 	dam = std::max(dam + (player._pIGetHit << 6), 64);
 	if (&player == MyPlayer) {
-		if (player.wReflections > 0) {
-			int reflectedDamage = CheckReflect(monster, player, dam);
-			dam = std::max(dam - reflectedDamage, 0);
-		}
+		int reflectedDamage = CheckReflect(monster, player, dam);
+		dam = std::max(dam - reflectedDamage, 0);
 		ApplyPlrDamage(DamageType::Physical, player, 0, 0, dam, hitChancePercent, monster.getId(), DeathReason::MonsterOrTrap);
-	}
-
-	// Reflect can also kill a monster, so make sure the monster is still alive
-	if (HasAnyOf(player._pIFlags, ItemSpecialEffect::Thorns) && monster.mode != MonsterMode::Death) {
-		int mdam = (GenerateRnd(3) + 1) << 6;
-		ApplyMonsterDamage(DamageType::Physical, monster, mdam, 100);
-		if (monster.hitPoints >> 6 <= 0)
-			M_StartKill(monster, player);
-		else
-			M_StartHit(monster, player, mdam);
 	}
 
 	if ((monster.flags & MFLAG_NOLIFESTEAL) == 0 && monster.type().type == MT_SKING && gbIsMultiplayer)
@@ -2073,7 +2083,6 @@ static void AiRangedAvoidance(Monster &monster)
 	if (IsAnyOf(monster.ai, MonsterAIID::Magma, MonsterAIID::Storm, MonsterAIID::BoneDemon) && monster.activeForTicks < UINT8_MAX)
 		MonstCheckDoors(monster);
 	int lessmissiles = (monster.ai == MonsterAIID::Acid) ? 1 : 0;
-	int dam = (monster.ai == MonsterAIID::Diablo) ? 40 : 0;
 	MissileID missileType = GetMissileType(monster.ai);
 	int v = GenerateRnd(10000);
 	unsigned distanceToEnemy = monster.distanceToEnemy();
@@ -2088,7 +2097,7 @@ static void AiRangedAvoidance(Monster &monster)
 				monster.goal = MonsterGoal::Normal;
 			} else if (v < (500 * (monster.intelligence + 1) >> lessmissiles)
 			    && (LineClearMissile(monster.position.tile, monster.enemyPosition))) {
-				StartRangedSpecialAttack(monster, missileType, dam);
+				StartRangedSpecialAttack(monster, missileType, 0);
 			} else {
 				RoundWalk(monster, md, &monster.goalVar2);
 			}
@@ -2100,7 +2109,7 @@ static void AiRangedAvoidance(Monster &monster)
 		if (((distanceToEnemy >= 3 && v < ((500 * (monster.intelligence + 2)) >> lessmissiles))
 		        || v < ((500 * (monster.intelligence + 1)) >> lessmissiles))
 		    && LineClearMissile(monster.position.tile, monster.enemyPosition)) {
-			StartRangedSpecialAttack(monster, missileType, dam);
+			StartRangedSpecialAttack(monster, missileType, 0);
 		} else if (distanceToEnemy >= 2) {
 			v = GenerateRnd(100);
 			if (v < 1000 * (monster.intelligence + 5)
@@ -3451,9 +3460,9 @@ void PrepareUniqueMonst(Monster &monster, UniqueMonsterType monsterType, size_t 
 		}
 	}
 
-	monster.maxHitPoints = ScaleMonsterMaxHpForDifficulty(uniqueMonsterData.mmaxhp << 6);
+	monster.maxHitPointsPreMultiplayerScale = ScaleMonsterMaxHpForDifficulty(uniqueMonsterData.mmaxhp << 6);
 #if JWK_BUFF_UNIQUE_MONSTERS
-	monster.maxHitPoints *= 3;
+	monster.maxHitPointsPreMultiplayerScale *= 3;
 	monster.armorClass += 50;
 	if (FlipCoin(2)) { monster.resistance |= IMMUNE_MAGIC; } else if (FlipCoin(2)) { monster.resistance |= RESIST_MAGIC; }
 	if (FlipCoin(2)) { monster.resistance |= IMMUNE_FIRE; } else if (FlipCoin(2)) { monster.resistance |= RESIST_FIRE; }
@@ -3462,8 +3471,9 @@ void PrepareUniqueMonst(Monster &monster, UniqueMonsterType monsterType, size_t 
 	if (monster.resistance & IMMUNE_FIRE) { monster.resistance &= ~RESIST_FIRE; }
 	if (monster.resistance & IMMUNE_LIGHTNING) { monster.resistance &= ~IMMUNE_LIGHTNING; }
 #endif
-	monster.maxHitPointsPreMultiplayerScale = monster.maxHitPoints;
+	monster.maxHitPoints = monster.maxHitPointsPreMultiplayerScale;
 	monster.hitPoints = monster.maxHitPoints;
+	monster.UpdateMonsterHealthForMultiplayer();
 
 	if (uniqueMonsterData.monsterPack != UniqueMonsterPack::None) {
 		PlaceGroup(minionType, bosspacksize, &monster, uniqueMonsterData.monsterPack == UniqueMonsterPack::Leashed);
@@ -3733,11 +3743,10 @@ void WeakenNaKrul()
 	auto &monster = Monsters[UberDiabloMonsterIndex];
 	PlayEffect(monster, MonsterSound::Death);
 	monster.armorClass -= 50;
-	int hp = monster.maxHitPoints / 2;
 	monster.resistance = 0;
-	monster.hitPoints = hp;
-	monster.maxHitPoints = hp;
 	monster.maxHitPointsPreMultiplayerScale /= 2;
+	monster.maxHitPoints /= 2;
+	monster.hitPoints = monster.maxHitPoints;
 }
 
 void InitGolems()
@@ -4630,7 +4639,7 @@ void PlayEffect(Monster &monster, MonsterSound mode)
 
 void MissileBecomesMonster(Missile &missile, Point position) // rhino/snake/gloom charge
 {
-	int monsterId = missile._misource;
+	int monsterId = missile._miSourceID;
 
 	assert(static_cast<size_t>(monsterId) < MaxMonsters);
 	auto &monster = Monsters[monsterId];
@@ -4866,6 +4875,7 @@ void SpawnGolem(Player &player, Monster &golem, Point position, Missile &missile
 #endif
 	uint32_t golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage;
 	player.GetGolemStats(missile._mispllvl, golemMaxHP, golemArmor, golemHitChance, golemMinDamage, golemMaxDamage);
+	golem.maxHitPointsPreMultiplayerScale = golemMaxHP;
 	golem.maxHitPoints = golemMaxHP;
 	golem.minDamage = golemMinDamage;
 	golem.maxDamage = golemMaxDamage;

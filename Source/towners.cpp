@@ -934,7 +934,7 @@ void UpdateCowFarmerAnimAfterQuestComplete()
 	cowFarmer->_tAnimFrame = std::min<uint8_t>(curFrame, cowFarmer->_tAnimLen - 1);
 }
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 bool DebugTalkToTowner(std::string targetName)
 {
 	SetupTownStores();

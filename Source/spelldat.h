@@ -19,7 +19,6 @@
 #define JWK_EDIT_FAST_BLOCK 1 // Make fastblock -2 frames instead of -4 frames.  This only affects sorcerer because he's the only one who needs -4 frames to reach the block speed limit.
 #define JWK_RESISTANT_TARGETS_CAN_BLOCK 1 // If true, resistance doesn't affect blocking.  If false (original code), having fire/lightning/magic resistance (even 1%) prevents your character from blocking the attack.
 #define JWK_RESISTANT_TARGETS_CAN_BE_STUNNED 1 // If true, resistance doesn't affect stuns other than reduced damage reduces chance of stun.  If false (original code), having fire/lightning/magic resistance (even 1%) prevents players/monsters from being stunned.
-#define JWK_USE_HELLFIRE_ARMOR_PIERCE 1 // If true, armor pierce ignore a percent of target armor.  If false, armor pierce of x% is identical to gear with +x chance to hit.
 #define JWK_ALLOW_LEECH_IN_PVP 1 // If true, allow life and mana leech weapons to function in pvp.  Original code does not allow weapon-based leech but it DOES allow life steal crown, which seems like a bug.
 #define JWK_BUFF_LIFE_STEAL_CROWN 1 // If true, buff life steal crown from random 0-12% leech to a constant 12% leech
 #define JWK_REDUCE_ITEM_DURABILITY_LOSS 1 // Make items get damaged at a slower rate (about half)
@@ -76,7 +75,7 @@
 #define JWK_GOD_MODE_ADJUST_VIT_BY_AMOUNT 0 // Adds this value to your player's vitality stat as if you had an item with +vitality on it.  The amount can be negative if you want to decrease your stats.
 #define JWK_DEBUG_DISABLE_NETWORK_TIMEOUT 0 // If true, setting breapoints in multiplayer games won't cause players to be dropped (It will just hourglass indefinitely)
 #define JWK_DEBUG_ALL_MONSTERS_HAVE_125000_HEALTH 0 // Useful to testing attacks versus monsters without the monster dying too quickly
-
+#define JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE 0 // This is useful for generating many debug items because optimized code runs faster
 
 namespace devilution {
 
@@ -160,6 +159,10 @@ enum class MagicType : uint8_t {
 enum class MissileID : int8_t {
 	// clang-format off
 	Arrow,
+	FireArrow,
+	LightningArrow,
+	PoisonArrow,
+	SpectralArrow,
 	Firebolt,
 	GuardianBolt, // jwk added
 	Guardian,
@@ -187,7 +190,6 @@ enum class MissileID : int8_t {
 	BloodStar,
 	BloodStarExplosion,
 	Teleport,
-	FireArrow,
 	DoomSerpents, // unused
 	FireOnly, // unused
 	StoneCurse,
@@ -216,7 +218,6 @@ enum class MissileID : int8_t {
 	HolyBolt,
 	Resurrect,
 	Telekinesis,
-	LightningArrow,
 	Acid,
 	AcidSplat,
 	AcidPuddle,
@@ -234,7 +235,6 @@ enum class MissileID : int8_t {
 	LightningWallSingleTile,
 	LightningWallControl,
 	Immolation,
-	SpectralArrow,
 	FireballBow,
 	LightningBow,
 	ChargedBoltBow,

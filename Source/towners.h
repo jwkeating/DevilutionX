@@ -83,7 +83,7 @@ void TalkToTowner(Player &player, int t);
 void UpdateGirlAnimAfterQuestComplete();
 void UpdateCowFarmerAnimAfterQuestComplete();
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 bool DebugTalkToTowner(std::string targetName);
 #endif
 extern _speech_id QuestDialogTable[NUM_TOWNER_TYPES][MAXQUESTS];

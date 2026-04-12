@@ -4,7 +4,8 @@
  * Implementation of debug functions.
  */
 
-#ifdef _DEBUG
+#include "spelldat.h" // jwk - Ideally, I should create a new header file with all my JWK defines instead of using spelldat.h
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 
 #include <cstdint>
 #include <cstdio>
@@ -618,6 +619,7 @@ std::string DebugCmdArrow(const string_view parameter)
 
 	myPlayer._pIFlags &= ~ItemSpecialEffect::FireArrows;
 	myPlayer._pIFlags &= ~ItemSpecialEffect::LightningArrows;
+	myPlayer._pIFlags &= ~ItemSpecialEffect::PoisonArrows;
 
 	if (parameter == "normal") {
 		// we removed the parameter at the top
@@ -625,8 +627,8 @@ std::string DebugCmdArrow(const string_view parameter)
 		myPlayer._pIFlags |= ItemSpecialEffect::FireArrows;
 	} else if (parameter == "lightning") {
 		myPlayer._pIFlags |= ItemSpecialEffect::LightningArrows;
-	} else if (parameter == "explosion") {
-		myPlayer._pIFlags |= (ItemSpecialEffect::FireArrows | ItemSpecialEffect::LightningArrows);
+	} else if (parameter == "poison") {
+		myPlayer._pIFlags |= ItemSpecialEffect::PoisonArrows;
 	} else {
 		return "Unknown is sometimes similar to nothing (unkown effect).";
 	}

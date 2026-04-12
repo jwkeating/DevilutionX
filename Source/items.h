@@ -111,6 +111,8 @@ struct Item {
 	int _iIvalue = 0;
 	uint8_t _iMinDam = 0;
 	uint8_t _iMaxDam = 0; // can be modified by hellfire oils
+	uint8_t _iThornsMin = 0;
+	uint8_t _iThornsMax = 0;
 	int16_t _iAC = 0;
 	ItemSpecialEffect _iFlags = ItemSpecialEffect::None;
 	item_misc_id _iMiscId = IMISC_NONE;
@@ -140,10 +142,12 @@ struct Item {
 	bool _iRequest = false;
 	/** Unique item ID, used as an index into UniqueItemList */
 	int _iUid = 0;
-	int16_t _iFMinDam = 0;
-	int16_t _iFMaxDam = 0;
-	int16_t _iLMinDam = 0;
-	int16_t _iLMaxDam = 0;
+	uint16_t _iFMinDam = 0;
+	uint16_t _iFMaxDam = 0;
+	uint16_t _iLMinDam = 0;
+	uint16_t _iLMaxDam = 0;
+	uint16_t _iMMinDam = 0;
+	uint16_t _iMMaxDam = 0;
 	int16_t _iPLArmorPierce = 0;
 	enum item_effect_type _iPrefixPower = IPL_INVALID;
 	enum item_effect_type _iSuffixPower = IPL_INVALID;
@@ -488,7 +492,7 @@ bool ApplyOilToItem(Item &item, Player &player);
  */
 void UpdateHellfireFlag(Item &item, const char *identifiedItemName);
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 std::string DebugSpawnItem(std::string itemName);
 std::string DebugSpawnUniqueItem(std::string itemName);
 #endif

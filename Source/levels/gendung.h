@@ -199,13 +199,13 @@ extern uint8_t dLight[MAXDUNX][MAXDUNY];
 extern uint8_t dPreLight[MAXDUNX][MAXDUNY];
 /** Holds various information about dungeon tiles, @see DungeonFlag */
 extern DungeonFlag dFlags[MAXDUNX][MAXDUNY];
-/** Contains the player numbers (players array indices) of the map. Negative id indicates player moving: The same monster can be in the array twice (once with negative Id and once with positive ID). */
+/** Contains the player numbers (players array indices) of the map. Negative id indicates player moving: The same player can be in the array twice (once with negative Id and once with positive ID).  Future tile is negative if walking north, future tile is positive if walking south. */
 extern int8_t dPlayer[MAXDUNX][MAXDUNY];
 /**
  * Contains the NPC numbers of the map. The NPC number represents a
  * towner number (towners array index) in Tristram and a monster number
  * (monsters array index) in the dungeon.
- * Negative id indicates monsters moving: The same monster can be in the array twice (once with negative Id and once with positive ID)
+ * Negative id indicates monsters moving: The same monster can be in the array twice (once with negative Id and once with positive ID).  Future tile is negative if walking north, future tile is positive if walking south.
  */
 extern int16_t dMonster[MAXDUNX][MAXDUNY];
 /**

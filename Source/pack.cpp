@@ -285,11 +285,15 @@ void PackNetPlayer(PlayerNetPack &packed, const Player &player)
 	packed.pIBonusAC = SDL_SwapLE32(player._pIBonusAC);
 	packed.pIBonusDamMod = SDL_SwapLE32(player._pIBonusDamMod);
 	packed.pIGetHit = SDL_SwapLE32(player._pIGetHit);
-	packed.pIEnAc = SDL_SwapLE32(player._pArmorPierce);
-	packed.pIFMinDam = SDL_SwapLE32(player._pIFMinDam);
-	packed.pIFMaxDam = SDL_SwapLE32(player._pIFMaxDam);
-	packed.pILMinDam = SDL_SwapLE32(player._pILMinDam);
-	packed.pILMaxDam = SDL_SwapLE32(player._pILMaxDam);
+	packed.pArmorPierce = SDL_SwapLE32(player._pArmorPierce);
+	packed.pIFMinDam = SDL_SwapLE16(player._pIFMinDam);
+	packed.pIFMaxDam = SDL_SwapLE16(player._pIFMaxDam);
+	packed.pILMinDam = SDL_SwapLE16(player._pILMinDam);
+	packed.pILMaxDam = SDL_SwapLE16(player._pILMaxDam);
+	packed.pIMMinDam = SDL_SwapLE16(player._pIMMinDam);
+	packed.pIMMaxDam = SDL_SwapLE16(player._pIMMaxDam);
+	packed.pIThornsMin = player._pIThornsMin;
+	packed.pIThornsMax = player._pIThornsMax;
 }
 
 void UnPackItem(const ItemPack &packedItem, Item &item, bool isHellfire)
@@ -593,11 +597,15 @@ bool UnPackNetPlayer(const PlayerNetPack &packed, Player &player)
 	ValidateFields(player._pIBonusAC, SDL_SwapLE32(packed.pIBonusAC), player._pIBonusAC == SDL_SwapLE32(packed.pIBonusAC));
 	ValidateFields(player._pIBonusDamMod, SDL_SwapLE32(packed.pIBonusDamMod), player._pIBonusDamMod == SDL_SwapLE32(packed.pIBonusDamMod));
 	ValidateFields(player._pIGetHit, SDL_SwapLE32(packed.pIGetHit), player._pIGetHit == SDL_SwapLE32(packed.pIGetHit));
-	ValidateFields(player._pArmorPierce, SDL_SwapLE32(packed.pIEnAc), player._pArmorPierce == SDL_SwapLE32(packed.pIEnAc));
-	ValidateFields(player._pIFMinDam, SDL_SwapLE32(packed.pIFMinDam), player._pIFMinDam == SDL_SwapLE32(packed.pIFMinDam));
-	ValidateFields(player._pIFMaxDam, SDL_SwapLE32(packed.pIFMaxDam), player._pIFMaxDam == SDL_SwapLE32(packed.pIFMaxDam));
-	ValidateFields(player._pILMinDam, SDL_SwapLE32(packed.pILMinDam), player._pILMinDam == SDL_SwapLE32(packed.pILMinDam));
-	ValidateFields(player._pILMaxDam, SDL_SwapLE32(packed.pILMaxDam), player._pILMaxDam == SDL_SwapLE32(packed.pILMaxDam));
+	ValidateFields(player._pArmorPierce, SDL_SwapLE32(packed.pArmorPierce), player._pArmorPierce == SDL_SwapLE32(packed.pArmorPierce));
+	ValidateFields(player._pIFMinDam, SDL_SwapLE16(packed.pIFMinDam), player._pIFMinDam == SDL_SwapLE16(packed.pIFMinDam));
+	ValidateFields(player._pIFMaxDam, SDL_SwapLE16(packed.pIFMaxDam), player._pIFMaxDam == SDL_SwapLE16(packed.pIFMaxDam));
+	ValidateFields(player._pILMinDam, SDL_SwapLE16(packed.pILMinDam), player._pILMinDam == SDL_SwapLE16(packed.pILMinDam));
+	ValidateFields(player._pILMaxDam, SDL_SwapLE16(packed.pILMaxDam), player._pILMaxDam == SDL_SwapLE16(packed.pILMaxDam));
+	ValidateFields(player._pIMMinDam, SDL_SwapLE16(packed.pIMMinDam), player._pIMMinDam == SDL_SwapLE16(packed.pIMMinDam));
+	ValidateFields(player._pIMMaxDam, SDL_SwapLE16(packed.pIMMaxDam), player._pIMMaxDam == SDL_SwapLE16(packed.pIMMaxDam));
+	ValidateFields(player._pIThornsMin, packed.pIThornsMin, player._pIThornsMin == packed.pIThornsMin);
+	ValidateFields(player._pIThornsMax, packed.pIThornsMax, player._pIThornsMax == packed.pIThornsMax);
 	ValidateFields(player._pMaxHPBase, player.calculateBaseLife(), player._pMaxHPBase <= player.calculateBaseLife());
 	ValidateFields(player._pMaxManaBase, player.calculateBaseMana(), player._pMaxManaBase <= player.calculateBaseMana());
 

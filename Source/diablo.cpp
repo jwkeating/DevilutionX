@@ -15,9 +15,6 @@
 #include "capture.h"
 #include "cursor.h"
 #include "dead.h"
-#ifdef _DEBUG
-#include "debug.h"
-#endif
 #include "DiabloUI/diabloui.h"
 #include "controls/devices/kbcontroller.h"
 #include "controls/plrctrls.h"
@@ -85,6 +82,9 @@
 #include "utils/stdcompat/string_view.hpp"
 #include "utils/str_cat.hpp"
 #include "utils/utf8.hpp"
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
+#include "debug.h"
+#endif
 
 #ifndef USE_SDL1
 #include "controls/touch/gamepad.h"
@@ -121,7 +121,7 @@ uint16_t gnTickDelay = 50; // 50, 33, 35, 20 milliseconds depending on chosen ga
 uint32_t gnTotalGameLogicStepsExecuted = 0; // number of "game logic ticks"
 char gszProductName[64] = "DevilutionX vUnknown";
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 bool DebugDisableNetworkTimeout = false;
 std::vector<std::string> DebugCmdsFromCommandLine;
 #endif
@@ -852,7 +852,7 @@ void RunGameLoop(interface_mode uMsg)
 
 	while (gbRunGame) {
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 		if (!gbGameLoopStartup && !DebugCmdsFromCommandLine.empty()) {
 			for (auto &cmd : DebugCmdsFromCommandLine) {
 				CheckDebugTextCommand(cmd);

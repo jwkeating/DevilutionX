@@ -328,7 +328,7 @@ void DrawMissilePrivate(const Surface &out, const Missile &missile, Point target
 	const Point missileRenderPosition { targetBufferPosition + missile.position.offsetForRendering - Displacement { missile._miAnimWidth2, 0 } };
 	const ClxSprite sprite = (*missile._miAnimData)[missile._miAnimFrame - 1];
 	if (missile._miUniqTrans != 0)
-		ClxDrawTRN(out, missileRenderPosition, sprite, Monsters[missile._misource].uniqueMonsterTRN.get());
+		ClxDrawTRN(out, missileRenderPosition, sprite, Monsters[missile._miSourceID].uniqueMonsterTRN.get());
 	else if (missile._miLightFlag)
 		ClxDrawLight(out, missileRenderPosition, sprite, lightTableIndex);
 	else

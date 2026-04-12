@@ -114,6 +114,7 @@ void UpdateFloatingText(FloatingNumber &num)
 	// ColorBlack is super black, hard to read because outline is also black
 	// ColorGold and ColorWhitegold are the same
 
+	num.style &= ~(UiFlags::ColorWhite | UiFlags::ColorUiSilver | UiFlags::ColorBlue | UiFlags::ColorYellow);
 	switch (num.type) {
 	case DamageType::Physical:
 		num.style |= UiFlags::ColorWhite;//::ColorGold;
@@ -158,12 +159,18 @@ void AddFloatingNumber(Point pos, Displacement offset, DamageType type, int valu
 			// Ideally we want a mergeThreadhold of 1 tick but per-tick damage (like lightning bolt) is sent over the network in pvp so it doesn't necessarily arrive every tick.
 			// We need a slightly larger threshold so the damage ticks merge.  Also, even on the local computer, inferno needs a few ticks to merge.
 			constexpr int mergeThreshold = 5;
-			if (num.numberFloatsDown == numberFloatsDown && num.type == type && num.hitChance == hitChance && num.index == index && (gnTotalGameLogicStepsExecuted - num.mostRecentMergeTick) <= mergeThreshold && gnTotalGameLogicStepsExecuted < num.lastMergeTickAllowed) {
-				num.value += value;
-				//num.lastMergeTick = nowTicks;
-				num.mostRecentMergeTick = gnTotalGameLogicStepsExecuted;
-				UpdateFloatingText(num);
-				return;
+			if (num.numberFloatsDown == numberFloatsDown && num.hitChance == hitChance && num.index == index && gnTotalGameLogicStepsExecuted < num.lastMergeTickAllowed) {
+				// Merge physical+elemental damage that occur on the same tick, such as fire arrow (Note: this doesn't merge because arrow hit chance != 100 but elemental part is 100)
+				// if (num.type == DamageType::Physical && value != 0 && (gnTotalGameLogicStepsExecuted - num.mostRecentMergeTick) == 0))
+
+				// Always merge damage of the same type:
+				if ((num.type == type && (gnTotalGameLogicStepsExecuted - num.mostRecentMergeTick) <= mergeThreshold)) {
+					num.value += value;
+					num.type = type;
+					num.mostRecentMergeTick = gnTotalGameLogicStepsExecuted;
+					UpdateFloatingText(num);
+					return;
+				}
 			}
 		}
 	}

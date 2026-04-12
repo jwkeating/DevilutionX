@@ -35,7 +35,7 @@ std::array<std::array<uint8_t, 256>, NumLightingLevels> LightTables;
 std::array<uint8_t, 256> InfravisionTable;
 std::array<uint8_t, 256> StoneTable;
 std::array<uint8_t, 256> PauseTable;
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 bool DisableLighting;
 #endif
 bool UpdateLighting;
@@ -521,7 +521,7 @@ void MakeLightTable()
 #endif
 }
 
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 void ToggleLighting()
 {
 	DisableLighting = !DisableLighting;

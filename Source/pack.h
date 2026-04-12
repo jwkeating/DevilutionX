@@ -136,11 +136,15 @@ struct PlayerNetPack {
 	int32_t pIBonusAC;
 	int32_t pIBonusDamMod;
 	int32_t pIGetHit;
-	int32_t pIEnAc;
-	int32_t pIFMinDam;
-	int32_t pIFMaxDam;
-	int32_t pILMinDam;
-	int32_t pILMaxDam;
+	int32_t pArmorPierce;
+	uint16_t pIFMinDam;
+	uint16_t pIFMaxDam;
+	uint16_t pILMinDam;
+	uint16_t pILMaxDam;
+	uint16_t pIMMinDam;
+	uint16_t pIMMaxDam;
+	uint8_t pIThornsMin;
+	uint8_t pIThornsMax;
 };
 #pragma pack(pop)
 

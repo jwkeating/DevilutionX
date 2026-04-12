@@ -233,6 +233,11 @@ void DrawSpellBook(const Surface &out)
 #else
 						PrintSBookStr(out, line1, _(/* TRANSLATORS: UI constraints, keep short please.*/ "Dmg: 1/3 target hp"), UiFlags::AlignRight);
 #endif
+#if JWK_EDIT_MANA_SHIELD
+					} else if (spellID == SpellID::ManaShield) {
+						int absorbPercent = player.CalcManaShieldAbsorbPercent();
+						PrintSBookStr(out, line1, fmt::format(fmt::runtime(_(/* TRANSLATORS: UI constraints, keep short please.*/ "Absorbs {:d}%")), absorbPercent), UiFlags::AlignRight);
+#endif
 					} else {
 						int min, max;
 						GetSpellStatsForUI(player, spellID, spellLevel, &min, &max);

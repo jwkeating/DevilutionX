@@ -55,7 +55,7 @@ extern std::array<std::array<uint8_t, 256>, NumLightingLevels> LightTables;
 extern std::array<uint8_t, 256> InfravisionTable;
 extern std::array<uint8_t, 256> StoneTable;
 extern std::array<uint8_t, 256> PauseTable;
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 extern bool DisableLighting;
 #endif
 extern bool UpdateLighting;
@@ -66,7 +66,7 @@ void DoLighting(Point position, uint8_t radius, DisplacementOf<int8_t> eighthOff
 void DoUnVision(Point position, uint8_t radius);
 void DoVision(Point position, uint8_t radius, MapExplorationType doAutomap, bool visibleToLocalPlayer);
 void MakeLightTable();
-#ifdef _DEBUG
+#if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 void ToggleLighting();
 #endif
 void InitLighting();

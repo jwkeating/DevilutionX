@@ -102,8 +102,8 @@ struct MonsterData {
 	int8_t minDunLvl;
 	int8_t maxDunLvl;
 	int8_t level;
-	uint16_t hitPointsMinimum;
-	uint16_t hitPointsMaximum;
+	uint32_t hitPointsMinimum;
+	uint32_t hitPointsMaximum;
 	MonsterAIID ai;
 	/**
 	 * @brief Denotes monster's abilities defined in @p monster_flag as bitflags
@@ -111,15 +111,15 @@ struct MonsterData {
 	 */
 	uint16_t abilityFlags;
 	uint8_t intelligence;
-	uint8_t toHit;
+	uint16_t toHit;
 	int8_t animFrameNum;
-	uint8_t minDamage;
-	uint8_t maxDamage;
-	uint8_t toHitSpecial;
+	uint16_t minDamage;
+	uint16_t maxDamage;
+	uint16_t toHitSpecial;
 	int8_t animFrameNumSpecial;
-	uint8_t minDamageSpecial;
-	uint8_t maxDamageSpecial;
-	uint8_t armorClass;
+	uint16_t minDamageSpecial;
+	uint16_t maxDamageSpecial;
+	uint16_t armorClass;
 	MonsterClass monsterClass;
 	/** Using monster_resistance as bitflags */
 	uint8_t resistance;
@@ -128,7 +128,7 @@ struct MonsterData {
 	int8_t selectionType; // TODO Create enum
 	/** Using monster_treasure */
 	uint16_t treasure;
-	uint16_t exp;
+	uint32_t exp;
 };
 
 enum MonsterID : int16_t { // undex into MonstersData[] array
@@ -297,11 +297,11 @@ struct UniqueMonsterData {
 	const char *mName;
 	const char *mTrnName;
 	uint8_t mlevel;
-	uint16_t mmaxhp;
+	uint32_t mmaxhp;
 	MonsterAIID mAi;
 	uint8_t mint;
-	uint8_t mMinDamage;
-	uint8_t mMaxDamage;
+	uint16_t mMinDamage;
+	uint16_t mMaxDamage;
 	/** Using monster_resistance as bitflags */
 	uint16_t mMagicRes;
 	/**
@@ -309,8 +309,8 @@ struct UniqueMonsterData {
 	 */
 
 	UniqueMonsterPack monsterPack;
-	uint8_t customToHit;
-	uint8_t customArmorClass;
+	uint16_t customToHit;
+	uint16_t customArmorClass;
 	_speech_id mtalkmsg;
 };
 

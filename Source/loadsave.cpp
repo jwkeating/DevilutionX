@@ -39,6 +39,8 @@
 #include "utils/language.h"
 #include "utils/stdcompat/algorithm.hpp"
 
+#define JWK_INCLUDE_MAGIC_DAMAGE_IN_FILE_FORMAT 1
+
 namespace devilution {
 
 bool gbIsHellfireSaveGame;
@@ -238,10 +240,10 @@ public:
 };
 
 struct MonsterConversionData {
+	uint32_t experience;
+	uint16_t toHit;
+	uint16_t toHitSpecial;
 	int8_t monsterLevel;
-	uint16_t experience;
-	uint8_t toHit;
-	uint8_t toHitSpecial;
 };
 
 struct LevelConversionData {
@@ -310,14 +312,29 @@ void LoadItemData(LoadHelper &file, Item &item)
 	file.Skip(2); // Alignment
 #endif
 	item._iUid = file.NextLE<int32_t>();
+#if JWK_INCLUDE_MAGIC_DAMAGE_IN_FILE_FORMAT
+	item._iFMinDam = file.NextLE<uint16_t>();
+	item._iFMaxDam = file.NextLE<uint16_t>();
+	item._iLMinDam = file.NextLE<uint16_t>();
+	item._iLMaxDam = file.NextLE<uint16_t>();
+	item._iMMinDam = file.NextLE<uint16_t>();
+	item._iMMaxDam = file.NextLE<uint16_t>();
+	file.Skip(4);
+#else // original code
 	item._iFMinDam = file.NextLE<int32_t>();
 	item._iFMaxDam = file.NextLE<int32_t>();
 	item._iLMinDam = file.NextLE<int32_t>();
 	item._iLMaxDam = file.NextLE<int32_t>();
+#endif
 	item._iPLArmorPierce = file.NextLE<int32_t>();
 	item._iPrefixPower = static_cast<item_effect_type>(file.NextLE<int8_t>());
 	item._iSuffixPower = static_cast<item_effect_type>(file.NextLE<int8_t>());
+#if 1 // jwk added
+	item._iThornsMin = file.NextLE<uint8_t>();
+	item._iThornsMax = file.NextLE<uint8_t>();
+#else
 	file.Skip(2); // Alignment
+#endif
 	item._iVAdd1 = file.NextLE<int32_t>();
 	item._iVMult1 = file.NextLE<int32_t>();
 	item._iVAdd2 = file.NextLE<int32_t>();
@@ -560,10 +577,22 @@ void LoadPlayer(LoadHelper &file, Player &player)
 	file.Skip(2);         // Alignment
 	file.Skip<int32_t>(); // _pISplDur
 	player._pArmorPierce = file.NextLE<int32_t>();
+#if JWK_INCLUDE_MAGIC_DAMAGE_IN_FILE_FORMAT
+	player._pIFMinDam = file.NextLE<uint16_t>();
+	player._pIFMaxDam = file.NextLE<uint16_t>();
+	player._pILMinDam = file.NextLE<uint16_t>();
+	player._pILMaxDam = file.NextLE<uint16_t>();
+	player._pIMMinDam = file.NextLE<uint16_t>();
+	player._pIMMaxDam = file.NextLE<uint16_t>();
+	player._pIThornsMin = file.NextLE<uint8_t>();
+	player._pIThornsMax = file.NextLE<uint8_t>();
+	file.Skip(2);
+#else // original code
 	player._pIFMinDam = file.NextLE<int32_t>();
 	player._pIFMaxDam = file.NextLE<int32_t>();
 	player._pILMinDam = file.NextLE<int32_t>();
 	player._pILMaxDam = file.NextLE<int32_t>();
+#endif
 	player._pOilType = static_cast<item_misc_id>(file.NextLE<int32_t>());
 	player.pTownWarps = file.NextLE<uint8_t>();
 	player.pDungMsgs = file.NextLE<uint8_t>();
@@ -655,11 +684,10 @@ void LoadMonster(LoadHelper *file, Monster &monster, MonsterConversionData *mons
 	monster.position.temp.y = file->NextLENarrow<int32_t, WorldTileCoord>();
 	file->Skip<int32_t>(2); // skip offset2;
 	file->Skip(4);          // Skip actionFrame
-	monster.maxHitPoints = file->NextLE<int32_t>();
-#if JWK_BUFF_MONSTERS_IN_MULTIPLAYER
-	monster.maxHitPointsPreMultiplayerScale = monster.maxHitPoints;
-#endif
+	monster.maxHitPointsPreMultiplayerScale = file->NextLE<int32_t>();
+	monster.maxHitPoints = monster.maxHitPointsPreMultiplayerScale;
 	monster.hitPoints = file->NextLE<int32_t>();
+	monster.UpdateMonsterHealthForMultiplayer(); // JWK_BUFF_MONSTERS_IN_MULTIPLAYER
 
 	monster.ai = static_cast<MonsterAIID>(file->NextLE<uint8_t>());
 	monster.intelligence = file->NextLE<uint8_t>();
@@ -677,40 +705,47 @@ void LoadMonster(LoadHelper *file, Monster &monster, MonsterConversionData *mons
 	monster.uniqueType = static_cast<UniqueMonsterType>(file->NextLE<uint8_t>() - 1);
 	monster.uniqTrans = file->NextLE<uint8_t>();
 	monster.corpseId = file->NextLE<int8_t>();
-
 	monster.whoHit = file->NextLE<int8_t>();
+
+	// jwk begin file format edit (increase types from 8 bits -> 16 bits and 16 bits -> 32 bits to avoid overflow)
+
+	if (monsterConversionData != nullptr)
+		monsterConversionData->experience = file->NextLE<uint32_t>();
+	else
+		file->Skip(4); // Skip exp - now calculated from monstdat when the monster dies
+
+	monster.minDamage = file->NextLE<uint16_t>();
+	monster.maxDamage = file->NextLE<uint16_t>();
+	monster.minDamageSpecial = file->NextLE<uint16_t>();
+	monster.maxDamageSpecial = file->NextLE<uint16_t>();
+
+	if (monsterConversionData != nullptr) {
+		monsterConversionData->toHit = file->NextLE<uint16_t>();
+	} else if (monster.isPlayerMinion()) { // Don't skip for golems
+#if JWK_EDIT_GOLEM
+		file->Skip(2);
+#else
+		monster.golemToHit = file->NextLE<uint16_t>();
+#endif
+	} else {
+		file->Skip(2); // Skip toHit - now calculated on the fly
+	}
+	if (monsterConversionData != nullptr) {
+		monsterConversionData->toHitSpecial = file->NextLE<uint16_t>();
+	} else {
+		file->Skip(2); // Skip toHitSpecial - now calculated on the fly
+	}
+
+	monster.armorClass = file->NextLE<uint16_t>();
+	monster.resistance = file->NextLE<uint16_t>();
+
 	if (monsterConversionData != nullptr)
 		monsterConversionData->monsterLevel = file->NextLE<int8_t>();
 	else
 		file->Skip(1); // Skip level - now calculated on the fly
-	file->Skip(1);     // Alignment
-	if (monsterConversionData != nullptr)
-		monsterConversionData->experience = file->NextLE<uint16_t>();
-	else
-		file->Skip(2); // Skip exp - now calculated from monstdat when the monster dies
+	file->Skip(3); // Alignment
 
-	if (monsterConversionData != nullptr)
-		monsterConversionData->toHit = file->NextLE<uint8_t>();
-	else if (monster.isPlayerMinion()) // Don't skip for golems
-#if JWK_EDIT_GOLEM
-		file->Skip(1);
-#else
-		monster.golemToHit = file->NextLE<uint8_t>();
-#endif
-	else
-		file->Skip(1); // Skip toHit - now calculated on the fly
-	monster.minDamage = file->NextLE<uint8_t>();
-	monster.maxDamage = file->NextLE<uint8_t>();
-	if (monsterConversionData != nullptr)
-		monsterConversionData->toHitSpecial = file->NextLE<uint8_t>();
-	else
-		file->Skip(1); // Skip toHitSpecial - now calculated on the fly
-	monster.minDamageSpecial = file->NextLE<uint8_t>();
-	monster.maxDamageSpecial = file->NextLE<uint8_t>();
-	monster.armorClass = file->NextLE<uint8_t>();
-	file->Skip(1); // Alignment
-	monster.resistance = file->NextLE<uint16_t>();
-	file->Skip(2); // Alignment
+	// jwk end file format edit
 
 	monster.talkMsg = static_cast<_speech_id>(file->NextLE<int32_t>());
 	if (monster.talkMsg == TEXT_KING1) // Fix original bad mapping of NONE for monsters
@@ -782,8 +817,8 @@ void LoadMissile(LoadHelper *file)
 	missile._miPreFlag = file->NextBool32();
 	missile._miUniqTrans = file->NextLE<uint32_t>();
 	missile._ticksUntilExpiry = file->NextLE<int32_t>();
-	missile._misource = file->NextLE<int32_t>();
-	missile._micaster = static_cast<mienemy_type>(file->NextLE<int32_t>());
+	missile._miSourceID = file->NextLE<int32_t>();
+	missile._miEnemyType = static_cast<mienemy_type>(file->NextLE<int32_t>());
 	missile._midam = file->NextLE<int32_t>();
 	missile._miHitFlag = file->NextBool32();
 	missile._midist = file->NextLE<int32_t>();
@@ -1139,14 +1174,29 @@ void SaveItem(SaveHelper &file, const Item &item)
 	file.Skip(2); // Alignment
 #endif
 	file.WriteLE<int32_t>(item._iUid);
+#if JWK_INCLUDE_MAGIC_DAMAGE_IN_FILE_FORMAT
+	file.WriteLE<uint16_t>(item._iFMinDam);
+	file.WriteLE<uint16_t>(item._iFMaxDam);
+	file.WriteLE<uint16_t>(item._iLMinDam);
+	file.WriteLE<uint16_t>(item._iLMaxDam);
+	file.WriteLE<uint16_t>(item._iMMinDam);
+	file.WriteLE<uint16_t>(item._iMMaxDam);
+	file.Skip(4);
+#else // original code
 	file.WriteLE<int32_t>(item._iFMinDam);
 	file.WriteLE<int32_t>(item._iFMaxDam);
 	file.WriteLE<int32_t>(item._iLMinDam);
 	file.WriteLE<int32_t>(item._iLMaxDam);
+#endif
 	file.WriteLE<int32_t>(item._iPLArmorPierce);
 	file.WriteLE<int8_t>(item._iPrefixPower);
 	file.WriteLE<int8_t>(item._iSuffixPower);
+#if 1 // jwk added
+	file.WriteLE<uint8_t>(item._iThornsMin);
+	file.WriteLE<uint8_t>(item._iThornsMax);
+#else
 	file.Skip(2); // Alignment
+#endif
 	file.WriteLE<int32_t>(item._iVAdd1);
 	file.WriteLE<int32_t>(item._iVMult1);
 	file.WriteLE<int32_t>(item._iVAdd2);
@@ -1393,10 +1443,22 @@ void SavePlayer(SaveHelper &file, const Player &player)
 	file.Skip(2);         // Alignment
 	file.Skip<int32_t>(); // _pISplDur
 	file.WriteLE<int32_t>(player._pArmorPierce);
+#if JWK_INCLUDE_MAGIC_DAMAGE_IN_FILE_FORMAT
+	file.WriteLE<uint16_t>(player._pIFMinDam);
+	file.WriteLE<uint16_t>(player._pIFMaxDam);
+	file.WriteLE<uint16_t>(player._pILMinDam);
+	file.WriteLE<uint16_t>(player._pILMaxDam);
+	file.WriteLE<uint16_t>(player._pIMMinDam);
+	file.WriteLE<uint16_t>(player._pIMMaxDam);
+	file.WriteLE<uint8_t>(player._pIThornsMin);
+	file.WriteLE<uint8_t>(player._pIThornsMax);
+	file.Skip(2);
+#else // original code
 	file.WriteLE<int32_t>(player._pIFMinDam);
 	file.WriteLE<int32_t>(player._pIFMaxDam);
 	file.WriteLE<int32_t>(player._pILMinDam);
 	file.WriteLE<int32_t>(player._pILMaxDam);
+#endif
 	file.WriteLE<int32_t>(player._pOilType);
 	file.WriteLE<uint8_t>(player.pTownWarps);
 	file.WriteLE<uint8_t>(player.pDungMsgs);
@@ -1479,12 +1541,7 @@ void SaveMonster(SaveHelper *file, Monster &monster, MonsterConversionData *mons
 	file->WriteLE<int32_t>(offset2.deltaX);
 	file->WriteLE<int32_t>(offset2.deltaY);
 	file->Skip<int32_t>(); // Skip _mVar8
-#if JWK_BUFF_MONSTERS_IN_MULTIPLAYER
-	file->WriteLE<int32_t>(monster.maxHitPointsPreMultiplayerScale);
-	monster.maxHitPoints = monster.maxHitPointsPreMultiplayerScale;
-#else // original code
-	file->WriteLE<int32_t>(monster.maxHitPoints);
-#endif
+	file->WriteLE<int32_t>(monster.maxHitPointsPreMultiplayerScale); // JWK_BUFF_MONSTERS_IN_MULTIPLAYER - original code wrote monster.maxHitPoints instead of maxHitPointsPreMultiplayerScale
 	file->WriteLE<int32_t>(monster.hitPoints);
 
 	file->WriteLE<uint8_t>(static_cast<int8_t>(monster.ai));
@@ -1503,34 +1560,41 @@ void SaveMonster(SaveHelper *file, Monster &monster, MonsterConversionData *mons
 	file->WriteLE<uint8_t>(static_cast<uint8_t>(monster.uniqueType) + 1);
 	file->WriteLE<uint8_t>(monster.uniqTrans);
 	file->WriteLE<int8_t>(monster.corpseId);
-
 	file->WriteLE<int8_t>(monster.whoHit);
+
+	// jwk begin file format edit (increase types from 8 bits -> 16 bits and 16 bits -> 32 bits to avoid overflow)
+
+	if (monsterConversionData != nullptr)
+		file->WriteLE<uint32_t>(monsterConversionData->experience);
+	else
+		file->WriteLE<uint32_t>(monster.exp(sgGameInitInfo.nDifficulty));
+
+	file->WriteLE<uint16_t>(monster.minDamage);
+	file->WriteLE<uint16_t>(monster.maxDamage);
+	file->WriteLE<uint16_t>(monster.minDamageSpecial);
+	file->WriteLE<uint16_t>(monster.maxDamageSpecial);
+
+	if (monsterConversionData != nullptr) {
+		file->WriteLE<uint16_t>(monsterConversionData->toHit);
+	} else {
+		file->WriteLE<uint16_t>(monster.toHit(sgGameInitInfo.nDifficulty));
+	}
+	if (monsterConversionData != nullptr) {
+		file->WriteLE<uint16_t>(monsterConversionData->toHitSpecial);
+	} else {
+		file->WriteLE<uint16_t>(monster.toHitSpecial(sgGameInitInfo.nDifficulty));
+	}
+
+	file->WriteLE<uint16_t>(monster.armorClass);
+	file->WriteLE<uint16_t>(monster.resistance);
+
 	if (monsterConversionData != nullptr)
 		file->WriteLE<int8_t>(monsterConversionData->monsterLevel);
 	else
 		file->WriteLE<int8_t>(static_cast<int8_t>(monster.level(sgGameInitInfo.nDifficulty)));
-	file->Skip(1); // Alignment
-	if (monsterConversionData != nullptr)
-		file->WriteLE<uint16_t>(monsterConversionData->experience);
-	else
-		file->WriteLE<uint16_t>(static_cast<uint16_t>(std::min<unsigned>(std::numeric_limits<uint16_t>::max(), monster.exp(sgGameInitInfo.nDifficulty))));
+	file->Skip(3); // Alignment
 
-	if (monsterConversionData != nullptr)
-		file->WriteLE<uint8_t>(monsterConversionData->toHit);
-	else
-		file->WriteLE<uint8_t>(static_cast<uint8_t>(std::min<uint16_t>(monster.toHit(sgGameInitInfo.nDifficulty), std::numeric_limits<uint8_t>::max()))); // For backwards compatibility
-	file->WriteLE<uint8_t>(monster.minDamage);
-	file->WriteLE<uint8_t>(monster.maxDamage);
-	if (monsterConversionData != nullptr)
-		file->WriteLE<uint8_t>(monsterConversionData->toHitSpecial);
-	else
-		file->WriteLE<uint8_t>(static_cast<uint8_t>(std::min<uint16_t>(monster.toHitSpecial(sgGameInitInfo.nDifficulty), std::numeric_limits<uint8_t>::max()))); // For backwards compatibility
-	file->WriteLE<uint8_t>(monster.minDamageSpecial);
-	file->WriteLE<uint8_t>(monster.maxDamageSpecial);
-	file->WriteLE<uint8_t>(monster.armorClass);
-	file->Skip(1); // Alignment
-	file->WriteLE<uint16_t>(monster.resistance);
-	file->Skip(2); // Alignment
+	// jwk end file format edit
 
 	file->WriteLE<int32_t>(monster.talkMsg == TEXT_NONE ? 0 : monster.talkMsg);       // Replicate original bad mapping of none for monsters
 	file->WriteLE<uint8_t>(monster.leader == Monster::NoLeader ? 0 : monster.leader); // Vanilla uses 0 as the default leader which corresponds to player 0s golem
@@ -1577,8 +1641,8 @@ void SaveMissile(SaveHelper *file, const Missile &missile)
 	file->WriteLE<uint32_t>(missile._miPreFlag ? 1 : 0);
 	file->WriteLE<uint32_t>(missile._miUniqTrans);
 	file->WriteLE<int32_t>(missile._ticksUntilExpiry);
-	file->WriteLE<int32_t>(missile._misource);
-	file->WriteLE<int32_t>(missile._micaster);
+	file->WriteLE<int32_t>(missile._miSourceID);
+	file->WriteLE<int32_t>(missile._miEnemyType);
 	file->WriteLE<int32_t>(missile._midam);
 	file->WriteLE<uint32_t>(missile._miHitFlag ? 1 : 0);
 	file->WriteLE<int32_t>(missile._midist);
@@ -2585,7 +2649,7 @@ void LoadGame(bool firstflag)
 	// convert stray manashield missiles into pManaShield flag
 	for (auto &missile : Missiles) {
 		if (missile._mitype == MissileID::ManaShield && !missile._miDelFlag) {
-			Players[missile._misource].pManaShield = true;
+			Players[missile._miSourceID].pManaShield = true;
 			missile._miDelFlag = true;
 		}
 	}

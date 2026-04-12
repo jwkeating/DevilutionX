@@ -207,9 +207,9 @@ struct Monster { // note: missing field _mAFNum
 	 * @brief Contains information for current animation
 	 */
 	AnimationInfo animInfo;
-	int maxHitPoints;
-	int maxHitPointsPreMultiplayerScale;
-	int hitPoints;
+	int maxHitPoints;                     // shifted value
+	int maxHitPointsPreMultiplayerScale;  // shifted value
+	int hitPoints;                        // shifted value
 	uint32_t flags;
 	/** Seed used to determine item drops on death */
 	uint32_t rndItemSeed;
@@ -268,17 +268,19 @@ struct Monster { // note: missing field _mAFNum
 	uint8_t uniqTrans;
 	int8_t corpseId;
 	int8_t whoHit;
-	uint8_t minDamage;
-	uint8_t maxDamage;
-	uint8_t minDamageSpecial;
-	uint8_t maxDamageSpecial;
-	uint8_t armorClass;
+	uint16_t minDamage;
+	uint16_t maxDamage;
+	uint16_t minDamageSpecial;
+	uint16_t maxDamageSpecial;
+	uint16_t armorClass;
 	uint8_t leader;
 	LeaderRelation leaderRelation;
 	uint8_t packSize;
 	int8_t lightId;
 
 	static constexpr uint8_t NoLeader = -1;
+
+	void UpdateMonsterHealthForMultiplayer();
 
 	/**
 	 * @brief Sets the current cell sprite to match the desired desiredDirection and animation sequence

@@ -89,6 +89,24 @@ enum BaseItemIdx : int16_t { // This defines named constants for indexing the Al
 	IDI_NONE = -1,
 };
 
+// Define some named constants in the ItemPrefixes[] array
+enum ItemPrefix : int16_t {
+	Prefix_Jesters = 83,
+	Prefix_Crystalline = 84,
+	Prefix_Doppelgangers = 85,
+};
+
+// Define some named constants in the ItemSuffixes[] array
+enum ItemSuffix : int16_t {
+	Suffix_Devastation = 101,
+	Suffix_Decay = 102,
+	Suffix_Peril = 103,
+	Suffix_Casting = 104,
+	Suffix_Mistakes = 105,
+	Suffix_Channeling = 106,
+	Suffix_Evocation = 107,
+};
+
 enum UniqueItemIdx : int8_t { // index into the UniqueItems[] array
 // jwk - There's a bunch of missing indices in this enum but that just means the integer hasn't been named.  Basically, any item index that isn't referred by name doesn't need to be in this enum.
 	UITEM_CLEAVER,
@@ -439,14 +457,17 @@ enum class ItemSpecialEffect : uint32_t {
 	// clang-format off
 	None                   = 0,
 	RandomStealLife        = 1 << 1,
-	RandomArrowVelocity    = 1 << 2,
-	FireArrows             = 1 << 3,
-	FireDamage             = 1 << 4,
-	LightningDamage        = 1 << 5,
-	DrainLife              = 1 << 6,
-	FastCast               = 1 << 7, // JWK_ALLOW_FASTER_CASTING
-	MultipleArrows         = 1 << 9,
+	DrainLife              = 1 << 2,
+	RandomArrowVelocity    = 1 << 3,
+	FireArrows             = 1 << 4,
+	LightningArrows        = 1 << 5,
+	PoisonArrows           = 1 << 6,
+	MultipleArrows         = 1 << 7,
+	FireDamage             = 1 << 8, // fire damage on melee weapon
+	LightningDamage        = 1 << 9, // lightning damage on melee weapon
+	// unused
 	Knockback              = 1 << 11,
+	// unused
 	StealMana3             = 1 << 13,
 	StealMana5             = 1 << 14,
 	StealLife3             = 1 << 15,
@@ -459,10 +480,11 @@ enum class ItemSpecialEffect : uint32_t {
 	FasterHitRecovery      = 1 << 22,
 	FastestHitRecovery     = 1 << 23,
 	FastBlock              = 1 << 24,
-	LightningArrows        = 1 << 25,
+	FastCast               = 1 << 25, // JWK_ALLOW_FASTER_CASTING
 	Thorns                 = 1 << 26,
 	NoMana                 = 1 << 27,
 	HalfTrapDamage         = 1 << 28,
+	// unused
 	TripleDemonDamage      = 1 << 30,
 	ZeroResistance         = 1U << 31,
 	// clang-format on
@@ -583,8 +605,8 @@ enum item_effect_type : int8_t { // I don't think this enum is used to index any
 	IPL_ALLRES,
 	IPL_SPLLVLADD = 14,
 	IPL_CHARGES,
-	IPL_FIREDAM,
-	IPL_LIGHTDAM,
+	IPL_FIRE_DAM, // fire damage on melee attack
+	IPL_LIGHTNING_DAM, // lightning damage on melee attack
 	IPL_STR = 19,
 	IPL_STR_CURSE,
 	IPL_MAG,
@@ -606,13 +628,13 @@ enum item_effect_type : int8_t { // I don't think this enum is used to index any
 	IPL_INDESTRUCTIBLE,
 	IPL_LIGHT,
 	IPL_LIGHT_CURSE,
-	IPL_MULT_ARROWS = 41, /* only used in hellfire */
+	IPL_MULT_ARROWS = 41,
 	IPL_FIRE_ARROWS,
-	IPL_LIGHT_ARROWS,
+	IPL_LIGHTNING_ARROWS,
+	IPL_POISON_ARROWS,
 	IPL_INVCURS,
 	IPL_THORNS,
 	IPL_NOMANA,
-	IPL_FIREBALL = 50, /* only used in hellfire */
 	IPL_ABSHALFTRAP = 52,
 	IPL_KNOCKBACK,
 	IPL_STEALMANA = 55,
@@ -633,8 +655,6 @@ enum item_effect_type : int8_t { // I don't think this enum is used to index any
 	IPL_DRAINLIFE = 72,
 	IPL_RNDSTEALLIFE,
 	IPL_SETAC = 75,
-	IPL_ADDACLIFE,
-	IPL_ADDMANAAC,
 	IPL_AC_CURSE = 79,
 	IPL_LASTDIABLO = IPL_AC_CURSE,
 	IPL_FIRERES_CURSE,

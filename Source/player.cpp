@@ -296,89 +296,88 @@ static void StartAttack(Player &player, Direction d, bool includesFirstFrame)
 	// Unarmed swing speed in frames (game ticks): Warrior/Barbarian=9.  Rogue/Bard=10.  Monk=7.  Sorcerer=12 (or 9 if he equpips a shield!)
 	// Staff swing speed in frames (game ticks): Warrior/Barbarian=11.  Rogue/Bard=11.  Monk=8.  Sorcerer=12.
 	// Sword swing speed in frames (game ticks): Warrior/Barbarian=9.  Rogue/Bard=10.  Monk/Sorcerer=12.
-	// Mace swing speed in frames (game ticks): Warrior=9.  Barbarian=8.  Rogue/Bard=10.  Monk/Sorcerer=12.
-	// Axe swing speed in frames (game ticks): Warrior=10.  Barbarian=8.  Rogue/Bard=13.  Monk=14.  Sorcerer=16.
-	// We can edit the above defaults by adding skipped frames.
-	// Similar to sorcerer's casting and rogue's range attacks, make warrior, barbarian, and monk have fastest attack by default with their preferred weapons.
-	// We cap swing speed to that value so they can't swing any faster.  This means warrior/barbarian get no benefit from swords/maces/axes that have a haste suffix.
-	// This is both a nerf and a buff.  It's a melee class nerf because other classes like rogue can equip a haste sword and swing as fast as warrior.
-	// However, it's also a melee class buff because now warrior isn't obligated to use haste weapons, and warriors can make use of other good suffixes like life steal.
-	bool swingSpeedCapped = false;
+	// Mace swing speed in frames (game ticks): Warrior/Barbarian=9.  Rogue/Bard=10.  Monk/Sorcerer=12.
+	// Axe swing speed in frames (game ticks): Warrior/Barbarian=10.  Rogue/Bard=13.  Monk=14.  Sorcerer=16.
+	// We can edit the above defaults by adding skipped frames by default. This is better than editing the animation data directly because editing PlayersAnimData[] causes damage to be applied at a frame where the weapon isn't visually hitting.
+	// In the original (bugged) code, haste made a warrior's sword swing go from 9 frames -> 7 frames which is a 9/7 ~ 28.5% damage buff plus a more responsive character and more reliable stunlocks.
+	// Here, the goal is to passively increase swing rate so we can slightly nerf haste and not have players swing too slow.  If we don't nerf haste then it's too good compared to other item suffixes.
+	// Below, we allow warrior to swing at 8 frames by default and 7 frames with haste (8/7 ~ 14.2% damage buff):
+	int numFramesForClass;
 	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Staff) {
+		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].staffActionFrame;
 		if (player._pHeroClass == HeroClass::Sorcerer) {
-			skippedAnimationFrames = includesFirstFrame ? 4 : 3; // swing at 9 frames
-			swingSpeedCapped = true;
-		} else if (player._pHeroClass == HeroClass::Monk) {
-			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 6 frames
-			swingSpeedCapped = true;
-		}
-	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Axe || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Axe) {
-		if (player._pHeroClass == HeroClass::Warrior) {
-			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 8 frames
-			swingSpeedCapped = true;
-		} else if (player._pHeroClass == HeroClass::Barbarian) {
-			skippedAnimationFrames = includesFirstFrame ? 2 : 1; // swing at 7 frames (6 frames is overpowered)
-			swingSpeedCapped = true;
+			skippedAnimationFrames += 1; // Change default swing from 12 -> 11 frames
 		}
 	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Sword || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Sword) {
-		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
-			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
-			swingSpeedCapped = true;
+		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].swordActionFrame;
+		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian || player._pHeroClass == HeroClass::Rogue || player._pHeroClass == HeroClass::Bard) {
+			skippedAnimationFrames += 1; // change default swing from 9 -> 8 frames for Warrior/Barbarian.  10 -> 9 for Rogue/Bard
 		}
 	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Mace || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Mace) {
+		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].maceActionFrame;
+		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
+			skippedAnimationFrames += 1; // change default swing from 9 -> 8 frames
+		}
+	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Axe || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Axe) {
+		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].axeActionFrame;
 		if (player._pHeroClass == HeroClass::Warrior) {
-			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
-			swingSpeedCapped = true;
+			skippedAnimationFrames += 1; // change default swing from 10 -> 9 frames
 		} else if (player._pHeroClass == HeroClass::Barbarian) {
-			skippedAnimationFrames = includesFirstFrame ? 2 : 1; // swing at 7 frames (6 frames is overpowered)
-			swingSpeedCapped = true;
+			skippedAnimationFrames += 2; // change default swing from 10 -> 8 frames
 		}
 	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) { // unarmed with shield
-		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
-			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
-			swingSpeedCapped = true;
-		} else if (player._pHeroClass == HeroClass::Sorcerer || player._pHeroClass == HeroClass::Monk) {
-			// no adjustments needed (sorcerer already swings at 9, and monk doesn't punch at 6 frames if he equips a shield)
-			swingSpeedCapped = true;
+		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].unarmedShieldActionFrame;
+		if (player._pHeroClass != HeroClass::Monk && player._pHeroClass != HeroClass::Sorcerer) {
+			skippedAnimationFrames += 1;
 		}
 	} else { // completely unarmed
-		if (player._pHeroClass == HeroClass::Monk) {
-			skippedAnimationFrames = includesFirstFrame ? 2 : 1; // swing at 6 frames
-			swingSpeedCapped = true;
-		} else if (player._pHeroClass == HeroClass::Sorcerer) {
-			skippedAnimationFrames = includesFirstFrame ? 4 : 3; // swing at 9 frames
-			swingSpeedCapped = true;
-		} else if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
-			skippedAnimationFrames = includesFirstFrame ? 3 : 2; // swing at 7 frames
-			swingSpeedCapped = true;
+		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].unarmedActionFrame;
+		if (player._pHeroClass == HeroClass::Sorcerer) {
+			skippedAnimationFrames += 3; // Change from 12 -> 9 frames to match the unarmed-with-shield case
+		} else {
+			skippedAnimationFrames += 1; // Everyone gets an unarmed speedup.  This puts monk at 6 frames but that's fine because he's not getting a haste buff from any weapon.
 		}
 	}
-	// if (!includesFirstFrame) {
-	// This is the case where you attack while standing still (your sustained swing rate as opposed to your first attack after your character walks to a target, or potentially after your character gets hit?)
-	// One less frame is skipped for sustained swing rate because otherwise players swing too fast.
-	// This means "Quick attack" has no effect on sustained swing rate but it still makes your first attack faster.  This makes sense because QuickAttack weapons are called "of readiness"
-	// FastestAttack provides a sustained -3 frame speedup, FasterAttack a sustained -2, and FastAttack a sustained -1.
-	// To test, see gDebugAttackRate in floatingnumbers.cpp
+	numFramesForClass -= skippedAnimationFrames;
+
+	int frameReductionFraction = 0; // measured in 128'ths
+	if (HasAnyOf(flags, ItemSpecialEffect::FastestAttack)) {
+		frameReductionFraction = 16;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::FasterAttack)) {
+		frameReductionFraction = 12;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::FastAttack)) {
+		frameReductionFraction = 8;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::QuickAttack)) {
+		frameReductionFraction = 4;
+	}
+
+	if (frameReductionFraction > 0) {
+		// This code skips 'frameReductionFraction' of numFramesForClass.  ie, if numFramesForClass == 8 and frameReductionFraction == 16/128 then 1 frame will be skipped.
+		// Because we can only skip whole frames (we can't skip part of a frame), we can achieve the same effect as skipping partial frames by using "chance to skip a frame."
+		// Instead of skipping 25% of one frame, we can skip the frame 25% of the time.  Using this strategy, we can (on average) skip arbitrary fractions.
+		// This allows us to apply a consistent X% speedup for all classes regardless of their default swing rate, and every bit of haste helps.  Quick attack is no longer useless.
+		// In game, this actually feels okay.  If your character has a 7.25 swing rate, you might swing at 7,7,7,8,7,8,7,7,7,7,8,7,7,7,etc.
+		// Each player in a network game will compute their own RNG for this swing so players might see a different order 7,8,7,8,7,7,7,etc but the average will be equal.
+		// To test this code, see gDebugAttackRate in floatingnumbers.cpp
+		int wholeFramesSkipped = numFramesForClass * frameReductionFraction / 128;
+		int skippedAnimationFramesPercentRemaining = numFramesForClass * frameReductionFraction - wholeFramesSkipped * 128;
+		if (GenerateRnd(128) < skippedAnimationFramesPercentRemaining) {
+			skippedAnimationFrames++;
+		}
+		skippedAnimationFrames += wholeFramesSkipped;
+	}
+	//if (includesFirstFrame) {
+	//    I think this is your first attack after your character walks to a target?  Or potentially after your character gets hit?
+	//} else {
+	//    This is your sustained swing rate, when you attack while standing still
 	//}
-	if (!swingSpeedCapped) {
-		if (HasAnyOf(flags, ItemSpecialEffect::FastestAttack)) {
-			skippedAnimationFrames = includesFirstFrame ? 4 : 3; // <-- Fix haste bug.  This allows Rogue/Bard to equip a haste sword/mace and swing at 7 frames
-		} else if (HasAnyOf(flags, ItemSpecialEffect::FasterAttack)) {
-			skippedAnimationFrames = includesFirstFrame ? 3 : 2;
-		} else if (HasAnyOf(flags, ItemSpecialEffect::FastAttack)) {
-			skippedAnimationFrames = includesFirstFrame ? 2 : 1;
-		} else if (HasAnyOf(flags, ItemSpecialEffect::QuickAttack)) {
-			skippedAnimationFrames = includesFirstFrame ? 1 : 0;
-		}
-	}
-	// After all the above logic, no class swings faster than 7 frames except monk with a staff (6 frames), or unarmed monk (6 frames).
 #else // original code:
 	// In the original code, the fastest swing for warrior is 7 (not 6, due to haste bug).  Swing speed is uncapped so an unarmed monk could swing at 5 frames if he somehow obtained haste without equipping a weapon.
 	// If the first frame is not included in vanilla, the skip logic for the first frame will not be executed.
 	// This will result in a different and slower attack speed.
 	if (HasAnyOf(flags, ItemSpecialEffect::FastestAttack)) {
 		// If the fastest attack logic is trigger frames in vanilla two frames are skipped, so missing the first frame reduces the skip logic by two frames.
-		skippedAnimationFrames = includesFirstFrame ? 4 : 2; // <-- haste bug (sustained swing rate of fastest attack is the same as faster attack)
+		skippedAnimationFrames = includesFirstFrame ? 4 : 2; // <-- haste bug (sustained swing rate of fastest attack is the same as faster attack).  This should be 4 : 3
 	} else if (HasAnyOf(flags, ItemSpecialEffect::FasterAttack)) {
 		skippedAnimationFrames = includesFirstFrame ? 3 : 2;
 	} else if (HasAnyOf(flags, ItemSpecialEffect::FastAttack)) {
@@ -405,25 +404,35 @@ static void StartRangeAttack(Player &player, Direction d, WorldTileCoord cx, Wor
 	}
 
 	int8_t skippedAnimationFrames = 0;
+	const auto flags = player._pIFlags;
 #if JWK_USE_CONSISTENT_FASTER_ATTACK
-	if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastestAttack)) {
-		skippedAnimationFrames = 4;
-	} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FasterAttack)) {
-		skippedAnimationFrames = 3;
-	} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastAttack)) {
-		skippedAnimationFrames = 2;
-	} else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::QuickAttack)) {
-		skippedAnimationFrames = 1;
+	// We perform similar logic to StartAttack().  See comments there.
+	// Fire speed in frames (game ticks):  Rogue=8.  Bard=9.  Warrior/Barbarian=11.  Monk=14.  Sorcerer=16.
+	int numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].bowActionFrame;
+	if (player._pHeroClass == HeroClass::Sorcerer) {
+		skippedAnimationFrames += 2; // Change default fire rate from 16 -> 14 frames
+	} else if (player._pHeroClass == HeroClass::Monk) {
+		skippedAnimationFrames += 1; // Change default fire rate from 14 -> 13 frames
 	}
-	if (!includesFirstFrame) {
-		// Similar to StartAttack() (see comments there), this is your sustained fire rate as opposed to your first shot after your character stops walking (or potentially after getting hit?)
-		skippedAnimationFrames = std::max(0, skippedAnimationFrames - 1);
+	numFramesForClass -= skippedAnimationFrames;
+
+	int frameReductionFraction = 0; // measured in 128'ths
+	if (HasAnyOf(flags, ItemSpecialEffect::FastestAttack)) {
+		frameReductionFraction = 16;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::FasterAttack)) {
+		frameReductionFraction = 12;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::FastAttack)) {
+		frameReductionFraction = 8;
+	} else if (HasAnyOf(flags, ItemSpecialEffect::QuickAttack)) {
+		frameReductionFraction = 4;
 	}
-	// Fire speed in frames (game ticks): Rogue=7.  Warrior/Barbarian/Bard=11.  Monk=14.  Sorcerer=16.
-	// Don't let anyone shoot faster than 7 frames.
-	int actionFrame = PlayersAnimData[(int)player._pHeroClass].bowActionFrame;
-	if (actionFrame - skippedAnimationFrames < 7) {
-		skippedAnimationFrames = actionFrame - 7;
+	if (frameReductionFraction > 0) {
+		int wholeFramesSkipped = numFramesForClass * frameReductionFraction / 128;
+		int skippedAnimationFramesPercentRemaining = numFramesForClass * frameReductionFraction - wholeFramesSkipped * 128;
+		if (GenerateRnd(128) < skippedAnimationFramesPercentRemaining) {
+			skippedAnimationFrames++;
+		}
+		skippedAnimationFrames += wholeFramesSkipped;
 	}
 #else // original code:
 	if (!gbIsHellfire) {
@@ -915,6 +924,62 @@ static bool DamageWeapon(Player &player, unsigned damageFrequency)
 	return false;
 }
 
+void Player::DoLifeAndManaSteal(int damage)
+{
+	if (HasAnyOf(_pIFlags, ItemSpecialEffect::RandomStealLife)) {
+#if JWK_BUFF_LIFE_STEAL_CROWN
+		int stealAmount = damage / 8;
+#else // original code
+		int stealAmount = GenerateRnd(damage / 8);
+#endif
+		_pHitPoints += stealAmount;
+		if (_pHitPoints > _pMaxHP) {
+			_pHitPoints = _pMaxHP;
+		}
+		_pHPBase += stealAmount;
+		if (_pHPBase > _pMaxHPBase) {
+			_pHPBase = _pMaxHPBase;
+		}
+		RedrawComponent(PanelDrawComponent::Health);
+	}
+	if (HasAnyOf(_pIFlags, ItemSpecialEffect::StealMana3 | ItemSpecialEffect::StealMana5) && HasNoneOf(_pIFlags, ItemSpecialEffect::NoMana)) {
+		int stealAmount = 0;
+		if (HasAnyOf(_pIFlags, ItemSpecialEffect::StealMana3)) {
+			stealAmount = 3 * damage / 100;
+		}
+		if (HasAnyOf(_pIFlags, ItemSpecialEffect::StealMana5)) {
+			stealAmount = 5 * damage / 100;
+		}
+		_pMana += stealAmount;
+		if (_pMana > _pMaxMana) {
+			_pMana = _pMaxMana;
+		}
+		_pManaBase += stealAmount;
+		if (_pManaBase > _pMaxManaBase) {
+			_pManaBase = _pMaxManaBase;
+		}
+		RedrawComponent(PanelDrawComponent::Mana);
+	}
+	if (HasAnyOf(_pIFlags, ItemSpecialEffect::StealLife3 | ItemSpecialEffect::StealLife5)) {
+		int stealAmount = 0;
+		if (HasAnyOf(_pIFlags, ItemSpecialEffect::StealLife3)) {
+			stealAmount = 3 * damage / 100;
+		}
+		if (HasAnyOf(_pIFlags, ItemSpecialEffect::StealLife5)) {
+			stealAmount = 5 * damage / 100;
+		}
+		_pHitPoints += stealAmount;
+		if (_pHitPoints > _pMaxHP) {
+			_pHitPoints = _pMaxHP;
+		}
+		_pHPBase += stealAmount;
+		if (_pHPBase > _pMaxHPBase) {
+			_pHPBase = _pMaxHPBase;
+		}
+		RedrawComponent(PanelDrawComponent::Health);
+	}
+}
+
 static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentDamage = false)
 {
 	int hitChance = 0;
@@ -934,7 +999,7 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 		diceRollToAvoidHit = 0;
 	}
 
-	hitChance += player.GetMeleePiercingToHit() - player.CalculateArmorAfterPierce(monster.armorClass, true);
+	hitChance += player.GetMeleeToHit() - player.CalculateArmorAfterPierce(monster.armorClass, true);
 #if JWK_EDIT_HIT_CHANCE // use the same formula as MonsterAttackPlayer
 	hitChance += 2 * (player._pLevel - monster.level(sgGameInitInfo.nDifficulty));
 #endif
@@ -950,10 +1015,6 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 			return false;
 	}
 
-	if (gbIsHellfire && HasAllOf(player._pIFlags, ItemSpecialEffect::FireDamage | ItemSpecialEffect::LightningDamage)) {
-		int midam = player._pIFMinDam + GenerateRnd(player._pIFMaxDam - player._pIFMinDam);
-		AddMissile(player.position.tile, player.position.temp, player._pdir, MissileID::SpectralArrow, TARGET_MONSTERS, player.getId(), midam, 0);
-	}
 	int mind = player._pIMinDam;
 	int maxd = player._pIMaxDam;
 	int dam = GenerateRnd(maxd - mind + 1) + mind;
@@ -983,11 +1044,11 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 
 	switch (monster.data().monsterClass) {
 	case MonsterClass::Undead:
-#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE // Make bonus and penalty the same strength instead of using a larger penalty
+#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE
 		if (phanditype == ItemType::Sword) {
-			dam = dam * 2 / 3;
+			dam -= dam / 4;
 		} else if (phanditype == ItemType::Mace) {
-			dam = dam * 3 / 2;
+			dam += dam / 2;
 		}
 #else // original code
 		if (phanditype == ItemType::Sword) {
@@ -998,11 +1059,12 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 #endif
 		break;
 	case MonsterClass::Animal:
-#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE // Make bonus and penalty the same strength instead of using a larger penalty
+#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE
+		// reduce sword bonus vs animals because caves/hell has no undead making swords too favored
 		if (phanditype == ItemType::Mace) {
-			dam = dam * 2 / 3;
+			dam -= dam / 8;
 		} else if (phanditype == ItemType::Sword) {
-			dam = dam * 3 / 2;
+			dam += dam / 4;
 		}
 		break;
 #else // original code
@@ -1040,6 +1102,7 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 		dam >>= 2;
 
 	if (&player == MyPlayer) {
+		player.DoLifeAndManaSteal(dam);
 		if (HasAnyOf(player.pDamAcFlags, ItemSpecialEffectHf::Peril)) {
 			dam2 += player._pIGetHit << 6;
 			if (dam2 >= 0) {
@@ -1055,58 +1118,6 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 		ApplyMonsterDamage(DamageType::Physical, monster, dam, monster.mode == MonsterMode::Petrified ? 100 : hitChance);
 	}
 
-	if (HasAnyOf(player._pIFlags, ItemSpecialEffect::RandomStealLife)) {
-#if JWK_BUFF_LIFE_STEAL_CROWN
-		int stealAmount = dam / 8;
-#else // original code
-		int stealAmount = GenerateRnd(dam / 8);
-#endif
-		player._pHitPoints += stealAmount;
-		if (player._pHitPoints > player._pMaxHP) {
-			player._pHitPoints = player._pMaxHP;
-		}
-		player._pHPBase += stealAmount;
-		if (player._pHPBase > player._pMaxHPBase) {
-			player._pHPBase = player._pMaxHPBase;
-		}
-		RedrawComponent(PanelDrawComponent::Health);
-	}
-	if (HasAnyOf(player._pIFlags, ItemSpecialEffect::StealMana3 | ItemSpecialEffect::StealMana5) && HasNoneOf(player._pIFlags, ItemSpecialEffect::NoMana)) {
-		int stealAmount = 0;
-		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::StealMana3)) {
-			stealAmount = 3 * dam / 100;
-		}
-		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::StealMana5)) {
-			stealAmount = 5 * dam / 100;
-		}
-		player._pMana += stealAmount;
-		if (player._pMana > player._pMaxMana) {
-			player._pMana = player._pMaxMana;
-		}
-		player._pManaBase += stealAmount;
-		if (player._pManaBase > player._pMaxManaBase) {
-			player._pManaBase = player._pMaxManaBase;
-		}
-		RedrawComponent(PanelDrawComponent::Mana);
-	}
-	if (HasAnyOf(player._pIFlags, ItemSpecialEffect::StealLife3 | ItemSpecialEffect::StealLife5)) {
-		int stealAmount = 0;
-		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::StealLife3)) {
-			stealAmount = 3 * dam / 100;
-		}
-		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::StealLife5)) {
-			stealAmount = 5 * dam / 100;
-		}
-		player._pHitPoints += stealAmount;
-		if (player._pHitPoints > player._pMaxHP) {
-			player._pHitPoints = player._pMaxHP;
-		}
-		player._pHPBase += stealAmount;
-		if (player._pHPBase > player._pMaxHPBase) {
-			player._pHPBase = player._pMaxHPBase;
-		}
-		RedrawComponent(PanelDrawComponent::Health);
-	}
 	if ((monster.hitPoints >> 6) <= 0) {
 		M_StartKill(monster, player);
 	} else {
@@ -1183,61 +1194,10 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 #if JWK_REDUCE_DAMAGE_IN_PVP
 	skdam /= 2;
 #endif
-	if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::RandomStealLife)) {
-#if JWK_BUFF_LIFE_STEAL_CROWN
-		int stealAmount = skdam / 8;
-#else // original code
-		int stealAmount = GenerateRnd(skdam / 8);
-#endif
-		attacker._pHitPoints += stealAmount;
-		if (attacker._pHitPoints > attacker._pMaxHP) {
-			attacker._pHitPoints = attacker._pMaxHP;
-		}
-		attacker._pHPBase += stealAmount;
-		if (attacker._pHPBase > attacker._pMaxHPBase) {
-			attacker._pHPBase = attacker._pMaxHPBase;
-		}
-		RedrawComponent(PanelDrawComponent::Health);
-	}
-#if JWK_ALLOW_LEECH_IN_PVP
-	if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealMana3 | ItemSpecialEffect::StealMana5) && HasNoneOf(attacker._pIFlags, ItemSpecialEffect::NoMana)) {
-		int stealAmount = 0;
-		if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealMana3)) {
-			stealAmount = 3 * skdam / 100;
-		}
-		if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealMana5)) {
-			stealAmount = 5 * skdam / 100;
-		}
-		attacker._pMana += stealAmount;
-		if (attacker._pMana > attacker._pMaxMana) {
-			attacker._pMana = attacker._pMaxMana;
-		}
-		attacker._pManaBase += stealAmount;
-		if (attacker._pManaBase > attacker._pMaxManaBase) {
-			attacker._pManaBase = attacker._pMaxManaBase;
-		}
-		RedrawComponent(PanelDrawComponent::Mana);
-	}
-	if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealLife3 | ItemSpecialEffect::StealLife5)) {
-		int stealAmount = 0;
-		if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealLife3)) {
-			stealAmount = 3 * skdam / 100;
-		}
-		if (HasAnyOf(attacker._pIFlags, ItemSpecialEffect::StealLife5)) {
-			stealAmount = 5 * skdam / 100;
-		}
-		attacker._pHitPoints += stealAmount;
-		if (attacker._pHitPoints > attacker._pMaxHP) {
-			attacker._pHitPoints = attacker._pMaxHP;
-		}
-		attacker._pHPBase += stealAmount;
-		if (attacker._pHPBase > attacker._pMaxHPBase) {
-			attacker._pHPBase = attacker._pMaxHPBase;
-		}
-		RedrawComponent(PanelDrawComponent::Health);
-	}
-#endif
 	if (&attacker == MyPlayer) {
+#if JWK_ALLOW_LEECH_IN_PVP
+		attacker.DoLifeAndManaSteal(skdam);
+#endif
 		NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), skdam, hitChance, DamageType::Physical);
 		AddFloatingNumber(DamageType::Physical, target, attacker.getId(), skdam, hitChance);
 	}
@@ -1275,14 +1235,14 @@ static bool DoAttack(Player &player)
 			}
 		}
 
-		if (!gbIsHellfire || !HasAllOf(player._pIFlags, ItemSpecialEffect::FireDamage | ItemSpecialEffect::LightningDamage)) {
-			const size_t playerId = player.getId();
-			if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FireDamage)) {
-				AddMissile(position, { 1, 0 }, Direction::South, MissileID::WeaponExplosion, TARGET_MONSTERS, playerId, 0, 0);
-			}
-			if (HasAnyOf(player._pIFlags, ItemSpecialEffect::LightningDamage)) {
-				AddMissile(position, { 2, 0 }, Direction::South, MissileID::WeaponExplosion, TARGET_MONSTERS, playerId, 0, 0);
-			}
+		const size_t playerId = player.getId();
+		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FireDamage)) {
+			// Encode "fire" by setting destination.x == 1
+			AddMissile(position, { 1, 0 }, Direction::South, MissileID::WeaponExplosion, TARGET_MONSTERS, playerId, 0, 0);
+		}
+		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::LightningDamage)) {
+			// Encode "lightning" by setting destination.x == 2
+			AddMissile(position, { 2, 0 }, Direction::South, MissileID::WeaponExplosion, TARGET_MONSTERS, playerId, 0, 0);
 		}
 
 		if (monster != nullptr) {
@@ -1374,13 +1334,15 @@ static bool DoRangeAttack(Player &player)
 		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FireArrows)) {
 			mistype = MissileID::FireArrow;
 		}
-		if (HasAnyOf(player._pIFlags, ItemSpecialEffect::LightningArrows)) {
+		else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::LightningArrows)) {
 			mistype = MissileID::LightningArrow;
 		}
-		if (HasAllOf(player._pIFlags, ItemSpecialEffect::FireArrows | ItemSpecialEffect::LightningArrows)) {
-			dmg = player._pIFMinDam + GenerateRnd(player._pIFMaxDam - player._pIFMinDam);
-			mistype = MissileID::SpectralArrow;
+		else if (HasAnyOf(player._pIFlags, ItemSpecialEffect::PoisonArrows)) {
+			mistype = MissileID::PoisonArrow;
 		}
+		// else if () {
+		//	mistype = MissileID::SpectralArrow; jwk TODO: implement something that creates a SpectralArrow.  It requires some .wav files for hellfire.
+		//}
 
 		AddMissile(
 		    player.position.tile,
@@ -3365,6 +3327,18 @@ void StripTopGold(Player &player)
 	player._pGold = CalculateGold(player);
 }
 
+int Player::CalcManaShieldAbsorbPercent() const
+{
+	// To make mana shield useful for all players, we compute an "ideal" absorb percent, which is the value that
+	// makes your health and mana globes decrease at equal rates so you can efficiently use rejuv potions.
+	// Mana shield approaches the ideal absorb value as you increase the spell skill, with a cap.
+	int manaShieldLevel = GetSpellLevel(SpellID::ManaShield);
+	int idealAbsorbPercent = (_pMaxMana * 100) / (_pMaxMana + _pMaxHP);
+	int maxAbsorbPercent = clamp(33 + 2 * manaShieldLevel, 0, 70);
+	int absorbPercent = std::min(idealAbsorbPercent, maxAbsorbPercent);
+	return absorbPercent;
+}
+
 void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*= 0*/, int frac /*= 0*/, int hitChanceForUI, int attackerForUI, DeathReason deathReason /*= DeathReason::MonsterOrTrap*/)
 {
 	int totalDamage = (dam << 6) + frac;
@@ -3381,10 +3355,7 @@ void ApplyPlrDamage(DamageType damageType, Player &player, int dam, int minHP /*
 			RedrawComponent(PanelDrawComponent::Mana);
 		}
 #if JWK_EDIT_MANA_SHIELD // some of the damage goes to mana, some of it goes to health
-		int manaShieldLevel = player.GetSpellLevel(SpellID::ManaShield);
-		int idealAbsorbPercent = (player._pMaxMana * 100) / (player._pMaxMana + player._pMaxHP);
-		int maxAbsorbPercent = clamp(30 + 2 * manaShieldLevel, 0, 66);
-		int absorbPercent = std::min(idealAbsorbPercent, maxAbsorbPercent);
+		int absorbPercent = player.CalcManaShieldAbsorbPercent();
 		int absorbAmount = absorbPercent * totalDamage / 100;
 		if (absorbAmount >= player._pMana) {
 			absorbAmount = player._pMana;
