@@ -70,7 +70,7 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcChargedBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(20 + generateRndSumFunc(player._pLevel, 2), spellLevel) / 2;
+	return ScaleSpellEffect(30 + generateRndSumFunc(player._pLevel, 3), spellLevel) / 4;
 	// original code: return generateRndFunc(player._pMagic / 4) + 1;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcHolyBoltDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
@@ -80,7 +80,7 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFireBallDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	return ScaleSpellEffect(player._pLevel + generateRndSumFunc(10, 3) + 5, spellLevel);
+	return ScaleSpellEffect(player._pLevel + generateRndSumFunc(10, 2) + 5, spellLevel);
 	// original code: return ScaleSpellEffect(2 * (player._pLevel + generateRndSumFunc(10, 2)) + 4, spellLevel);
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcElementalDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
@@ -122,6 +122,7 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcInfernoDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
 #if JWK_EDIT_INFERNO
+	#error "Not implemented properly.  It's tile locked to 8 directions but we want it to be aribrary direction so there's no blind spots"
 	//return 10000; // This does 3125 dmage for first puff
 	return ScaleSpellEffect(generateRndSumFunc(20, 5) + player._pLevel, spellLevel) * 3;
 #else
@@ -427,18 +428,23 @@ static bool RecordMissleGroupHit(const Missile& missile, MissileGroupList& missi
 	if (missile._missileGroup == 0) {
 		return true; // missile doesn't require deduplication logic.
 	}
-	if (missileGroupsToIgnoreForever.DoesEntryExist(missile._missileGroup)) {
-		return false; // Missile group already hit this target.  Don't allow another hit.
-	}
-	if (missileGroupsToIgnoreThisTick.DoesEntryExist(missile._missileGroup)) {
-		return false; // Missile group already hit this target this tick.  Don't allow another hit this tick.
-	}
+	// Note: We only check the missileGroupsToIgnoreForever list if the current missile requests to be ignored forever.
+	// This is required by chain lightning because both the incoming bolt and the outgoing bolt have the same _missileGroup but we want
+	// the incoming bolt to do damage (_missileGroupIgnoreForever=false) and the outgoing bolt to be ignored (_missileGroupIgnoreForever=true).
+	// We can't use a different _missileGroup for each bolt because we want all future bolts to be ignored as well.
 	if (missile._missileGroupIgnoreForever) {
+		if (missileGroupsToIgnoreForever.DoesEntryExist(missile._missileGroup)) {
+			return false; // Missile group already hit this target.  Don't allow another hit.
+		}
 		missileGroupsToIgnoreForever.AddEntry(missile._missileGroup);
+		return true;
 	} else {
+		if (missileGroupsToIgnoreThisTick.DoesEntryExist(missile._missileGroup)) {
+			return false; // Missile group already hit this target this tick.  Don't allow another hit this tick.
+		}
 		missileGroupsToIgnoreThisTick.AddEntry(missile._missileGroup);
+		return true;
 	}
-	return true;
 }
 #endif
 
@@ -637,7 +643,9 @@ static bool MonsterHitByMissileFromPlayer(Player& player, Monster& monster, int 
 #endif
 
 	if (&player == MyPlayer) {
-		player.DoLifeAndManaSteal(dam);
+		if (missileData.isArrow() && damageType == DamageType::Physical) {
+			player.DoLifeAndManaSteal(dam);
+		}
 		ApplyMonsterDamage(damageType, monster, dam, monster.mode == MonsterMode::Petrified ? 100 : hitChance);
 		if (JWK_REVEAL_RESISTANCES_WHEN_DAMAGED) {
 			TagMonsterWithDamageType(monster, damageType);
@@ -1011,7 +1019,9 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 		*blocked = true;
 	} else { // target takes damage
 		if (&attacker == MyPlayer) {
-			attacker.DoLifeAndManaSteal(dam);
+			if (missileData.isArrow() && damageType == DamageType::Physical) {
+				attacker.DoLifeAndManaSteal(dam);
+			}
 			NetSendCmdPvPDamage(true, target.getId(), attacker.getId(), dam, hitChance, damageType);
 			AddFloatingNumber(damageType, target, attacker.getId(), dam, hitChance);
 		}
@@ -3394,7 +3404,7 @@ void AddChargedBolt(Missile &missile, AddMissileParameter &parameter)
 		// original code: missile._midam = (missile._miEnemyType == TARGET_MONSTERS) ? (GenerateRnd(Players[missile._miSourceID]._pMagic / 4) + 1) : 15;
 	} else {
 		// This charged bolt isn't a normal spellcast.  Lightning arrow, for example.
-		missile._ticksUntilExpiry = 30;
+		missile._ticksUntilExpiry = 35;
 		missile._mlid = AddLight(missile.position.start, 2);
 	}
 
@@ -3615,6 +3625,7 @@ void ProcessElementalArrow(Missile &missile)
 					if (bolt) {
 						// Make sure the extra charged bolt doesn't hit the target we just shot
 						bolt->_missileGroup = missile._missileGroup;
+						bolt->_missileGroupIgnoreForever = true;
 					}
 				}
 				break;
