@@ -1264,14 +1264,17 @@ void MonsterAttackPlayer(Monster &monster, Player &player, int hitChancePercent,
 #else // original code
 	if (hitChancePercent < minhitChance) { hitChancePercent = minhitChance; }
 #endif
+	if (JWK_EDIT_DURABILITY_LOSS)
+		player.DamageArmor();
+
+	if (diceRollToAvoidHit >= hitChancePercent)
+		return;
+
 	int blockDiceRoll = 100;
 	if ((player._pmode == PM_STAND || player._pmode == PM_ATTACK) && player._pBlockFlag) {
 		blockDiceRoll = GenerateRnd(100);
 	}
 	int blockChance = player.GetBlockChance(monster.level(sgGameInitInfo.nDifficulty));
-	if (diceRollToAvoidHit >= hitChancePercent)
-		return;
-
 	if (blockDiceRoll < blockChance) {
 		Direction dir = GetDirection(player.position.tile, monster.position.tile);
 		StartPlrBlock(player, dir);

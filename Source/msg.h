@@ -265,6 +265,8 @@ enum _cmd_id : uint8_t {
 	//
 	// body (TCmdParam1)
 	CMD_DELINVITEMS,
+	// jwk added command - change item durability for a specific item
+	CMD_CHANGEITEMDURABILITY,
 	// Put item into player's belt.
 	//
 	// body (TCmdChItem)

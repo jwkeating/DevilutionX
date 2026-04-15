@@ -132,6 +132,7 @@ void PackItem(ItemPack &packedItem, const Item &item, bool isHellfire)
 			packedItem.iSeed = SDL_SwapLE32(item._iSeed);
 			packedItem.iCreateInfo = SDL_SwapLE16(item._iCreateInfo);
 			packedItem.bId = (item._iMagical << 1) | (item._iIdentified ? 1 : 0);
+			static_assert(DUR_INDESTRUCTIBLE == 255);
 			if (item._iMaxDur > 255)
 				packedItem.bMDur = 254;
 			else

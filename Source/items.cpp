@@ -511,59 +511,6 @@ static void SpawnNote()
 	SpawnQuestItem(id, position, 0, 1, false);
 }
 
-static void UnequipGearWhichCantBeWorn(Player &player)
-{
-	int sa = 0;
-	int ma = 0;
-	int da = 0;
-
-	// first iteration is used for collecting stat bonuses from items
-	for (Item &equipment : EquippedPlayerItemsRange(player)) {
-		equipment._iStatFlag = true;
-		if (equipment._iIdentified) {
-			sa += equipment._iPLStr;
-			ma += equipment._iPLMag;
-			da += equipment._iPLDex;
-		}
-	}
-	sa += JWK_GOD_MODE_ADJUST_STR_BY_AMOUNT;
-	ma += JWK_GOD_MODE_ADJUST_MAG_BY_AMOUNT;
-	da += JWK_GOD_MODE_ADJUST_DEX_BY_AMOUNT;
-
-	bool changeflag;
-	do {
-		// cap stats to 0
-		const int currstr = std::max(0, sa + player._pBaseStr);
-		const int currmag = std::max(0, ma + player._pBaseMag);
-		const int currdex = std::max(0, da + player._pBaseDex);
-
-		changeflag = false;
-		// Iterate over equipped items and remove stat bonuses if they are not valid
-		for (Item &equipment : EquippedPlayerItemsRange(player)) {
-			if (!equipment._iStatFlag)
-				continue;
-
-			bool isValid = IsItemValid(equipment);
-
-			if (currstr < equipment._iMinStr
-			    || currmag < equipment._iMinMag
-			    || currdex < equipment._iMinDex)
-				isValid = false;
-
-			if (isValid)
-				continue;
-
-			changeflag = true;
-			equipment._iStatFlag = false;
-			if (equipment._iIdentified) {
-				sa -= equipment._iPLStr;
-				ma -= equipment._iPLMag;
-				da -= equipment._iPLDex;
-			}
-		}
-	} while (changeflag);
-}
-
 // Look for a free spot on the floor immediately next to the player
 static bool GetItemSpace(Point position, int8_t inum)
 {
@@ -931,8 +878,8 @@ static int AddItemPowerToItem(Item &item, ItemPower &power)
 		break;
 	case IPL_DUR: {
 		int bonus = r * item._iMaxDur / 100;
-		item._iMaxDur += bonus;
-		item._iDurability += bonus;
+		item._iMaxDur = std::min(item._iMaxDur + bonus, 250);
+		item._iDurability = std::min(item._iDurability + bonus, 250);
 	} break;
 	case IPL_CRYSTALLINE:
 		item._iPLDam += 140 + CalculateDamageMultiplier(power.param1, power.param2) * 2;
@@ -2073,11 +2020,11 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 {
 	int mind = 0; // min damage
 	int maxd = 0; // max damage
-	int tac = 0;  // accuracy
+	int armor = 0;
 
-	int bdam = 0;   // bonus damage
-	int btohit = 0; // bonus chance to hit
-	int bac = 0;    // bonus accuracy
+	int bdam = 0;      // bonus damage
+	int btohit = 0;    // bonus chance to hit
+	int bonusArmor = 0;
 
 	ItemSpecialEffect iflgs = ItemSpecialEffect::None; // item_special_effect flags
 
@@ -2120,7 +2067,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 
 			mind += item._iMinDam;
 			maxd += item._iMaxDam;
-			tac += item._iAC;
+			armor += item._iAC;
 
 			if (IsValidSpell(item._iSpell)) {
 				spl |= GetSpellBitmask(item._iSpell);
@@ -2135,7 +2082,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 					tmpac /= 100;
 					if (tmpac == 0)
 						tmpac = math::Sign(item._iPLAC);
-					bac += tmpac;
+					bonusArmor += tmpac;
 				}
 				iflgs |= item._iFlags;
 				pDamAcFlags |= item._iDamAcFlags;
@@ -2201,10 +2148,10 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 
 	player._pIMinDam = mind;
 	player._pIMaxDam = maxd;
-	player._pIAC = tac;
+	player._pIAC = armor;
 	player._pIBonusDam = bdam;
 	player._pIBonusToHit = btohit;
-	player._pIBonusAC = bac;
+	player._pIBonusAC = bonusArmor;
 	player._pIFlags = iflgs;
 	player.pDamAcFlags = pDamAcFlags;
 	player._pIBonusDamMod = dmod;
@@ -2232,49 +2179,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	player._pDexterity = std::max(0, dadd + player._pBaseDex);
 	player._pVitality = std::max(0, vadd + player._pBaseVit);
 
-#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE // Use the same damage formula for all classes.  Each class already gets a huge benefit when using their preferred weapon because of hit chance and swing speed
-	bool okForMonk = false;
-	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Bow || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Bow) {
-		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
-	}
-	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Staff) {
-		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 150;
-		okForMonk = true;
-	}
-	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Axe || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Axe) {
-		player._pDamageMod = player._pLevel * player._pStrength / 100;
-	}
-	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Sword || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Sword) { // note: swords do 150%x to animals, 66% to undead
-		player._pDamageMod = player._pLevel * player._pStrength / 125 + player._pLevel * player._pDexterity / 250;
-	}
-	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Mace || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Mace) { // note: maces do 66% to animals, 150% to undead
-		player._pDamageMod = player._pLevel * player._pStrength / 125 + player._pLevel * player._pDexterity / 250;
-	}
-	else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) { // unarmed with shield
-		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 250;
-	}
-	else { // completely unarmed
-		if (player._pHeroClass == HeroClass::Monk) {
-			player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
-		} else {
-			player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 300;
-		}
-		okForMonk = true;
-	}
-	
-	if (player._pHeroClass == HeroClass::Monk && !okForMonk) {
-		// Monks do less damage unless they're unarmed or using a staff
-		player._pDamageMod /= 2;
-	}
-	else if (player._pHeroClass == HeroClass::Barbarian) {
-		// Barbarians get natural armor but they get less benefit from armor on shields
-		if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield)
-			player._pIAC -= player.InvBody[INVLOC_HAND_LEFT]._iAC / 2;
-		else if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield)
-			player._pIAC -= player.InvBody[INVLOC_HAND_RIGHT]._iAC / 2;
-		player._pIAC += player._pLevel / 4;
-	}
-#else // original code:
+#if !JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE // original code:
 	if (player._pHeroClass == HeroClass::Rogue) {
 		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
 	} else if (player._pHeroClass == HeroClass::Monk) {
@@ -2308,11 +2213,8 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 			player._pDamageMod += player._pLevel * player._pVitality / 100;
 		}
 		player._pIAC += player._pLevel / 4;
-	} else if (player._pHeroClass == HeroClass::Warrior) {
+	} else { // HeroClass::Warrior || HeroClass::Sorcerer
 		player._pDamageMod = player._pLevel * player._pStrength / 100;
-	} else { // HeroClass::Sorcerer
-		// original code: player._pDamageMod = player._pLevel * player._pStrength / 100;
-		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
 	}
 #endif
 
@@ -2371,47 +2273,84 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	player._pIThornsMin = thornsMin;
 	player._pIThornsMax = thornsMax;
 
-	player._pBlockFlag = false;
-	if (player._pHeroClass == HeroClass::Monk) {
-		if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff && player.InvBody[INVLOC_HAND_LEFT]._iStatFlag) {
-			player._pBlockFlag = true;
-			player._pIFlags |= ItemSpecialEffect::FastBlock;
-		}
-		if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Staff && player.InvBody[INVLOC_HAND_RIGHT]._iStatFlag) {
-			player._pBlockFlag = true;
-			player._pIFlags |= ItemSpecialEffect::FastBlock;
-		}
-		if (player.InvBody[INVLOC_HAND_LEFT].isEmpty() && player.InvBody[INVLOC_HAND_RIGHT].isEmpty())
-			player._pBlockFlag = true;
-		if (player.InvBody[INVLOC_HAND_LEFT]._iClass == ICLASS_WEAPON && player.GetItemLocation(player.InvBody[INVLOC_HAND_LEFT]) != ILOC_TWOHAND && player.InvBody[INVLOC_HAND_RIGHT].isEmpty())
-			player._pBlockFlag = true;
-		if (player.InvBody[INVLOC_HAND_RIGHT]._iClass == ICLASS_WEAPON && player.GetItemLocation(player.InvBody[INVLOC_HAND_RIGHT]) != ILOC_TWOHAND && player.InvBody[INVLOC_HAND_LEFT].isEmpty())
-			player._pBlockFlag = true;
-	}
-
-	ItemType weaponItemType = ItemType::None;
 	bool holdsShield = false;
-	if (!player.InvBody[INVLOC_HAND_LEFT].isEmpty()
-	    && player.InvBody[INVLOC_HAND_LEFT]._iClass == ICLASS_WEAPON
-	    && player.InvBody[INVLOC_HAND_LEFT]._iStatFlag) {
-		weaponItemType = player.InvBody[INVLOC_HAND_LEFT]._itype;
-	}
-
-	if (!player.InvBody[INVLOC_HAND_RIGHT].isEmpty()
-	    && player.InvBody[INVLOC_HAND_RIGHT]._iClass == ICLASS_WEAPON
-	    && player.InvBody[INVLOC_HAND_RIGHT]._iStatFlag) {
-		weaponItemType = player.InvBody[INVLOC_HAND_RIGHT]._itype;
-	}
-
+	player._pBlockFlag = false;
 	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield && player.InvBody[INVLOC_HAND_LEFT]._iStatFlag) {
 		player._pBlockFlag = true;
 		holdsShield = true;
 	}
-	if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield && player.InvBody[INVLOC_HAND_RIGHT]._iStatFlag) {
+	else if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield && player.InvBody[INVLOC_HAND_RIGHT]._iStatFlag) {
 		player._pBlockFlag = true;
 		holdsShield = true;
 	}
+	if (player._pHeroClass == HeroClass::Monk) {
+		if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff && player.InvBody[INVLOC_HAND_LEFT]._iStatFlag) {
+			player._pBlockFlag = true;
+			player._pIFlags |= ItemSpecialEffect::FastBlock;
+		} else if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Staff && player.InvBody[INVLOC_HAND_RIGHT]._iStatFlag) {
+			player._pBlockFlag = true;
+			player._pIFlags |= ItemSpecialEffect::FastBlock;
+		} else if (player.InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_RIGHT].isEmptyOrUnwearable()) {
+			player._pBlockFlag = true;
+		} else if (player.InvBody[INVLOC_HAND_RIGHT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_LEFT]._iLoc != ILOC_TWOHAND) {
+			player._pBlockFlag = true;
+		} else if (player.InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_RIGHT]._iLoc != ILOC_TWOHAND) {
+			player._pBlockFlag = true;
+		}
+	}
 
+	ItemType weaponItemType = player.GetItemTypeForCombat();
+#if JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE // Use similar damage formulas for all classes because each class already gets a huge benefit when using their preferred weapon because of stat allocation and swing speed.
+	bool okForMonk = false;
+	PlayerWeaponGraphic animWeaponId;
+	switch (weaponItemType) {
+	case ItemType::Sword:
+		animWeaponId = holdsShield ? PlayerWeaponGraphic::SwordShield : PlayerWeaponGraphic::Sword;
+		player._pDamageMod = player._pLevel * player._pStrength / 125 + player._pLevel * player._pDexterity / 250;
+		break;
+	case ItemType::Axe:
+		animWeaponId = PlayerWeaponGraphic::Axe;
+		player._pDamageMod = player._pLevel * player._pStrength / 100;
+		break;
+	case ItemType::Bow:
+		animWeaponId = PlayerWeaponGraphic::Bow;
+		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 200;
+		break;
+	case ItemType::Mace:
+		animWeaponId = holdsShield ? PlayerWeaponGraphic::MaceShield : PlayerWeaponGraphic::Mace;
+		player._pDamageMod = player._pLevel * player._pStrength / 125 + player._pLevel * player._pDexterity / 250;
+		break;
+	case ItemType::Staff:
+		animWeaponId = PlayerWeaponGraphic::Staff;
+		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 150;
+		okForMonk = true;
+		break;
+	case ItemType::Shield: // unarmed with a shield
+		animWeaponId = PlayerWeaponGraphic::UnarmedShield;
+		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 250;
+		break;
+	default: // completely unarmed
+		assert(weaponItemType == ItemType::None);
+		animWeaponId = PlayerWeaponGraphic::Unarmed;
+		player._pDamageMod = player._pLevel * (player._pStrength + player._pDexterity) / 300;
+		if (player._pHeroClass == HeroClass::Monk) { player._pDamageMod *= 2; }
+		okForMonk = true;
+	}
+
+	if (player._pHeroClass == HeroClass::Monk) {
+		// Monks can only effectively use staves and fists
+		if (animWeaponId != PlayerWeaponGraphic::Staff && animWeaponId != PlayerWeaponGraphic::UnarmedShield && animWeaponId != PlayerWeaponGraphic::Unarmed)
+			player._pDamageMod /= 2;
+	}
+	PlayerArmorGraphic animArmorId = PlayerArmorGraphic::Light;
+	if (player.InvBody[INVLOC_CHEST]._itype == ItemType::HeavyArmor && player.InvBody[INVLOC_CHEST]._iStatFlag) {
+		animArmorId = PlayerArmorGraphic::Heavy;
+	} else if (player.InvBody[INVLOC_CHEST]._itype == ItemType::MediumArmor && player.InvBody[INVLOC_CHEST]._iStatFlag) {
+		animArmorId = PlayerArmorGraphic::Medium;
+	} else if (player._pHeroClass == HeroClass::Monk) {
+		player._pIAC += player._pLevel * 2;
+	}
+#else // original code
 	PlayerWeaponGraphic animWeaponId = holdsShield ? PlayerWeaponGraphic::UnarmedShield : PlayerWeaponGraphic::Unarmed;
 	switch (weaponItemType) {
 	case ItemType::Sword:
@@ -2432,7 +2371,6 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	default:
 		break;
 	}
-
 	PlayerArmorGraphic animArmorId = PlayerArmorGraphic::Light;
 	if (player.InvBody[INVLOC_CHEST]._itype == ItemType::HeavyArmor && player.InvBody[INVLOC_CHEST]._iStatFlag) {
 		if (player._pHeroClass == HeroClass::Monk && player.InvBody[INVLOC_CHEST]._iMagical == ITEM_QUALITY_UNIQUE)
@@ -2449,7 +2387,7 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 	} else if (player._pHeroClass == HeroClass::Monk) {
 		player._pIAC += player._pLevel * 2;
 	}
-
+#endif
 	const uint8_t gfxNum = static_cast<uint8_t>(animWeaponId) | static_cast<uint8_t>(animArmorId);
 	if (player._pgfxnum != gfxNum && loadgfx) {
 		player._pgfxnum = gfxNum;
@@ -2498,6 +2436,57 @@ void CalcPlayerPowerFromItems(Player &player, bool loadgfx)
 
 	RedrawComponent(PanelDrawComponent::Mana);
 	RedrawComponent(PanelDrawComponent::Health);
+}
+
+static void UnequipGearWhichCantBeWorn(Player &player)
+{
+	int sa = JWK_GOD_MODE_ADJUST_STR_BY_AMOUNT;
+	int ma = JWK_GOD_MODE_ADJUST_STR_BY_AMOUNT;
+	int da = JWK_GOD_MODE_ADJUST_STR_BY_AMOUNT;
+
+	// first iteration is used for collecting stat bonuses from items
+	for (Item &equipment : EquippedPlayerItemsRange(player)) {
+		equipment._iStatFlag = true;
+		if (equipment._iIdentified) {
+			sa += equipment._iPLStr;
+			ma += equipment._iPLMag;
+			da += equipment._iPLDex;
+		}
+	}
+
+	bool changeflag;
+	do {
+		// Don't allow negative stats
+		const int currstr = std::max(0, sa + player._pBaseStr);
+		const int currmag = std::max(0, ma + player._pBaseMag);
+		const int currdex = std::max(0, da + player._pBaseDex);
+
+		changeflag = false;
+		// Iterate over equipped items and remove stat bonuses if they are not valid
+		for (Item &equipment : EquippedPlayerItemsRange(player)) {
+			if (!equipment._iStatFlag)
+				continue;
+
+			bool isValid = IsItemValid(equipment);
+
+			if ((JWK_EDIT_DURABILITY_LOSS && equipment._iDurability == 0 && equipment._itype != ItemType::Ring && equipment._itype != ItemType::Amulet)
+				|| currstr < equipment._iMinStr
+			    || currmag < equipment._iMinMag
+			    || currdex < equipment._iMinDex)
+				isValid = false;
+
+			if (isValid)
+				continue;
+
+			changeflag = true;
+			equipment._iStatFlag = false;
+			if (equipment._iIdentified) {
+				sa -= equipment._iPLStr;
+				ma -= equipment._iPLMag;
+				da -= equipment._iPLDex;
+			}
+		}
+	} while (changeflag);
 }
 
 // This is called after processing network packets when a remote player (or the local player) changes gear
@@ -4888,19 +4877,27 @@ void RepairItem(Item &item, Player &player)
 		return;
 	}
 
+#if JWK_EDIT_PLAYER_SKILLS
 	if (item._iMaxDur <= 0) {
-		item.clear();
+		// Can this ever happen?  Jewelry has _iMaxDur==0 and _iDurability==0 but that case is filtered out above.
+		player.Say(HeroSpeech::ICantDoThat);
 		return;
 	}
-
-#if JWK_EDIT_PLAYER_SKILLS
+	if (item._iDurability <= 0) {
+		// Only the smith can repair destroyed items
+		player.Say(HeroSpeech::ICantDoThat);
+		return;
+	}
 	Uint64 now = SDL_GetTicks64(); // This is a real-time tick that doesn't pause during debugger breaks
 	if (now >= player._timeOfMostRecentSkillUse + player.GetSkillCooldownMilliseconds()) {
 		player._timeOfMostRecentSkillUse = now;
 		item._iDurability = item._iMaxDur;
 	}
-	return;
 #else // original code (repairs to full but reduces max durability of item)
+	if (item._iMaxDur <= 0) {
+		item.clear();
+		return;
+	}
 	int rep = 0;
 	do {
 		rep += player._pLevel + GenerateRnd(player._pLevel);
@@ -4912,6 +4909,7 @@ void RepairItem(Item &item, Player &player)
 	} while (rep + item._iDurability < item._iMaxDur);
 	item._iDurability = std::min<int>(item._iDurability + rep, item._iMaxDur);
 #endif
+	player.BroadcastDurabilityChange(item);
 }
 
 void RechargeItem(Item &item, Player &player)
@@ -4964,6 +4962,8 @@ void RechargeItem(Item &item, Player &player)
 bool ApplyOilToItem(Item &item, Player &player)
 {
 	int r;
+
+	assert(false && "TODO: Need to implement durability sync."); // jwk - Need to call BroadcastDurabilityChange(Item& item); if we change durability
 
 	if (item._iClass == ICLASS_MISC) {
 		return false;

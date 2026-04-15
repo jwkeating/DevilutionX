@@ -178,6 +178,8 @@ const char *const PanBtnStr[8] = {
 	"" // Player attack
 };
 
+} // namespace
+
 /**
  * Draws a section of the empty flask cel on top of the panel to create the illusion
  * of the flask getting empty. This function takes a cel and draws a
@@ -188,7 +190,7 @@ const char *const PanBtnStr[8] = {
  * @param y0 Top of the flask cel section to draw.
  * @param y1 Bottom of the flask cel section to draw.
  */
-void DrawFlaskTop(const Surface &out, Point position, const Surface &celBuf, int y0, int y1)
+static void DrawFlaskTop(const Surface &out, Point position, const Surface &celBuf, int y0, int y1)
 {
 	out.BlitFrom(celBuf, MakeSdlRect(0, static_cast<decltype(SDL_Rect {}.y)>(y0), celBuf.w(), y1 - y0), position);
 }
@@ -203,7 +205,7 @@ void DrawFlaskTop(const Surface &out, Point position, const Surface &celBuf, int
  * @param targetPosition Target buffer coordinate.
  * @param h How many lines of the source buffer that will be copied.
  */
-void DrawFlask(const Surface &out, const Surface &celBuf, Point sourcePosition, Point targetPosition, int h)
+static void DrawFlask(const Surface &out, const Surface &celBuf, Point sourcePosition, Point targetPosition, int h)
 {
 	constexpr int FlaskWidth = 59;
 	out.BlitFromSkipColorIndexZero(celBuf, MakeSdlRect(sourcePosition.x, sourcePosition.y, FlaskWidth, h), targetPosition);
@@ -217,7 +219,7 @@ void DrawFlask(const Surface &out, const Surface &celBuf, Point sourcePosition, 
  * @param offset X coordinate offset for where the flask should be drawn
  * @param fillPer How full the flask is (a value from 0 to 80)
  */
-void DrawFlaskUpper(const Surface &out, const Surface &sourceBuffer, int offset, int fillPer)
+static void DrawFlaskUpper(const Surface &out, const Surface &sourceBuffer, int offset, int fillPer)
 {
 	// clamping because this function only draws the top 12% of the flask display
 	int emptyPortion = clamp(80 - fillPer, 0, 11) + 2; // +2 to account for the frame being included in the sprite
@@ -237,7 +239,7 @@ void DrawFlaskUpper(const Surface &out, const Surface &sourceBuffer, int offset,
  * @param offset X coordinate offset for where the flask should be drawn
  * @param fillPer How full the flask is (a value from 0 to 80)
  */
-void DrawFlaskLower(const Surface &out, const Surface &sourceBuffer, int offset, int fillPer)
+static void DrawFlaskLower(const Surface &out, const Surface &sourceBuffer, int offset, int fillPer)
 {
 	int filled = clamp(fillPer, 0, 69);
 
@@ -250,14 +252,14 @@ void DrawFlaskLower(const Surface &out, const Surface &sourceBuffer, int offset,
 		DrawPanelBox(out, MakeSdlRect(offset, 85 - filled, 88, filled), GetMainPanel().position + Displacement { offset, 69 - filled });
 }
 
-void SetButtonStateDown(int btnId)
+static void SetButtonStateDown(int btnId)
 {
 	PanelButtons[btnId] = true;
 	RedrawComponent(PanelDrawComponent::ControlButtons);
 	panbtndown = true;
 }
 
-void PrintInfo(const Surface &out)
+static void PrintInfo(const Surface &out)
 {
 	if (talkflag)
 		return;
@@ -280,14 +282,14 @@ void PrintInfo(const Surface &out)
 
 int CapStatPointsToAdd(int remainingStatPoints, const Player &player, CharacterAttribute attribute)
 {
-	int pointsToReachCap = player.GetMaximumAttributeValue(attribute) - player.GetBaseAttributeValue(attribute);
+	const int pointsToReachCap = player.GetMaximumAttributeValue(attribute) - player.GetBaseAttributeValue(attribute);
 
 	return std::min(remainingStatPoints, pointsToReachCap);
 }
 
 int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 {
-	const int durabilityThresholdGold = 5;
+	const int durabilityThresholdGold = JWK_EDIT_DURABILITY_LOSS ? 10 : 5;
 	const int durabilityThresholdRed = 2;
 
 	if (pItem.isEmpty())
@@ -319,15 +321,15 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 	}
 
 	// Calculate how much of the icon should be gold and red
-	int height = (*pDurIcons)[c].height(); // Height of durability icon CEL
+	const int height = (*pDurIcons)[c].height(); // Height of durability icon CEL
 	int partition = 0;
 	if (pItem._iDurability > durabilityThresholdRed) {
-		int current = pItem._iDurability - durabilityThresholdRed;
+		const int current = pItem._iDurability - durabilityThresholdRed;
 		partition = (height * current) / (durabilityThresholdGold - durabilityThresholdRed);
 	}
 
 	// Draw icon
-	int y = -17 + GetMainPanel().position.y;
+	const int y = -17 + GetMainPanel().position.y;
 	if (partition > 0) {
 		const Surface stenciledBuffer = out.subregionY(y - partition, partition);
 		ClxDraw(stenciledBuffer, { x, partition }, (*pDurIcons)[c + 8]); // Gold icon
@@ -340,7 +342,7 @@ int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
 	return x - (*pDurIcons)[c].height() - 8; // Add in spacing for the next durability icon
 }
 
-struct TextCmdItem {
+static struct TextCmdItem {
 	const std::string text;
 	const std::string description;
 	const std::string requiredParameter;
@@ -349,7 +351,7 @@ struct TextCmdItem {
 
 extern std::vector<TextCmdItem> TextCmdList;
 
-std::string TextCmdHelp(const string_view parameter)
+static std::string TextCmdHelp(const string_view parameter)
 {
 	if (parameter.empty()) {
 		std::string ret;
@@ -369,20 +371,20 @@ std::string TextCmdHelp(const string_view parameter)
 	return StrCat(_("Description: "), _(textCmdItem.description), _("\nParameters: "), _(textCmdItem.requiredParameter));
 }
 
-void AppendArenaOverview(std::string &ret)
+static void AppendArenaOverview(std::string &ret)
 {
 	for (int arena = SL_FIRST_ARENA; arena <= SL_LAST; arena++) {
 		StrAppend(ret, "\n", arena - SL_FIRST_ARENA + 1, " (", QuestLevelNames[arena], ")");
 	}
 }
 
-const dungeon_type DungeonTypeForArena[] = {
+static const dungeon_type DungeonTypeForArena[] = {
 	dungeon_type::DTYPE_CATHEDRAL, // SL_ARENA_CHURCH
 	dungeon_type::DTYPE_HELL,      // SL_ARENA_HELL
 	dungeon_type::DTYPE_HELL,      // SL_ARENA_CIRCLE_OF_LIFE
 };
 
-std::string TextCmdArena(const string_view parameter)
+static std::string TextCmdArena(const string_view parameter)
 {
 	std::string ret;
 	if (!gbIsMultiplayer) {
@@ -414,7 +416,7 @@ std::string TextCmdArena(const string_view parameter)
 	return ret;
 }
 
-std::string TextCmdArenaPot(const string_view parameter)
+static std::string TextCmdArenaPot(const string_view parameter)
 {
 	std::string ret;
 	if (!gbIsMultiplayer) {
@@ -439,7 +441,7 @@ std::string TextCmdArenaPot(const string_view parameter)
 	return ret;
 }
 
-std::string TextCmdInspect(const string_view parameter)
+static std::string TextCmdInspect(const string_view parameter)
 {
 	std::string ret;
 	if (!gbIsMultiplayer) {
@@ -471,7 +473,7 @@ std::string TextCmdInspect(const string_view parameter)
 	return ret;
 }
 
-bool IsQuestEnabled(const Quest &quest)
+static bool IsQuestEnabled(const Quest &quest)
 {
 	switch (quest._qidx) {
 	case Q_FARMER:
@@ -493,7 +495,7 @@ bool IsQuestEnabled(const Quest &quest)
 	}
 }
 
-std::string TextCmdLevelSeed(const string_view parameter)
+static std::string TextCmdLevelSeed(const string_view parameter)
 {
 	string_view levelType = setlevel ? "set level" : "dungeon level";
 
@@ -530,7 +532,7 @@ std::string TextCmdLevelSeed(const string_view parameter)
 	    "Storybook: ", glSeedTbl[16]);
 }
 
-std::vector<TextCmdItem> TextCmdList = {
+static std::vector<TextCmdItem> TextCmdList = {
 	{ N_("/help"), N_("Prints help overview or help for a specific command."), N_("[command]"), &TextCmdHelp },
 	{ N_("/arena"), N_("Enter a PvP Arena."), N_("<arena-number>"), &TextCmdArena },
 	{ N_("/arenapot"), N_("Gives Arena Potions."), N_("<number>"), &TextCmdArenaPot },
@@ -538,7 +540,7 @@ std::vector<TextCmdItem> TextCmdList = {
 	{ N_("/seedinfo"), N_("Show seed infos for current level."), "", &TextCmdLevelSeed },
 };
 
-bool CheckTextCommand(const string_view text)
+static bool CheckTextCommand(const string_view text)
 {
 	if (text.size() < 1 || text[0] != '/')
 		return false;
@@ -562,7 +564,7 @@ bool CheckTextCommand(const string_view text)
 	return true;
 }
 
-void ResetTalkMsg()
+static void ResetTalkMsg()
 {
 #if defined(_DEBUG) || JWK_ALLOW_DEBUG_COMMANDS_IN_RELEASE
 	if (CheckDebugTextCommand(TalkMessage))
@@ -581,7 +583,7 @@ void ResetTalkMsg()
 	NetSendCmdString(pmask, TalkMessage);
 }
 
-void ControlPressEnter()
+static void ControlPressEnter()
 {
 	if (TalkMessage[0] != 0) {
 		ResetTalkMsg();
@@ -608,7 +610,7 @@ void ControlPressEnter()
 	control_reset_talk();
 }
 
-void ControlUpDown(int v)
+static void ControlUpDown(int v)
 {
 	for (int i = 0; i < 8; i++) {
 		TalkSaveIndex = (v + TalkSaveIndex) & 7;
@@ -619,7 +621,7 @@ void ControlUpDown(int v)
 	}
 }
 
-void RemoveGold(Player &player, int goldIndex, int amount)
+static void RemoveGold(Player &player, int goldIndex, int amount)
 {
 	const int gi = goldIndex - INVITEM_INV_FIRST;
 	player.InvList[gi]._ivalue -= amount;
@@ -636,7 +638,7 @@ void RemoveGold(Player &player, int goldIndex, int amount)
 	player._pGold = CalculateGold(player);
 }
 
-bool IsLevelUpButtonVisible()
+static bool IsLevelUpButtonVisible()
 {
 	if (spselflag || chrflag || MyPlayer->_pStatPts == 0) {
 		return false;
@@ -653,8 +655,6 @@ bool IsLevelUpButtonVisible()
 
 	return true;
 }
-
-} // namespace
 
 void CalculatePanelAreas()
 {

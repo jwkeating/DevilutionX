@@ -142,6 +142,7 @@ string_view CmdIdString(_cmd_id cmd)
 	case CMD_DELPLRITEMS: return "CMD_DELPLRITEMS";
 	case CMD_CHANGEINVITEMS: return "CMD_CHANGEINVITEMS";
 	case CMD_DELINVITEMS: return "CMD_DELINVITEMS";
+	case CMD_CHANGEITEMDURABILITY: return "CMD_CHANGEITEMDURABILITY";
 	case CMD_CHANGEBELTITEMS: return "CMD_CHANGEBELTITEMS";
 	case CMD_DELBELTITEMS: return "CMD_DELBELTITEMS";
 	case CMD_PLRDAMAGE: return "CMD_PLRDAMAGE";
@@ -1972,6 +1973,45 @@ size_t OnDeleteInventoryItems(const TCmd *pCmd, int pnum)
 	return sizeof(message);
 }
 
+// See matching send function BroadcastDurabilityChange()
+size_t OnChangeItemDurability(const TCmd *pCmd, int pnum)
+{
+	const auto &message = *reinterpret_cast<const TCmdParam1 *>(pCmd);
+	const uint16_t param = SDL_SwapLE16(message.wParam1);
+	Player &player = Players[pnum];
+
+	if (gbBufferMsgs == 1) {
+		SendPacket(pnum, &message, sizeof(message));
+	} else if (&player != MyPlayer) {
+		uint8_t slotCode = param & 0xFF;
+		uint8_t durability = param >> 8;
+		Item* item = nullptr;
+		if (slotCode < 4) {
+			if (slotCode == 0) {
+				item = &player.InvBody[INVLOC_HAND_LEFT];
+			} else if (slotCode == 1) {
+				item = &player.InvBody[INVLOC_HAND_RIGHT];
+			} else if (slotCode == 2) {
+				item = &player.InvBody[INVLOC_CHEST];
+			} else {
+				item = &player.InvBody[INVLOC_HEAD];
+			}
+		} else {
+			uint32_t gridCell = slotCode >> 2;
+			if (gridCell < InventoryGridCells && player.InvGrid[gridCell] != 0) {
+				item = &player.InvList[abs(player.InvGrid[gridCell]) - 1];
+			}
+		}
+		if (item && !item->isEmpty() && item->_iDurability != durability) {
+			bool affectsStatFlag = item->_iDurability == 0 || durability == 0;
+			item->_iDurability = durability;
+			if (affectsStatFlag)
+				CalcPlayerInventory(player, true);
+		}
+	}
+	return sizeof(message);
+}
+
 size_t OnChangeBeltItems(const TCmd *pCmd, int pnum)
 {
 	const auto &message = *reinterpret_cast<const TCmdChItem *>(pCmd);
@@ -3277,6 +3317,8 @@ size_t ParseCmd(size_t pnum, const TCmd *pCmd)
 		return OnChangeInventoryItems(pCmd, pnum);
 	case CMD_DELINVITEMS:
 		return OnDeleteInventoryItems(pCmd, pnum);
+	case CMD_CHANGEITEMDURABILITY: // jwk added
+		return OnChangeItemDurability(pCmd, pnum);
 	case CMD_CHANGEBELTITEMS:
 		return OnChangeBeltItems(pCmd, pnum);
 	case CMD_DELBELTITEMS:

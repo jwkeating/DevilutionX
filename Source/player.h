@@ -404,7 +404,14 @@ struct Player {
 
 	void CalcScrolls();
 
+	void DamageArmor();
+
+	// Returns the weapon type (or Shield/None) which is used for combat.  Excludes any item that might exist in the hand slot but isn't wearable due to stat limits or durability breakage
+	ItemType GetItemTypeForCombat();
+
 	bool CanUseItem(const Item &item) const;
+
+	void BroadcastDurabilityChange(Item& item) const;
 
 	/**
 	 * @brief Remove an item from player inventory
@@ -540,7 +547,6 @@ struct Player {
 		// Note: Hit chance is modified by: hitChance += 2 * (attacker.level - target.level)
 		// See MonsterAttackPlayer(), PlayerAttackPlayer(), and PlayerAttackMonster
 		int hitChance = _pStrength + _pIBonusToHit + BaseHitChance;
-		//int hitChance = _pLevel + _pStrength + _pIBonusToHit + BaseHitChance;
 #else // original code:
 		int hitChance = _pLevel + _pDexterity / 2 + _pIBonusToHit + BaseHitChance;
 		if (_pHeroClass == HeroClass::Warrior) {
@@ -558,7 +564,6 @@ struct Player {
 #if JWK_EDIT_HIT_CHANCE // use the same formula for melee and range (melee uses str, ranged uses dex)
 		// See hit chance formulas in MonsterHitByMissileFromPlayer(), MonsterHitByMissileFromMonsterOrTrap(), PlayerHitByMissle(), and PvPHitByMissile()
 		int hitChance = _pDexterity + _pIBonusToHit + BaseHitChance;
-		//int hitChance = _pLevel + _pDexterity + _pIBonusToHit + BaseHitChance;
 #else // original code:
 		int hitChance = _pLevel + _pDexterity + _pIBonusToHit + BaseHitChance;
 		if (_pHeroClass == HeroClass::Rogue) {

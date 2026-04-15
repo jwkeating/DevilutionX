@@ -2477,8 +2477,8 @@ void OperateShrineHidden(Player &player) // jwk - I rewrote this function to mak
 				item._iMaxDur += 10;
 				if (item._iMaxDur > DUR_INDESTRUCTIBLE) {
 					item._iMaxDur = DUR_INDESTRUCTIBLE;
+					item._iDurability = std::min(item._iDurability, item._iMaxDur);
 				}
-				item._iDurability = clamp(item._iDurability, 1, item._iMaxDur);
 			}
 		}
 
@@ -2489,6 +2489,12 @@ void OperateShrineHidden(Player &player) // jwk - I rewrote this function to mak
 			if (item._iMaxDur <= 0)
 				item._iMaxDur = 1;
 			item._iDurability = clamp(item._iDurability, 1, item._iMaxDur);
+		}
+
+		for (auto &item : player.InvBody) {
+			if (!item.isEmpty() && item._iMaxDur != DUR_INDESTRUCTIBLE && item._iMaxDur != 0) {
+				player.BroadcastDurabilityChange(item);
+			}
 		}
 	}
 
@@ -2599,7 +2605,10 @@ void OperateShrineReligious(Player &player)
 		return;
 
 	for (Item &item : PlayerItemsRange { player }) {
-		item._iDurability = item._iMaxDur;
+		if (item._iDurability != item._iMaxDur) {
+			item._iDurability = item._iMaxDur;
+			player.BroadcastDurabilityChange(item);
+		}
 	}
 
 	InitDiabloMsg(EMSG_SHRINE_RELIGIOUS);
@@ -3139,7 +3148,7 @@ void OperateShrineMurphys(Player &player)
 	for (auto &item : player.InvBody) {
 		if (!item.isEmpty() && FlipCoin(3)) {
 			if (item._iDurability != DUR_INDESTRUCTIBLE) {
-				if (item._iDurability > 0) {
+				if (item._iDurability >= 2) {
 					item._iDurability /= 2;
 					broke = true;
 					break;

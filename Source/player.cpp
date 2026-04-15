@@ -303,34 +303,36 @@ static void StartAttack(Player &player, Direction d, bool includesFirstFrame)
 	// Here, the goal is to passively increase swing rate so we can slightly nerf haste and not have players swing too slow.  If we don't nerf haste then it's too good compared to other item suffixes.
 	// Below, we allow warrior to swing at 8 frames by default and 7 frames with haste (8/7 ~ 14.2% damage buff):
 	int numFramesForClass;
-	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Staff) {
+	ItemType weaponItemType = player.GetItemTypeForCombat();
+	if (weaponItemType == ItemType::Staff) {
 		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].staffActionFrame;
 		if (player._pHeroClass == HeroClass::Sorcerer) {
 			skippedAnimationFrames += 1; // Change default swing from 12 -> 11 frames
 		}
-	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Sword || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Sword) {
+	} else if (weaponItemType == ItemType::Sword) {
 		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].swordActionFrame;
 		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian || player._pHeroClass == HeroClass::Rogue || player._pHeroClass == HeroClass::Bard) {
 			skippedAnimationFrames += 1; // change default swing from 9 -> 8 frames for Warrior/Barbarian.  10 -> 9 for Rogue/Bard
 		}
-	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Mace || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Mace) {
+	} else if (weaponItemType == ItemType::Mace) {
 		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].maceActionFrame;
 		if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
 			skippedAnimationFrames += 1; // change default swing from 9 -> 8 frames
 		}
-	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Axe || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Axe) {
+	} else if (weaponItemType == ItemType::Axe) {
 		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].axeActionFrame;
 		if (player._pHeroClass == HeroClass::Warrior) {
 			skippedAnimationFrames += 1; // change default swing from 10 -> 9 frames
 		} else if (player._pHeroClass == HeroClass::Barbarian) {
 			skippedAnimationFrames += 2; // change default swing from 10 -> 8 frames
 		}
-	} else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) { // unarmed with shield
+	} else if (weaponItemType == ItemType::Shield) { // unarmed with shield
 		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].unarmedShieldActionFrame;
 		if (player._pHeroClass != HeroClass::Monk && player._pHeroClass != HeroClass::Sorcerer) {
 			skippedAnimationFrames += 1;
 		}
 	} else { // completely unarmed
+		assert(weaponItemType == ItemType::None);
 		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].unarmedActionFrame;
 		if (player._pHeroClass == HeroClass::Sorcerer) {
 			skippedAnimationFrames += 3; // Change from 12 -> 9 frames to match the unarmed-with-shield case
@@ -839,7 +841,7 @@ static void InitLevelChange(Player &player)
 
 static bool WeaponDecay(Player &player, int ii)
 {
-	if (!player.InvBody[ii].isEmpty() && player.InvBody[ii]._iClass == ICLASS_WEAPON && HasAnyOf(player.InvBody[ii]._iDamAcFlags, ItemSpecialEffectHf::Decay)) {
+	if (!player.InvBody[ii].isEmptyOrUnwearable() && player.InvBody[ii]._iClass == ICLASS_WEAPON && HasAnyOf(player.InvBody[ii]._iDamAcFlags, ItemSpecialEffectHf::Decay)) {
 		player.InvBody[ii]._iPLDam -= 5;
 		if (player.InvBody[ii]._iPLDam <= -100) {
 			RemoveEquipment(player, static_cast<inv_body_loc>(ii), true);
@@ -859,6 +861,9 @@ static bool DamageWeapon(Player &player, unsigned damageFrequency)
 		return false;
 	}
 
+	if (JWK_EDIT_DURABILITY_LOSS && player.isOnArenaLevel())
+		return false;
+
 	if (WeaponDecay(player, INVLOC_HAND_LEFT))
 		return true;
 	if (WeaponDecay(player, INVLOC_HAND_RIGHT))
@@ -868,59 +873,194 @@ static bool DamageWeapon(Player &player, unsigned damageFrequency)
 		return false;
 	}
 
-	// Damage all weapons that are equipped
-	if (!player.InvBody[INVLOC_HAND_LEFT].isEmpty() && player.InvBody[INVLOC_HAND_LEFT]._iClass == ICLASS_WEAPON) {
+	// Damage all equipped weapons
+	if (!player.InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_LEFT]._iClass == ICLASS_WEAPON) {
 		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == DUR_INDESTRUCTIBLE) {
 			return false;
 		}
 
 		player.InvBody[INVLOC_HAND_LEFT]._iDurability--;
-		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability <= 0) {
-			RemoveEquipment(player, INVLOC_HAND_LEFT, true);
-			CalcPlayerInventory(player, true);
-			return true;
-		}
-	}
-	if (!player.InvBody[INVLOC_HAND_RIGHT].isEmpty() && player.InvBody[INVLOC_HAND_RIGHT]._iClass == ICLASS_WEAPON) {
-		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == DUR_INDESTRUCTIBLE) {
-			return false;
-		}
-
-		player.InvBody[INVLOC_HAND_RIGHT]._iDurability--;
-		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == 0) {
-			RemoveEquipment(player, INVLOC_HAND_RIGHT, true);
-			CalcPlayerInventory(player, true);
-			return true;
-		}
-	}
-
-#if 0 // jwk - Don't damage shield when punching an enemy.  Shield already gets damaged when blocking.
-	// Original code: If there's no weapon equipped, damage shield instead
-	if (player.InvBody[INVLOC_HAND_LEFT].isEmpty() && player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) {
-		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == DUR_INDESTRUCTIBLE) {
-			return false;
-		}
-
-		player.InvBody[INVLOC_HAND_RIGHT]._iDurability--;
-		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == 0) {
-			RemoveEquipment(player, INVLOC_HAND_RIGHT, true);
-			CalcPlayerInventory(player, true);
-			return true;
-		}
-	}
-	if (player.InvBody[INVLOC_HAND_RIGHT].isEmpty() && player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield) {
-		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == DUR_INDESTRUCTIBLE) {
-			return false;
-		}
-
-		player.InvBody[INVLOC_HAND_LEFT]._iDurability--;
+		player.BroadcastDurabilityChange(player.InvBody[INVLOC_HAND_LEFT]);
 		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == 0) {
-			RemoveEquipment(player, INVLOC_HAND_LEFT, true);
+			if (!JWK_EDIT_DURABILITY_LOSS)
+				RemoveEquipment(player, INVLOC_HAND_LEFT, true);
 			CalcPlayerInventory(player, true);
 			return true;
 		}
+	}
+	if (!player.InvBody[INVLOC_HAND_RIGHT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_RIGHT]._iClass == ICLASS_WEAPON) {
+		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == DUR_INDESTRUCTIBLE) {
+			return false;
+		}
+
+		player.InvBody[INVLOC_HAND_RIGHT]._iDurability--;
+		player.BroadcastDurabilityChange(player.InvBody[INVLOC_HAND_RIGHT]);
+		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == 0) {
+			if (!JWK_EDIT_DURABILITY_LOSS)
+				RemoveEquipment(player, INVLOC_HAND_RIGHT, true);
+			CalcPlayerInventory(player, true);
+			return true;
+		}
+	}
+
+	// If there's no weapon equipped, damage shield instead.  Player animation shows shield bash, and the attack does more damage than completely unarmed.
+	if (player.InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) {
+		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == DUR_INDESTRUCTIBLE || !player.InvBody[INVLOC_HAND_RIGHT]._iStatFlag) {
+			return false;
+		}
+
+		player.InvBody[INVLOC_HAND_RIGHT]._iDurability--;
+		player.BroadcastDurabilityChange(player.InvBody[INVLOC_HAND_RIGHT]);
+		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == 0) {
+			if (!JWK_EDIT_DURABILITY_LOSS)
+				RemoveEquipment(player, INVLOC_HAND_RIGHT, true);
+			CalcPlayerInventory(player, true);
+			return true;
+		}
+	}
+	else if (player.InvBody[INVLOC_HAND_RIGHT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield) {
+		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == DUR_INDESTRUCTIBLE || !player.InvBody[INVLOC_HAND_LEFT]._iStatFlag) {
+			return false;
+		}
+
+		player.InvBody[INVLOC_HAND_LEFT]._iDurability--;
+		player.BroadcastDurabilityChange(player.InvBody[INVLOC_HAND_LEFT]);
+		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == 0) {
+			if (!JWK_EDIT_DURABILITY_LOSS)
+				RemoveEquipment(player, INVLOC_HAND_LEFT, true);
+			CalcPlayerInventory(player, true);
+			return true;
+		}
+	}
+	return false;
+}
+
+void Player::DamageArmor()
+{
+	if (JWK_GOD_MODE_NO_ITEM_DAMAGE) { return; }
+
+	if (this != MyPlayer) {
+		return;
+	}
+
+	if (InvBody[INVLOC_CHEST].isEmptyOrUnwearable() && InvBody[INVLOC_HEAD].isEmptyOrUnwearable()) {
+		return;
+	}
+
+#if JWK_EDIT_DURABILITY_LOSS
+	if (isOnArenaLevel())
+		return;
+
+	// Compared to original code, we need a much lower rate of loss because we check for durability loss every attack instead of only on big hits.
+	// Also make head and chest get damaged independently of what's worn in the other slot.
+	bool itemDestroyed = false;
+	if (!InvBody[INVLOC_HEAD].isEmptyOrUnwearable() && InvBody[INVLOC_HEAD]._iDurability != DUR_INDESTRUCTIBLE) {
+		if (FlipCoin(200)) {
+			InvBody[INVLOC_HEAD]._iDurability--;
+			BroadcastDurabilityChange(InvBody[INVLOC_HEAD]);
+			if (InvBody[INVLOC_HEAD]._iDurability == 0)
+				itemDestroyed = true;
+		}
+	}
+	if (!InvBody[INVLOC_CHEST].isEmptyOrUnwearable() && InvBody[INVLOC_CHEST]._iDurability != DUR_INDESTRUCTIBLE) {
+		if (FlipCoin(100)) {
+			InvBody[INVLOC_CHEST]._iDurability--;
+			BroadcastDurabilityChange(InvBody[INVLOC_CHEST]);
+			if (InvBody[INVLOC_CHEST]._iDurability == 0)
+				itemDestroyed = true;
+		}
+	}
+	if (itemDestroyed) {
+		CalcPlayerInventory(*this, true);
+	}
+#else // original code
+	if (!FlipCoin(4)) {
+		bool targetHead = FlipCoin(3);
+		if (!InvBody[INVLOC_CHEST].isEmptyOrUnwearable() && InvBody[INVLOC_HEAD].isEmptyOrUnwearable()) {
+			targetHead = false;
+		}
+		if (InvBody[INVLOC_CHEST].isEmptyOrUnwearable() && !InvBody[INVLOC_HEAD].isEmptyOrUnwearable()) {
+			targetHead = true;
+		}
+
+		Item *pi;
+		if (targetHead) {
+			pi = &InvBody[INVLOC_HEAD];
+		} else {
+			pi = &InvBody[INVLOC_CHEST];
+		}
+		if (pi->_iDurability == DUR_INDESTRUCTIBLE) {
+			return;
+		}
+
+		pi->_iDurability--;
+		if (pi->_iDurability != 0) {
+			return;
+		}
+
+		if (targetHead) {
+			RemoveEquipment(*this, INVLOC_HEAD, true);
+		} else {
+			RemoveEquipment(*this, INVLOC_CHEST, true);
+		}
+		CalcPlayerInventory(*this, true);
 	}
 #endif
+}
+
+static void DamageParryItem(Player &player)
+{
+	if (JWK_GOD_MODE_NO_ITEM_DAMAGE) { return; }
+
+	if (&player != MyPlayer) {
+		return;
+	}
+
+#if JWK_EDIT_DURABILITY_LOSS
+	if (player.isOnArenaLevel())
+		return;
+	if (!FlipCoin(20))
+		return;
+#else // original code
+	if (!FlipCoin(10))
+		return;
+#endif
+
+	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff) {
+		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == DUR_INDESTRUCTIBLE || !player.InvBody[INVLOC_HAND_LEFT]._iStatFlag) {
+			return;
+		}
+
+		player.InvBody[INVLOC_HAND_LEFT]._iDurability--;
+		player.BroadcastDurabilityChange(player.InvBody[INVLOC_HAND_LEFT]);
+		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == 0) {
+			if (!JWK_EDIT_DURABILITY_LOSS)
+				RemoveEquipment(player, INVLOC_HAND_LEFT, true);
+			CalcPlayerInventory(player, true);
+		}
+	}
+
+	if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) {
+		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability != DUR_INDESTRUCTIBLE && player.InvBody[INVLOC_HAND_RIGHT]._iStatFlag) {
+			player.InvBody[INVLOC_HAND_RIGHT]._iDurability--;
+			player.BroadcastDurabilityChange(player.InvBody[INVLOC_HAND_RIGHT]);
+			if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == 0) {
+				if (!JWK_EDIT_DURABILITY_LOSS)
+					RemoveEquipment(player, INVLOC_HAND_RIGHT, true);
+				CalcPlayerInventory(player, true);
+			}
+		}
+	}
+}
+
+static bool DoBlock(Player &player)
+{
+	if (player.AnimInfo.isLastFrame()) {
+		StartStand(player, player._pdir);
+		ClearStateVariables(player);
+		DamageParryItem(player);
+		return true;
+	}
 	return false;
 }
 
@@ -1024,7 +1164,7 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 	dam += player._pDamageMod;
 	if (player._pHeroClass == HeroClass::Warrior || player._pHeroClass == HeroClass::Barbarian) {
 #if JWK_EDIT_CRITICAL_STRIKE
-		if (GenerateRnd(200) < 10 + player._pLevel) { // 5.5% - 30% chance at level 1 - 50
+		if (GenerateRnd(200) < player._pLevel) { // 0.5% - 25% chance at level 1 - 50
 			dam *= 2;
 		}
 #else // original code
@@ -1035,11 +1175,17 @@ static bool PlayerAttackMonster(Player &player, Monster &monster, bool adjacentD
 	}
 
 	ItemType phanditype = ItemType::None;
-	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Sword || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Sword) {
-		phanditype = ItemType::Sword;
+	if (!player.InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable()) {
+		if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Sword)
+			phanditype = ItemType::Sword;
+		else if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Mace)
+			phanditype = ItemType::Mace;
 	}
-	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Mace || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Mace) {
-		phanditype = ItemType::Mace;
+	if (!player.InvBody[INVLOC_HAND_RIGHT].isEmptyOrUnwearable()) {
+		if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Sword)
+			phanditype = phanditype == ItemType::Mace? ItemType::None : ItemType::Sword; // handle dual wield case (mace + sword = no net damage mod)
+		else if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Mace)
+			phanditype = phanditype == ItemType::Sword? ItemType::None : ItemType::Mace; // handle dual wield case (mace + sword = no net damage mod)
 	}
 
 	switch (monster.data().monsterClass) {
@@ -1153,17 +1299,18 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 #endif
 	hitChance = clamp(hitChance, 5, 95);
 
-	int blockDiceRoll = 100;
-	if ((target._pmode == PM_STAND || target._pmode == PM_ATTACK) && target._pBlockFlag) {
-		blockDiceRoll = GenerateRnd(100);
-	}
-
-	int blockChance = target.GetBlockChance(attacker._pLevel);
+	if (JWK_EDIT_DURABILITY_LOSS)
+		target.DamageArmor();
 
 	if (diceRollToAvoidHit >= hitChance) {
 		return false;
 	}
 
+	int blockDiceRoll = 100;
+	if ((target._pmode == PM_STAND || target._pmode == PM_ATTACK) && target._pBlockFlag) {
+		blockDiceRoll = GenerateRnd(100);
+	}
+	int blockChance = target.GetBlockChance(attacker._pLevel);
 	if (blockDiceRoll < blockChance) {
 		Direction dir = GetDirection(target.position.tile, attacker.position.tile);
 		if (JWK_FIX_NETWORK_SYNC_AND_AUTHORITY) {
@@ -1181,7 +1328,7 @@ static bool PlayerAttackPlayer(Player &attacker, Player &target)
 
 	if (attacker._pHeroClass == HeroClass::Warrior || attacker._pHeroClass == HeroClass::Barbarian) {
 #if JWK_EDIT_CRITICAL_STRIKE
-		if (GenerateRnd(200) < 10 + attacker._pLevel) { // 5.5% - 30% chance at level 1 - 50
+		if (GenerateRnd(200) < attacker._pLevel) { // 0.5% - 25% chance at level 1 - 50
 			dam *= 2;
 		}
 #else // original code
@@ -1255,6 +1402,7 @@ static bool DoAttack(Player &player)
 				didhit = PlayerAttackObject(player, *object);
 			}
 		}
+#if JWK_ENABLE_MELEE_CLEAVE // This is the original code.  It's currently bugged because it doesn't check the statflag of equipped items (see isEmptyOrUnwearable).  Also... it's dumb that warrior can't cleave?
 		if ((player._pHeroClass == HeroClass::Monk
 		        && (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff || player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Staff))
 		    || (player._pHeroClass == HeroClass::Bard
@@ -1284,8 +1432,8 @@ static bool DoAttack(Player &player)
 				}
 			}
 		}
-
-#if JWK_REDUCE_ITEM_DURABILITY_LOSS // for melee weapons
+#endif
+#if JWK_EDIT_DURABILITY_LOSS // for melee weapons
 		if (didhit && DamageWeapon(player, 50)) {
 #else
 		if (didhit && DamageWeapon(player, 30)) {
@@ -1358,7 +1506,7 @@ static bool DoRangeAttack(Player &player)
 			PlaySfxLoc(arrows != 1 ? IS_STING1 : PS_BFIRE, player.position.tile);
 		}
 
-#if JWK_REDUCE_ITEM_DURABILITY_LOSS // for bows
+#if JWK_EDIT_DURABILITY_LOSS // for bows
 		if (DamageWeapon(player, 70)) {
 #else
 		if (DamageWeapon(player, 40)) {
@@ -1375,129 +1523,6 @@ static bool DoRangeAttack(Player &player)
 		return true;
 	}
 	return false;
-}
-
-static void DamageParryItem(Player &player)
-{
-	if (JWK_GOD_MODE_NO_ITEM_DAMAGE) { return; }
-
-	if (&player != MyPlayer) {
-		return;
-	}
-
-	if (player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield || player.InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Staff) {
-		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == DUR_INDESTRUCTIBLE) {
-			return;
-		}
-
-		player.InvBody[INVLOC_HAND_LEFT]._iDurability--;
-		if (player.InvBody[INVLOC_HAND_LEFT]._iDurability == 0) {
-			RemoveEquipment(player, INVLOC_HAND_LEFT, true);
-			CalcPlayerInventory(player, true);
-		}
-	}
-
-	if (player.InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield) {
-		if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability != DUR_INDESTRUCTIBLE) {
-			player.InvBody[INVLOC_HAND_RIGHT]._iDurability--;
-			if (player.InvBody[INVLOC_HAND_RIGHT]._iDurability == 0) {
-				RemoveEquipment(player, INVLOC_HAND_RIGHT, true);
-				CalcPlayerInventory(player, true);
-			}
-		}
-	}
-}
-
-static bool DoBlock(Player &player)
-{
-	if (player.AnimInfo.isLastFrame()) {
-		StartStand(player, player._pdir);
-		ClearStateVariables(player);
-
-#if JWK_REDUCE_ITEM_DURABILITY_LOSS
-		if (FlipCoin(20)) {
-			DamageParryItem(player);
-		}
-#else // original code
-		if (FlipCoin(10)) {
-			DamageParryItem(player);
-		}
-#endif
-		return true;
-	}
-
-	return false;
-}
-
-static void DamageArmor(Player &player)
-{
-	if (JWK_GOD_MODE_NO_ITEM_DAMAGE) { return; }
-
-	if (&player != MyPlayer) {
-		return;
-	}
-
-	if (player.InvBody[INVLOC_CHEST].isEmpty() && player.InvBody[INVLOC_HEAD].isEmpty()) {
-		return;
-	}
-
-#if JWK_REDUCE_ITEM_DURABILITY_LOSS // In addition to lower durability loss, also make the chance to damage head and chest slots independent of what's worn in the other slot.
-	bool itemLost = false;
-	if (!player.InvBody[INVLOC_HEAD].isEmpty() && !player.InvBody[INVLOC_HEAD]._iDurability == DUR_INDESTRUCTIBLE) {
-		if (FlipCoin(6)) {
-			player.InvBody[INVLOC_HEAD]._iDurability--;
-			if (player.InvBody[INVLOC_HEAD]._iDurability == 0)
-			{
-				RemoveEquipment(player, INVLOC_HEAD, true);
-				itemLost = true;
-			}
-		}
-	}
-	if (!player.InvBody[INVLOC_CHEST].isEmpty() && !player.InvBody[INVLOC_CHEST]._iDurability == DUR_INDESTRUCTIBLE) {
-		if (FlipCoin(3)) {
-			player.InvBody[INVLOC_CHEST]._iDurability--;
-			if (player.InvBody[INVLOC_CHEST]._iDurability == 0) {
-				RemoveEquipment(player, INVLOC_CHEST, true);
-				itemLost = true;
-			}
-		}
-	}
-	if (itemLost) {
-		CalcPlayerInventory(player, true);
-	}
-#else // original code
-	if (!FlipCoin(4)) {
-		bool targetHead = FlipCoin(3);
-		if (!player.InvBody[INVLOC_CHEST].isEmpty() && player.InvBody[INVLOC_HEAD].isEmpty()) {
-			targetHead = false;
-		}
-		if (player.InvBody[INVLOC_CHEST].isEmpty() && !player.InvBody[INVLOC_HEAD].isEmpty()) {
-			targetHead = true;
-		}
-
-		Item *pi;
-		if (targetHead) {
-			pi = &player.InvBody[INVLOC_HEAD];
-		} else {
-			pi = &player.InvBody[INVLOC_CHEST];
-		}
-		if (pi->_iDurability == DUR_INDESTRUCTIBLE) {
-			return;
-		}
-
-		pi->_iDurability--;
-		if (pi->_iDurability != 0) {
-			return;
-		}
-
-		if (targetHead) {
-			RemoveEquipment(player, INVLOC_HEAD, true);
-		} else {
-			RemoveEquipment(player, INVLOC_CHEST, true);
-		}
-		CalcPlayerInventory(player, true);
-	}
-#endif
 }
 
 static bool DoSpell(Player &player)
@@ -1531,7 +1556,8 @@ static bool DoGotHit(Player &player)
 	if (player.AnimInfo.isLastFrame()) {
 		StartStand(player, player._pdir);
 		ClearStateVariables(player);
-		DamageArmor(player);
+		if (!JWK_EDIT_DURABILITY_LOSS)
+			player.DamageArmor();
 		return true;
 	}
 	return false;
@@ -2071,9 +2097,39 @@ bool Player::CanUseItem(const Item &item) const
 	if (!IsItemValid(item))
 		return false;
 
-	return _pStrength >= item._iMinStr
+	return (item._iDurability > 0 || (item._iLoc != ILOC_ARMOR && item._iLoc != ILOC_HELM && item._iLoc != ILOC_ONEHAND && item._iLoc != ILOC_TWOHAND))
+		&& _pStrength >= item._iMinStr
 	    && _pMagic >= item._iMinMag
 	    && _pDexterity >= item._iMinDex;
+}
+
+// Inform other players that we changed duribility an item we own.  See matching recv function, OnChangeItemDurability()
+void Player::BroadcastDurabilityChange(Item& item) const
+{
+	if (this != MyPlayer || item.isEmpty())
+		return;
+
+	int slotCode = -1;
+	if (&item == &InvBody[INVLOC_HAND_LEFT])
+		slotCode = 0;
+	else if (&item == &InvBody[INVLOC_HAND_RIGHT])
+		slotCode = 1;
+	else if (&item == &InvBody[INVLOC_CHEST])
+		slotCode = 2;
+	else if (&item == &InvBody[INVLOC_HEAD])
+		slotCode = 3;
+	else {
+		for (size_t cell = 0; cell < InventoryGridCells; cell++) {
+			if (InvGrid[cell] != 0 && &item == &InvList[abs(InvGrid[cell]) - 1]) {
+				slotCode = cell << 2;
+				break;
+			}
+		}
+	}
+	assert(slotCode >= 0 && "We assume items can only have their durability changed when the item exists in the player's inventory");
+	assert(item._iDurability >= 0 && item._iDurability <= 255);
+	uint16_t param = (uint8_t)slotCode + (((uint8_t)item._iDurability) << 8);
+	NetSendCmdParam1(false, CMD_CHANGEITEMDURABILITY, param);
 }
 
 void Player::RemoveInvItem(int iv, bool calcScrolls)
@@ -3037,7 +3093,7 @@ void AddPlrMonstExper(int monsterLevel, int monsterExp, char whoHitMonsterFlags,
 Uint64 Player::GetSkillCooldownMilliseconds()
 {
 	if (_pHeroClass == HeroClass::Sorcerer) { return (1000*60)*20; }
-	else if (_pHeroClass == HeroClass::Warrior) { return (1000*60)*20; }
+	else if (_pHeroClass == HeroClass::Warrior) { return (1000*60)*15; }
 	else { return 0; }
 }
 #endif
@@ -3716,11 +3772,27 @@ void MakePlrPath(Player &player, Point targetPosition, bool endspace)
 void CalcPlrStaff(Player &player)
 {
 	player._pISpells = 0;
-	if (!player.InvBody[INVLOC_HAND_LEFT].isEmpty()
-	    && player.InvBody[INVLOC_HAND_LEFT]._iStatFlag
-	    && player.InvBody[INVLOC_HAND_LEFT]._iCharges > 0) {
+	if (!player.InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable() && player.InvBody[INVLOC_HAND_LEFT]._iCharges > 0) {
 		player._pISpells |= GetSpellBitmask(player.InvBody[INVLOC_HAND_LEFT]._iSpell);
 	}
+}
+
+ItemType Player::GetItemTypeForCombat()
+{
+	// In the dual weild case, we return the left hand weapon type
+	if (!InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable() && InvBody[INVLOC_HAND_LEFT]._iClass == ICLASS_WEAPON)
+		return InvBody[INVLOC_HAND_LEFT]._itype;
+
+	if (!InvBody[INVLOC_HAND_RIGHT].isEmptyOrUnwearable() && InvBody[INVLOC_HAND_RIGHT]._iClass == ICLASS_WEAPON)
+		return InvBody[INVLOC_HAND_RIGHT]._itype;
+
+	if (!InvBody[INVLOC_HAND_LEFT].isEmptyOrUnwearable() && InvBody[INVLOC_HAND_LEFT]._itype == ItemType::Shield)
+		return ItemType::Shield;
+
+	if (!InvBody[INVLOC_HAND_RIGHT].isEmptyOrUnwearable() && InvBody[INVLOC_HAND_RIGHT]._itype == ItemType::Shield)
+		return ItemType::Shield;
+
+	return ItemType::None;
 }
 
 void SyncPlrAnim(Player &player)

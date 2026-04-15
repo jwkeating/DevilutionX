@@ -113,7 +113,7 @@ struct Item {
 	uint8_t _iMaxDam = 0; // can be modified by hellfire oils
 	uint8_t _iThornsMin = 0;
 	uint8_t _iThornsMax = 0;
-	int16_t _iAC = 0;
+	int16_t _iAC = 0; // base armor of item
 	ItemSpecialEffect _iFlags = ItemSpecialEffect::None;
 	item_misc_id _iMiscId = IMISC_NONE;
 	SpellID _iSpell = SpellID::Null;
@@ -124,7 +124,7 @@ struct Item {
 	int _iMaxDur = 0;
 	int16_t _iPLDam = 0;
 	int16_t _iPLToHit = 0; // can be modified by hellfire oils
-	int16_t _iPLAC = 0;
+	int16_t _iPLAC = 0; // %armor buff which gets applied to base armor of item
 	int16_t _iPLStr = 0;
 	int16_t _iPLMag = 0;
 	int16_t _iPLDex = 0;
@@ -158,7 +158,7 @@ struct Item {
 	uint8_t _iMinStr = 0;
 	uint8_t _iMinMag = 0;
 	uint8_t _iMinDex = 0;
-	bool _iStatFlag = false; // true if player can wear this item (meets stat requirements)
+	bool _iStatFlag = false; // true if player can wear this item (meets stat requirements and item durability > 0)
 	ItemSpecialEffectHf _iDamAcFlags = ItemSpecialEffectHf::None;
 	uint32_t dwBuff = 0;
 
@@ -187,6 +187,12 @@ struct Item {
 	bool isEmpty() const
 	{
 		return this->_itype == ItemType::None;
+	}
+
+	// Returns true if the item is empty or it's unwearable due to stat requirements not being met or the item is broken (no durability)
+	bool isEmptyOrUnwearable() const
+	{
+		return _itype == ItemType::None || !_iStatFlag;
 	}
 
 	/**

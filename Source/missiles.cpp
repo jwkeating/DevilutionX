@@ -611,7 +611,7 @@ static bool MonsterHitByMissileFromPlayer(Player& player, Monster& monster, int 
 #endif
 #if JWK_EDIT_CRITICAL_STRIKE
 		if (player._pHeroClass == HeroClass::Rogue) {
-			if (GenerateRnd(200) < 10 + player._pLevel) { // 5.5% - 30% chance at level 1 - 50
+			if (GenerateRnd(200) < player._pLevel) { // 0.5% - 25% chance at level 1 - 50
 				dam *= 2;
 			}
 		}
@@ -747,6 +747,8 @@ bool PlayerHitByMissile(Player& player, Monster *monster, int dist, Point mStart
 	if (hitChance < minhit) {
 		hitChance = minhit;
 	}
+	if (JWK_EDIT_DURABILITY_LOSS)
+		player.DamageArmor();
 
 	int diceRollToAvoidHit = GenerateRnd(100);
 #ifdef _DEBUG
@@ -920,6 +922,8 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 	}
 	hitChance = clamp(hitChance, 5, 95);
 #endif
+	if (JWK_EDIT_DURABILITY_LOSS)
+		target.DamageArmor();
 
 	if (diceRollToAvoidHit >= hitChance) {
 		return false;
@@ -944,7 +948,7 @@ static bool PvPHitByMissile(Player& target, Player &attacker, int dist, Point mS
 			dam += attacker._pIBonusDamMod + attacker._pDamageMod + dam * attacker._pIBonusDam / 100;
 #if JWK_EDIT_CRITICAL_STRIKE
 			if (attacker._pHeroClass == HeroClass::Rogue) {
-				if (GenerateRnd(200) < 10 + attacker._pLevel) { // 5.5% - 30% chance at level 1 - 50
+				if (GenerateRnd(200) < attacker._pLevel) { // 0.5% - 25% chance at level 1 - 50
 					dam *= 2;
 				}
 			}

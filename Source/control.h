@@ -63,6 +63,9 @@ extern SDL_Rect PanBtnPos[8];
 void CalculatePanelAreas();
 bool IsChatAvailable();
 
+int CapStatPointsToAdd(int remainingStatPoints, const Player &player, CharacterAttribute attribute);
+int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c);
+
 /**
  * @brief Moves the mouse to the first attribute "+" button.
  */

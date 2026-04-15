@@ -1633,20 +1633,27 @@ void SmithRepairItem(int price)
 
 	Player &myPlayer = *MyPlayer;
 
+	Item* repairItem = nullptr;
 	if (i < 0) {
 		if (i == -1)
-			myPlayer.InvBody[INVLOC_HEAD]._iDurability = myPlayer.InvBody[INVLOC_HEAD]._iMaxDur;
-		if (i == -2)
-			myPlayer.InvBody[INVLOC_CHEST]._iDurability = myPlayer.InvBody[INVLOC_CHEST]._iMaxDur;
-		if (i == -3)
-			myPlayer.InvBody[INVLOC_HAND_LEFT]._iDurability = myPlayer.InvBody[INVLOC_HAND_LEFT]._iMaxDur;
-		if (i == -4)
-			myPlayer.InvBody[INVLOC_HAND_RIGHT]._iDurability = myPlayer.InvBody[INVLOC_HAND_RIGHT]._iMaxDur;
-		TakePlrsMoney(price);
-		return;
+			repairItem = &myPlayer.InvBody[INVLOC_HEAD];
+		else if (i == -2)
+			repairItem = &myPlayer.InvBody[INVLOC_CHEST];
+		else if (i == -3)
+			repairItem = &myPlayer.InvBody[INVLOC_HAND_LEFT];
+		else if (i == -4)
+			repairItem = &myPlayer.InvBody[INVLOC_HAND_RIGHT];
+	} else {
+		repairItem = &myPlayer.InvList[i];
 	}
-
-	myPlayer.InvList[i]._iDurability = myPlayer.InvList[i]._iMaxDur;
+	assert(repairItem);
+	bool wasBroken = repairItem->_iDurability <= 0;
+	repairItem->_iDurability = repairItem->_iMaxDur;
+	myPlayer.BroadcastDurabilityChange(*repairItem); // <- This must be called before changing any inventory items.  TakePlrsMoney() changes InvList[] which invalidates the repairItem pointer.
+	if (wasBroken) {
+		repairItem->_iStatFlag = myPlayer.CanUseItem(*repairItem);
+		CalcPlayerPowerFromItems(myPlayer, true);
+	}
 	TakePlrsMoney(price);
 }
 
@@ -2226,25 +2233,41 @@ void DrawSelector(const Surface &out, const Rectangle &rect, string_view text, U
 
 } // namespace
 
-void AddStoreHoldRepair(Item *itm, int8_t i)
+void AddStoreHoldRepair(Item *playerItem, int8_t i)
 {
-	Item *item;
+	Item *copiedItem;
 	int v;
 
-	item = &storehold[storenumh];
-	storehold[storenumh] = *itm;
+	copiedItem = &storehold[storenumh];
+	storehold[storenumh] = *playerItem;
 
-	int due = item->_iMaxDur - item->_iDurability;
-	if (item->_iMagical != ITEM_QUALITY_NORMAL && item->_iIdentified) {
-		v = 30 * item->_iIvalue * due / (item->_iMaxDur * 100 * 2);
+	if (copiedItem->_iDurability < 0) {
+		copiedItem->_iDurability = 0;
+		playerItem->_iDurability = 0;
+	}
+	if (copiedItem->_iMaxDur <= 0) {
+		copiedItem->_iMaxDur = 0;
+		playerItem->_iMaxDur = 0;
+		return;
+	}
+
+	int due = copiedItem->_iMaxDur - copiedItem->_iDurability;
+	if (copiedItem->_iMagical != ITEM_QUALITY_NORMAL && copiedItem->_iIdentified) {
+		v = 30 * copiedItem->_iIvalue * due / (copiedItem->_iMaxDur * 100 * 2);
 		if (v == 0)
 			return;
 	} else {
-		v = item->_ivalue * due / (item->_iMaxDur * 2);
+		v = copiedItem->_ivalue * due / (copiedItem->_iMaxDur * 2);
 		v = std::max(v, 1);
 	}
-	item->_iIvalue = v;
-	item->_ivalue = v;
+
+	if (JWK_EDIT_DURABILITY_LOSS && copiedItem->_iDurability == 0) {
+		// The smith charges a lot extra to repair destroyed items
+		v += std::min(9 * v, 100000);
+	}
+
+	copiedItem->_iIvalue = v;
+	copiedItem->_ivalue = v;
 	storehidx[storenumh] = i;
 	storenumh++;
 }

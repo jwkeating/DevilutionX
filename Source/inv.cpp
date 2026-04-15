@@ -1749,10 +1749,14 @@ bool CanPut(Point position)
 
 int ClampDurability(const Item &item, int durability)
 {
+#if JWK_EDIT_DURABILITY_LOSS
+	return clamp<int>(durability, 0, item._iMaxDur);
+#else
 	if (item._iMaxDur == 0)
 		return 0;
 
 	return clamp<int>(durability, 1, item._iMaxDur);
+#endif
 }
 
 int16_t ClampToHit(const Item &item, int16_t toHit)

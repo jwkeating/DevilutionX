@@ -26,6 +26,8 @@
 #include "stores.h"
 #include "utils/sdl_compat.h"
 
+#include "control.h" // jwk added
+
 namespace devilution {
 
 bool CharPanelButton[4];
@@ -151,68 +153,6 @@ void SetMainPanelButtonUp()
 {
 	RedrawComponent(PanelDrawComponent::ControlButtons);
 	MainPanelButtonDown = false;
-}
-
-int CapStatPointsToAdd(int remainingStatPoints, const Player &player, CharacterAttribute attribute)
-{
-	const int pointsToReachCap = player.GetMaximumAttributeValue(attribute) - player.GetBaseAttributeValue(attribute);
-
-	return std::min(remainingStatPoints, pointsToReachCap);
-}
-
-int DrawDurIcon4Item(const Surface &out, Item &pItem, int x, int c)
-{
-	const int durabilityThresholdGold = 5;
-	const int durabilityThresholdRed = 2;
-
-	if (pItem.isEmpty())
-		return x;
-	if (pItem._iDurability > durabilityThresholdGold)
-		return x;
-	if (c == 0) {
-		switch (pItem._itype) {
-		case ItemType::Sword:
-			c = 1;
-			break;
-		case ItemType::Axe:
-			c = 5;
-			break;
-		case ItemType::Bow:
-			c = 6;
-			break;
-		case ItemType::Mace:
-			c = 4;
-			break;
-		case ItemType::Staff:
-			c = 7;
-			break;
-		case ItemType::Shield:
-		default:
-			c = 0;
-			break;
-		}
-	}
-
-	// Calculate how much of the icon should be gold and red
-	const int height = (*pDurIcons)[c].height(); // Height of durability icon CEL
-	int partition = 0;
-	if (pItem._iDurability > durabilityThresholdRed) {
-		const int current = pItem._iDurability - durabilityThresholdRed;
-		partition = (height * current) / (durabilityThresholdGold - durabilityThresholdRed);
-	}
-
-	// Draw icon
-	const int y = -17 + GetMainPanel().position.y;
-	if (partition > 0) {
-		const Surface stenciledBuffer = out.subregionY(y - partition, partition);
-		ClxDraw(stenciledBuffer, { x, partition }, (*pDurIcons)[c + 8]); // Gold icon
-	}
-	if (partition != height) {
-		const Surface stenciledBuffer = out.subregionY(y - height, height - partition);
-		ClxDraw(stenciledBuffer, { x, height }, (*pDurIcons)[c]); // Red icon
-	}
-
-	return x - (*pDurIcons)[c].height() - 8; // Add in spacing for the next durability icon
 }
 
 bool IsLevelUpButtonVisible()

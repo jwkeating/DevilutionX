@@ -12,8 +12,8 @@
 #include "utils/enum_traits.h"
 
 #define JWK_BLACK_DEATH_NO_PERM_HP_LOSS 1 // Instead of -1HP to your permanent max health, black death does insane damage instead (likely killing the player in one hit).
-#define JWK_EDIT_CRITICAL_STRIKE 1 // Reduce melee critical strike chance for warriors/barbarians from 50% to 30%.  Add a similar critical strike chance for rogues using ranged attacks.
-#define JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE 1 // Use the same ranged attack damage formula for all classes instead of halving damage for non-rogue damage.  To compensate rogue, toggle JWK_EDIT_CRITICAL_STRIKE=1 which gives her a critical strike chance.
+#define JWK_EDIT_CRITICAL_STRIKE 1 // Reduce melee critical strike chance for warriors/barbarians from 50% to 25%.  Add a similar critical strike chance for rogues using ranged attacks.
+#define JWK_USE_CONSISTENT_MELEE_AND_RANGED_DAMAGE 1 // Use the same ranged attack damage formula for all classes instead of halving damage for non-rogue damage.
 #define JWK_EDIT_HIT_CHANCE 1 // If defined==2: consistent formula for everything.  If defined==1: Spells always hit, ranged has no distance penalty.  In both cases, remove the class-specific bonuses to hit chance so everything is based on stats (more consistent and easier for players to understand).
 #define JWK_EDIT_BLOCK_CHANCE 1 // Use new formula based on str/dex instead of purely dex
 #define JWK_EDIT_FAST_BLOCK 1 // Make fastblock -2 frames instead of -4 frames.  This only affects sorcerer because he's the only one who needs -4 frames to reach the block speed limit.
@@ -21,7 +21,7 @@
 #define JWK_RESISTANT_TARGETS_CAN_BE_STUNNED 1 // If true, resistance doesn't affect stuns other than reduced damage reduces chance of stun.  If false (original code), having fire/lightning/magic resistance (even 1%) prevents players/monsters from being stunned.
 #define JWK_ALLOW_LEECH_IN_PVP 1 // If true, allow life and mana leech weapons to function in pvp.  Original code does not allow weapon-based leech but it DOES allow life steal crown, which seems like a bug.
 #define JWK_BUFF_LIFE_STEAL_CROWN 1 // If true, buff life steal crown from random 0-12% leech to a constant 12% leech
-#define JWK_REDUCE_ITEM_DURABILITY_LOSS 1 // Make items get damaged at a slower rate (about half)
+#define JWK_EDIT_DURABILITY_LOSS 1 // Items no longer vanish when reaching 0 durability.  Instead, they enter a broken/unusable state which costs a lot to repair.  Rate of durability loss is a bit slower but armor can now be damaged whenever you're attacked instead of only when you take big hits.  I also added network code to sync durability changes across players.
 #define JWK_BUFF_DAMAGE_MULTIPIER_PREFIX 1 // Buff damage-only weapon prefixes like "Merciless" because otherwise "Kings" weapons have the same damage bonus AND hit chance increase, which makes the "Merciless" prefix kinda useless.
 #define JWK_LOOT_QUALITY_DEPENDS_ON_DIFFICULTY 1 // If true, monsters/chests drop loot based on their difficulty-adjusted level (+15 in nightmare, +30 in hell).  The original game didn't include the difficulty factor which meant monsters/chests could never drop loot above item level 30!
 #define JWK_ALLOW_DIABLO_LOOT 1 // If true, make Diablo drop more loot, and give the player time to loot before the game automatically ends
@@ -61,6 +61,7 @@
 #define JWK_DIABLO_CANT_BE_STUNLOCKED 1 // Similar to hellfire, make Diablo less easy to stunlock
 #define JWK_GUARDIAN_TARGETS_HOSTILE_PLAYERS 1 // If true, the guardian will target any players who have their pvp flag enabled (even if the caster doesn't have their flag enabled).  This makes the guardian more of a "defensive guardian" rather than something offensive.
 #define JWK_ALLOW_MORE_KEYBINDS 1 // Instead of just F5-F8, allow F2-F8 for binding spells.  This disables the quicksave/quickload keys F2,F3 in single player games but save/load can be accessed from the ESC menu.  If keybinds aren't working for a pre-existing game, check your diablo.ini file and make sure QuickSpell1=F2,etc and delete any QuickLoad/QuickSave keybinds.
+#define JWK_ENABLE_MELEE_CLEAVE 0 // Currently, this is just the original code.  Need to fix bugs and balance issues.
 
 // god modes and debug modes
 #define JWK_GOD_MODE_PLAYER_IMMUNE_TO_STUN 0
