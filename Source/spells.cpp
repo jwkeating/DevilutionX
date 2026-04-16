@@ -154,7 +154,7 @@ int GetManaAmount(const Player &player, SpellID spellID)
 	return ma;
 }
 
-void ConsumeSpell(Player &player, SpellID spellID, int manaCostMultiplier)
+void ConsumeSpell(Player &player, SpellID spellID, int spllvl, int manaCostMultiplier)
 {
 	if (JWK_GOD_MODE_SPELLS_COST_NOTHING) { return; }
 
@@ -185,10 +185,12 @@ void ConsumeSpell(Player &player, SpellID spellID, int manaCostMultiplier)
 	// Assuming mana shield is in sync... all players should be able to resolve the same result.
 	if (manaCostMultiplier != 0) {
 		if (spellID == SpellID::BloodStar) {
-			ApplyPlrDamage(DamageType::Physical, player, 5 * manaCostMultiplier, 0, 0, 100, player.getId(), DeathReason::MonsterOrTrap);
+			int healthCost = JWK_EDIT_BLOOD_STAR ? std::max<int>(1, 5 - spllvl / 4) : 5;
+			ApplyPlrDamage(DamageType::Physical, player, healthCost * manaCostMultiplier, 0, 0, 100, player.getId(), DeathReason::MonsterOrTrap);
 		}
 		if (spellID == SpellID::BoneSpirit) {
-			ApplyPlrDamage(DamageType::Physical, player, 6 * manaCostMultiplier, 0, 0, 100, player.getId(), DeathReason::MonsterOrTrap);
+			int healthCost = JWK_EDIT_BONE_SPIRIT ? 10 : 6;
+			ApplyPlrDamage(DamageType::Physical, player, healthCost * manaCostMultiplier, 0, 0, 100, player.getId(), DeathReason::MonsterOrTrap);
 		}
 	}
 }
@@ -291,7 +293,7 @@ void CastSpell(int playerID, SpellID spellID, int sx, int sy, int dx, int dy, in
 	}
 
 	if (!fizzled) {
-		ConsumeSpell(player, spellID, manaCostMultiplier);
+		ConsumeSpell(player, spellID, spllvl, manaCostMultiplier);
 	}
 }
 

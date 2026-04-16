@@ -593,9 +593,9 @@ static void StartSpell(Player &player, Direction d, WorldTileCoord cx, WorldTile
 	if (HasAnyOf(player._pIFlags, ItemSpecialEffect::FastCast)) {
 		// Sustained cast rate in frames (game ticks): Sorcerer=8.  Rogue/bard=12.  Monk=13.  Warrior/Barbarian=14.
 		if (includesFirstFrame) { // cast while walking (or potentially after getting hit?)
-			skippedAnimationFrames = 4;
-		} else { // sustained cast rate while standing still
 			skippedAnimationFrames = 3;
+		} else { // sustained cast rate while standing still
+			skippedAnimationFrames = 2;
 		}
 		// Don't let anyone cast faster than 8 frames.
 		int actionFrame = PlayersAnimData[(int)player._pHeroClass].castingActionFrame;

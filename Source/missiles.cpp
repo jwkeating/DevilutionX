@@ -134,13 +134,9 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcFlashDamageShifted(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	// "return 270 << 6;" deals 5130 damage in game.  5130/270 == 19 so flash does 19 ticks
-	return ScaleSpellEffect(player._pLevel + generateRndSumFunc(player._pLevel / 5, 4), spellLevel) * 6;
-	// original code: int dmg = player._pLevel + 1;
-	// original code: dmg += generateRndSumFunc(20, dmg);
-	// original code: dmg = ScaleSpellEffect(dmg, spellLevel);
-	// original code: dmg += dmg / 2;
-	// original code: return dmg;
+	// "return 270 << 6;" deals 5130 damage in game.  5130/270 == 19 which means flash does 19 ticks.
+	return ScaleSpellEffect(25 + player._pLevel, spellLevel) * 7 / 2;
+	// original code: return ScaleSpellEffect(player._pLevel + 1 + generateRndSumFunc(20, player._pLevel + 1), spellLevel) * 3 / 2;
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcNovaDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
@@ -149,8 +145,9 @@ template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int Calc
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcBloodStarDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
 {
-	// note: player._pHitPoints is shifted << 6
-	return ScaleSpellEffect(((50 + player._pLevel) * (300 + player._pMagic) * std::min(player._pHitPoints, player._pMana)) >> 16, spellLevel) / 128;
+	return ScaleSpellEffect(40 + player._pLevel, spellLevel);
+	// Alternate formula:  Deal damage based on player health.  Note: player._pHitPoints is shifted << 6.  This was a neat idea but sorcerer has 150 health unbuffed and like 500 health if he wears +health items.  This makes the spell either useless or overpowered.
+	// return ScaleSpellEffect(((50 + player._pLevel) * (300 + player._pMagic) * std::min(player._pHitPoints, player._pMana)) >> 16, spellLevel) / 128;
 	// original code: return 3 * spellLevel - (player._pMagic / 8) + (player._pMagic / 2);
 }
 template <typename GenerateRndFunc, typename GenerateRndSumFunc> static int CalcApocalypseDamage(const Player &player, int spellLevel, GenerateRndFunc generateRndFunc, GenerateRndSumFunc generateRndSumFunc)
@@ -3318,7 +3315,7 @@ static std::optional<Point> FindTargetInPoints(mienemy_type enemyType, Point poi
 	return {};
 }
 
-static constexpr int ChargedBoltDuration = 40;
+static constexpr int ChargedBoltDuration = 50;
 void ProcessChargedBolt(Missile &missile)
 {
 	missile._ticksUntilExpiry--;
@@ -3401,15 +3398,23 @@ void AddChargedBolt(Missile &missile, AddMissileParameter &parameter)
 {
 	Point dst = parameter.dst;
 	missile._mirnd = GenerateRnd(15) + 1;
-	if (missile._midam == 0) {
-		missile._midam = (missile._miEnemyType == TARGET_MONSTERS) ? CalcChargedBoltDamage(Players[missile._miSourceID], missile._mispllvl, GenerateRnd, GenerateRndSum) : ScaleTrapDamage(10);
-		missile._mlid = AddLight(missile.position.start, JWK_EDIT_CHARGED_BOLT ? 3 : 5);
-		missile._ticksUntilExpiry = JWK_EDIT_CHARGED_BOLT ? ChargedBoltDuration : 256;
-		// original code: missile._midam = (missile._miEnemyType == TARGET_MONSTERS) ? (GenerateRnd(Players[missile._miSourceID]._pMagic / 4) + 1) : 15;
+	if (missile._miEnemyType == TARGET_MONSTERS) {
+		if (missile._midam == 0) { // normal spell cast
+			missile._midam = CalcChargedBoltDamage(Players[missile._miSourceID], missile._mispllvl, GenerateRnd, GenerateRndSum);
+			missile._mlid = AddLight(missile.position.start, JWK_EDIT_CHARGED_BOLT ? 3 : 5);
+			missile._ticksUntilExpiry = JWK_EDIT_CHARGED_BOLT ? ChargedBoltDuration : 256;
+		} else { // Lightning arrow or some other non-spell
+			missile._ticksUntilExpiry = 45;
+			missile._mlid = AddLight(missile.position.start, 2);
+		}
 	} else {
-		// This charged bolt isn't a normal spellcast.  Lightning arrow, for example.
-		missile._ticksUntilExpiry = 35;
-		missile._mlid = AddLight(missile.position.start, 2);
+		missile._ticksUntilExpiry = 80;
+		if (missile._midam == 0) {
+			missile._midam = ScaleTrapDamage(20);
+			missile._mlid = AddLight(missile.position.start, 2);
+		} else { // Magistrate casts 3 charged bolts, damage coming from CounselorAi() and MonsterRangedAttack()
+			missile._mlid = AddLight(missile.position.start, 3);
+		}
 	}
 
 	if (missile.position.start == dst) {
@@ -4289,50 +4294,9 @@ void ProcessTownPortal(Missile &missile)
 	PutMissile(missile);
 }
 
-void AddFlashBottom(Missile &missile, AddMissileParameter &parameter)
-{
-	if (!parameter.pParent) {
-		missile._missileGroup = GenerateMissileGroup();
-	}
-	switch (missile.sourceType()) {
-	case MissileSource::Player: {
-		Player &player = *missile.sourcePlayer();
-		missile._midam = CalcFlashDamageShifted(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
-	} break;
-	case MissileSource::Monster:
-		// original code: missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 2;
-		// jwk - buff monster flash.  Now, a level 60 advocate in hell difficulty will do 60*4*19 >> 6 = 71 damage in game
-		// Note: When stun-locking a flash-casting monster, they sometimes do double damage (not sure why)
-		missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 4;
-		break;
-	case MissileSource::Trap:
-		missile._midam = TrapFlashDamage();
-		break;
-	}
-
-	missile._ticksUntilExpiry = 19;
-}
-
-void AddFlashTop(Missile &missile, AddMissileParameter &parameter)
-{
-	// FlashTop is the same effect as FlashBottom but for the North, NorthEast, East directions (possibly because in 2D rendering, the effect needs to be drawn under/over other objects.  See OperateShrineSparkling() which only spawns FlashBottom)
-	// jwk - The original code neglected to compute a damage value for FlashTop (0 damage).  I fixed this by calling AddFlashBottom to guarantee FlashTop matches FlashBottom:
-	AddFlashBottom(missile, parameter);
-	missile._miPreFlag = true;
-
-	// FlashTop should always come paired with FlashBottom because the bottom manages cleanup
-	assert(parameter.pParent && parameter.pParent->_mitype == MissileID::FlashBottom);
-}
-
-void RemoveFlash(Missile &missile)
-{
-	if (missile._miEnemyType == TARGET_MONSTERS && !missile.IsTrap())
-		Players[missile._miSourceID]._pInvincible = false;
-}
-
 void ProcessFlashBottom(Missile &missile)
 {
-	if (missile._miEnemyType == TARGET_MONSTERS && !missile.IsTrap()) {
+	if (!JWK_EDIT_FLASH && missile._miEnemyType == TARGET_MONSTERS && !missile.IsTrap()) {
 		Players[missile._miSourceID]._pInvincible = true;
 	}
 	missile._ticksUntilExpiry--;
@@ -4371,6 +4335,47 @@ void ProcessFlashTop(Missile &missile)
 		missile._miDelFlag = true;
 	}
 	PutMissile(missile);
+}
+
+void AddFlashBottom(Missile &missile, AddMissileParameter &parameter)
+{
+	if (!parameter.pParent) {
+		missile._missileGroup = GenerateMissileGroup();
+	}
+	switch (missile.sourceType()) {
+	case MissileSource::Player: {
+		Player &player = *missile.sourcePlayer();
+		missile._midam = CalcFlashDamageShifted(player, missile._mispllvl, GenerateRnd, GenerateRndSum);
+	} break;
+	case MissileSource::Monster:
+		// original code: missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 2;
+		// jwk - buff monster flash.  Now, a level 60 advocate in hell difficulty will do 60*4*19 >> 6 = 71 damage in game
+		// Note: When stun-locking a flash-casting monster, they sometimes do double damage. Not sure why - possibly a glitch in CounselorAi()?
+		missile._midam = missile.sourceMonster()->level(sgGameInitInfo.nDifficulty) * 4;
+		break;
+	case MissileSource::Trap:
+		missile._midam = TrapFlashDamage();
+		break;
+	}
+
+	missile._ticksUntilExpiry = 19;
+}
+
+void AddFlashTop(Missile &missile, AddMissileParameter &parameter)
+{
+	// FlashTop is the same effect as FlashBottom but for the North, NorthEast, East directions (possibly because in 2D rendering, the effect needs to be drawn under/over other objects.  See OperateShrineSparkling() which only spawns FlashBottom)
+	// jwk - The original code neglected to compute a damage value for FlashTop (0 damage).  I fixed this by calling AddFlashBottom to guarantee FlashTop matches FlashBottom:
+	AddFlashBottom(missile, parameter);
+	missile._miPreFlag = true;
+
+	// FlashTop should always come paired with FlashBottom because the bottom manages cleanup
+	assert(parameter.pParent && parameter.pParent->_mitype == MissileID::FlashBottom);
+}
+
+void RemoveFlash(Missile &missile)
+{
+	if (!JWK_EDIT_FLASH && missile._miEnemyType == TARGET_MONSTERS && !missile.IsTrap())
+		Players[missile._miSourceID]._pInvincible = false;
 }
 
 void ProcessFlameWave(Missile &missile)
