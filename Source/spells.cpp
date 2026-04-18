@@ -185,7 +185,7 @@ void ConsumeSpell(Player &player, SpellID spellID, int spllvl, int manaCostMulti
 	// Assuming mana shield is in sync... all players should be able to resolve the same result.
 	if (manaCostMultiplier != 0) {
 		if (spellID == SpellID::BloodStar) {
-			int healthCost = JWK_EDIT_BLOOD_STAR ? std::max<int>(1, 5 - spllvl / 4) : 5;
+			int healthCost = JWK_EDIT_BLOOD_STAR ? std::max<int>(1, 4 - spllvl / 5) : 5;
 			ApplyPlrDamage(DamageType::Physical, player, healthCost * manaCostMultiplier, 0, 0, 100, player.getId(), DeathReason::MonsterOrTrap);
 		}
 		if (spellID == SpellID::BoneSpirit) {

@@ -1067,8 +1067,8 @@ static bool DoBlock(Player &player)
 void Player::DoLifeAndManaSteal(int damage)
 {
 	if (HasAnyOf(_pIFlags, ItemSpecialEffect::RandomStealLife)) {
-#if JWK_BUFF_LIFE_STEAL_CROWN
-		int stealAmount = damage / 8;
+#if JWK_EDIT_LIFE_STEAL_CROWN
+		int stealAmount = GenerateRnd((5 * damage + 31) / 32); // round up
 #else // original code
 		int stealAmount = GenerateRnd(damage / 8);
 #endif

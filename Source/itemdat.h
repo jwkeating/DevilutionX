@@ -65,10 +65,36 @@ enum BaseItemIdx : int16_t { // This defines named constants for indexing the Al
 	IDI_BROWNSUIT,
 	IDI_GREYSUIT,
 	// ...missing entries...
+	IDI_RINGMAIL = 62,
+	IDI_CHAINMAIL,
+	IDI_SCALEMAIL,
+	IDI_BREASTPLATE,
+	IDI_SPLINTMAIL,
+	IDI_PLATEMAIL,
+	IDI_FIELDPLATE,
+	IDI_GOTHICPLATE,
+	IDI_FULLPLATE,
+	// ...missing entries...
+	IDI_OILOFSMITH = 83,
+	IDI_OILOFACC,
+	IDI_OILOFSHARP,
+	IDI_OILOF,
 	IDI_ELIXSTR = 87,
 	IDI_ELIXMAG,
 	IDI_ELIXDEX,
 	IDI_ELIXVIT,
+	// ...missing entries...
+	IDI_SEARCH = 92,
+	// ...missing entries...
+	IDI_STONECURSE = 105,
+	IDI_CHAINLIGHT = 106,
+	IDI_GUARDIAN = 107,
+	// ...missing entries...
+	IDI_NOVA = 109,
+	IDI_GOLEM = 110,
+	// ...missing entries...
+	IDI_TELEPORT = 112,
+	IDI_APOCALYPSE = 113,
 	// ...missing entries...
 	IDI_BOOK1 = 114,
 	IDI_BOOK2,
@@ -81,11 +107,14 @@ enum BaseItemIdx : int16_t { // This defines named constants for indexing the Al
 	// ...missing entries...
 	IDI_AMULET = 159,
 	// ...missing entries...
-	IDI_RUNEOFSTONE = 165,
+	IDI_RUNEFIRE = 161,
+	IDI_RUNELIGHT,
+	IDI_RUNEGRFIRE,
+	IDI_RUNEGRLIGHT,
+	IDI_RUNESTONE,
 	IDI_SORCERER_DIABLO,
 	IDI_ARENAPOT,
-
-	IDI_LAST = IDI_ARENAPOT,
+	IDI_NUM = 168,
 	IDI_NONE = -1,
 };
 
@@ -94,6 +123,7 @@ enum ItemPrefix : int16_t {
 	Prefix_Jesters = 83,
 	Prefix_Crystalline = 84,
 	Prefix_Doppelgangers = 85,
+	Prefix_NUM = 86,
 };
 
 // Define some named constants in the ItemSuffixes[] array
@@ -105,6 +135,7 @@ enum ItemSuffix : int16_t {
 	Suffix_Mistakes = 105,
 	Suffix_Channeling = 106,
 	Suffix_Evocation = 107,
+	Suffix_NUM = 108,
 };
 
 enum UniqueItemIdx : int8_t { // index into the UniqueItems[] array
@@ -199,6 +230,9 @@ enum UniqueItemIdx : int8_t { // index into the UniqueItems[] array
 	UITEM_BLEEDER,
 	UITEM_CONSTRICT,
 	UITEM_ENGAGE,
+	UITEM_LAST_DIABLO = UITEM_ENGAGE,
+	// A bunch of missing IDs...
+	UITEM_NUM = 110,
 	UITEM_INVALID = -1,
 };
 
@@ -725,9 +759,9 @@ struct UniqueItem {
 	ItemPower powers[6];
 };
 
-extern const BaseItemData AllItemsList[];
-extern const ItemAffixData ItemPrefixes[];
-extern const ItemAffixData ItemSuffixes[];
-extern const UniqueItem UniqueItems[];
+extern const std::array<BaseItemData, BaseItemIdx::IDI_NUM + 1> AllItemsList;
+extern const std::array<ItemAffixData, ItemPrefix::Prefix_NUM + 1> ItemPrefixes;
+extern const std::array<ItemAffixData, ItemSuffix::Suffix_NUM + 1> ItemSuffixes;
+extern const std::array<UniqueItem, UniqueItemIdx::UITEM_NUM + 1> UniqueItems;
 
 } // namespace devilution

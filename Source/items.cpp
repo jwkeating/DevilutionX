@@ -1391,18 +1391,18 @@ static void GenerateAffixesForItemOfAnyType(Item &item, int minlvl, int maxlvl, 
 
 bool IsUniqueAvailable(int i)
 {
-	return gbIsHellfire || i <= 89;
+	return gbIsHellfire || i <= UniqueItemIdx::UITEM_LAST_DIABLO;
 }
 
 bool IsItemAvailable(int idx)
 {
-	if (idx < 0 || idx > IDI_LAST)
+	if (idx < 0 || idx >= IDI_NUM)
 		return false;
 
 	if (gbIsDemoGame) {
-		if (idx >= 62 && idx <= 70)
+		if (idx >= IDI_RINGMAIL && idx <= IDI_FULLPLATE)
 			return false; // Medium and heavy armors
-		if (IsAnyOf(idx, 105, 107, 108, 110, 111, 113))
+		if (idx >= IDI_STONECURSE && idx <= IDI_APOCALYPSE)
 			return false; // Unavailable scrolls
 	}
 
@@ -1410,13 +1410,13 @@ bool IsItemAvailable(int idx)
 		return true;
 
 	return (
-	           idx != IDI_MAPOFDOOM                     // Cathedral Map
-	           && idx != IDI_LGTFORGE                   // Bovine Plate
-	           && (idx < IDI_OIL || idx > IDI_GREYSUIT) // Hellfire exclusive items
-	           && (idx < 83 || idx > 86)                // Oils
-	           && idx != 92                             // Scroll of Search
-	           && (idx < 161 || idx > 165)              // Runes
-	           && idx != IDI_SORCERER                   // Short Staff of Mana
+	           idx != IDI_MAPOFDOOM                           // Cathedral Map
+	           && idx != IDI_LGTFORGE                         // Bovine Plate
+	           && (idx < IDI_OIL || idx > IDI_GREYSUIT)       // Hellfire exclusive items
+	           && (idx < IDI_OILOFSMITH || idx > IDI_OILOF)   // Oils
+	           && idx != IDI_SEARCH                           // Scroll of Search
+	           && (idx < IDI_RUNEFIRE || idx > IDI_RUNESTONE) // Runes
+	           && idx != IDI_SORCERER                         // Short Staff of Mana
 	           )
 	    || (
 	        // Bard items are technically Hellfire-exclusive
@@ -1426,10 +1426,10 @@ bool IsItemAvailable(int idx)
 
 static BaseItemIdx SelectRandomBaseItem(bool considerDropRate, tl::function_ref<bool(const BaseItemData &item)> isItemOkay)
 {
-	static std::array<BaseItemIdx, IDI_LAST * 2> choices;
+	static std::array<BaseItemIdx, IDI_NUM * 2> choices;
 
 	size_t numChoices = 0;
-	for (std::underlying_type_t<BaseItemIdx> i = IDI_GOLD; i <= IDI_LAST; i++) {
+	for (std::underlying_type_t<BaseItemIdx> i = IDI_GOLD; i < IDI_NUM; i++) {
 		if (!IsItemAvailable(i))
 			continue;
 		const BaseItemData &item = AllItemsList[i];
@@ -1536,6 +1536,7 @@ static UniqueItemIdx SelectRandomUniqueItem(Item &item, int maxLevel, int percen
 
 static void ApplyUniqueItemPropertiesToItem(Item &item, UniqueItemIdx uid)
 {
+	static_assert(UniqueItemFlags.size() >= UniqueItemIdx::UITEM_NUM, "Ensure flags array is large enough");
 	UniqueItemFlags[uid] = true;
 
 	for (auto power : UniqueItems[uid].powers) {
@@ -1616,7 +1617,8 @@ static void ConstructItemFromSeed(Item &item, BaseItemIdx idx, uint32_t iseed, i
 			ApplyRandomDurability(item);
 	} else {
 		if (item._iLoc != ILOC_UNEQUIPABLE) {
-			if (iseed > 109 || AllItemsList[static_cast<size_t>(idx)].iItemId != UniqueItems[iseed].UIItemId) { // jwk wtf is this?
+			// iSeed is used as index into the UniqueItems[] array
+			if (iseed >= UITEM_NUM || AllItemsList[static_cast<size_t>(idx)].iItemId != UniqueItems[iseed].UIItemId) {
 				item.clear();
 				return;
 			}
@@ -4744,7 +4746,7 @@ std::string DebugSpawnUniqueItem(std::string itemName)
 		return "No unique found!";
 
 	BaseItemIdx uniqueBaseIndex = IDI_GOLD;
-	for (std::underlying_type_t<BaseItemIdx> j = IDI_GOLD; j <= IDI_LAST; j++) {
+	for (std::underlying_type_t<BaseItemIdx> j = IDI_GOLD; j < IDI_NUM; j++) {
 		if (!IsItemAvailable(j))
 			continue;
 		if (AllItemsList[j].iItemId == uniqueItem.UIItemId) {

@@ -433,7 +433,7 @@ bool UnPackNetItem(const Player &player, const ItemNetPack &packedItem, Item &it
 {
 	item = {};
 	BaseItemIdx idx = static_cast<BaseItemIdx>(SDL_SwapLE16(packedItem.def.wIndx));
-	if (idx < 0 || idx > IDI_LAST)
+	if (idx < 0 || idx >= IDI_NUM)
 		return true;
 	if (idx == IDI_EAR) {
 		RecreateEar(item, SDL_SwapLE16(packedItem.ear.wCI), SDL_SwapLE32(packedItem.ear.dwSeed), packedItem.ear.bCursval, packedItem.ear.heroname);
