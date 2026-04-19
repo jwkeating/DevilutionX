@@ -700,17 +700,17 @@ void UpdateEnemy(Monster &monster)
 		if (isPlayerMinion && otherMonster.isPlayerMinion()) // prevent golems from fighting each other
 			continue;
 #if JWK_EDIT_GOLEM
-		if (monster.flags & MFLAG_GOLEM) {
-			// Only select targets that aren't too far from the owning player
+		if (isPlayerMinion) {
+			// Golems should only select targets that aren't too far from their owning player
 			Displacement d = Point(otherMonster.position.tile) - Point(Players[monster.getId()].position.future);
 			int sqrDistFromOwner = d.deltaX * d.deltaX + d.deltaY * d.deltaY;
-			if ((monster.flags & MFLAG_GOLEM) && sqrDistFromOwner > 100)
+			if (sqrDistFromOwner > 100)
 				continue;
 		}
 #endif
 		const int dist = otherMonster.position.tile.WalkingDistance(position);
-		if ((monster.flags & (MFLAG_GOLEM | MFLAG_BERSERK)) == 0) {
-			if ((dist >= 2 && !IsRanged(monster)) || ((otherMonster.flags & MFLAG_GOLEM) == 0)) {
+		if ((monster.flags & (MFLAG_GOLEM | MFLAG_BERSERK)) == 0) { // not a golem, not berserked
+			if ((dist >= 2 && !IsRanged(monster)) || !otherMonster.isPlayerMinion()) {
 				continue;
 			}
 		}
@@ -1784,31 +1784,41 @@ void GroupUnity(Monster &monster)
 
 static bool RandomWalkTurn(Monster &monster, Direction md)
 {
-	Direction mdtemp = md;
-
 	bool ok = false;
-	if (FlipCoin())
-		ok = ok || (md = Right(mdtemp), DirOK(monster, md)) || (md = Left(mdtemp), DirOK(monster, md));
-	else
-		ok = ok || (md = Left(mdtemp), DirOK(monster, md)) || (md = Right(mdtemp), DirOK(monster, md));
-	if (FlipCoin()) {
-		ok = ok
-		    || (md = Left(Left(mdtemp)), DirOK(monster, md))
-		    || (md = Right(Right(mdtemp)), DirOK(monster, md));
+	Direction r = Right(md);
+	Direction l = Left(md);
+	int coinFlips = GenerateRnd(8);
+	if (coinFlips & 1) {
+		ok = ok || (md = r, DirOK(monster, md)) || (md = l, DirOK(monster, md));
 	} else {
-		ok = ok
-		    || (md = Right(Right(mdtemp)), DirOK(monster, md))
-		    || (md = Left(Left(mdtemp)), DirOK(monster, md));
+		ok = ok || (md = l, DirOK(monster, md)) || (md = r, DirOK(monster, md));
 	}
-	if (ok)
+	if (!ok) {
+		r = Right(r);
+		l = Left(l);
+		if (coinFlips & 2) {
+			ok = ok || (md = r, DirOK(monster, md)) || (md = l, DirOK(monster, md));
+		} else {
+			ok = ok || (md = l, DirOK(monster, md)) || (md = r, DirOK(monster, md));
+		}
+		if (!ok) {
+			r = Right(r);
+			l = Left(l);
+			if (coinFlips & 4) {
+				ok = ok || (md = r, DirOK(monster, md)) || (md = l, DirOK(monster, md));
+			} else {
+				ok = ok || (md = l, DirOK(monster, md)) || (md = r, DirOK(monster, md));
+			}
+		}
+	}
+	if (ok) {
 		Walk(monster, md);
+	}
 	return ok;
 }
 
 static bool RandomWalk(Monster &monster, Direction md)
 {
-	Direction mdtemp = md;
-
 	bool ok = DirOK(monster, md);
 	if (ok) {
 		Walk(monster, md);
@@ -1819,19 +1829,20 @@ static bool RandomWalk(Monster &monster, Direction md)
 
 static bool RandomWalk2(Monster &monster, Direction md)
 {
-	Direction mdtemp = md;
 	bool ok = DirOK(monster, md); // Can we continue in the same direction
+
+	Direction r = Right(md);
+	Direction l = Left(md);
 
 	// Randomly go left or right
 	if (FlipCoin()) {
-		ok = ok || (mdtemp = Right(md), DirOK(monster, Right(md))) || (mdtemp = Left(md), DirOK(monster, Left(md)));
+		ok = ok || (md = r, DirOK(monster, r)) || (md = l, DirOK(monster, l));
 	} else {
-		ok = ok || (mdtemp = Left(md), DirOK(monster, Left(md))) || (mdtemp = Right(md), DirOK(monster, Right(md)));
+		ok = ok || (md = l, DirOK(monster, l)) || (md = r, DirOK(monster, r));
 	}
-
-	if (ok)
-		Walk(monster, mdtemp);
-
+	if (ok) {
+		Walk(monster, md);
+	}
 	return ok;
 }
 
@@ -5025,7 +5036,11 @@ bool Monster::isResistant(MissileID missileType, DamageType missileElement) cons
 
 bool Monster::isPlayerMinion() const
 {
+#if JWK_EDIT_GOLEM
+	return (flags & MFLAG_GOLEM) != 0;
+#else // original code.  Golems can't be berserked so I'm not sure why the berserk flag is relevant
 	return (flags & MFLAG_GOLEM) != 0 && (flags & MFLAG_BERSERK) == 0;
+#endif
 }
 
 bool Monster::isPossibleToHit() const

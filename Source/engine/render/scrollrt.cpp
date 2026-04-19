@@ -379,8 +379,16 @@ void DrawMonster(const Surface &out, Point tilePosition, Point targetBufferPosit
 		trn = GetInfravisionTRN();
 	if (trn != nullptr)
 		ClxDrawTRN(out, targetBufferPosition, sprite, trn);
-	else
-		ClxDrawLight(out, targetBufferPosition, sprite, LightTableIndex);
+	else {
+#if JWK_EDIT_GOLEM // Draw the golem with fixed lighting, similar to the player sprite.  Otherwise, the golem flickers in a bugged-looking way.
+		if (monster.isPlayerMinion()) {
+			constexpr int LightingForGolem = 1; // 0 is the brightest, 15 is the darkest
+			ClxDrawLight(out, targetBufferPosition, sprite, LightingForGolem);
+		} else {
+#endif
+			ClxDrawLight(out, targetBufferPosition, sprite, LightTableIndex);
+		}
+	}
 }
 
 /**

@@ -1790,7 +1790,11 @@ void AddBerserk(Missile &missile, AddMissileParameter &parameter)
 		auto &monster = Monsters[abs(dMonster[targetMonsterPosition->x][targetMonsterPosition->y]) - 1];
 		Player &player = *missile.sourcePlayer();
 		const int slvl = player.GetSpellLevel(SpellID::Berserk);
+#if JWK_EDIT_GOLEM
+		monster.flags |= MFLAG_BERSERK;
+#else // original code (seems wrong to add golem flag to berserked monsters)
 		monster.flags |= MFLAG_BERSERK | MFLAG_GOLEM;
+#endif
 		monster.minDamage = (GenerateRnd(10) + 120) * monster.minDamage / 100 + slvl;
 		monster.maxDamage = (GenerateRnd(10) + 120) * monster.maxDamage / 100 + slvl;
 		monster.minDamageSpecial = (GenerateRnd(10) + 120) * monster.minDamageSpecial / 100 + slvl;
