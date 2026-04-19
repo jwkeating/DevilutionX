@@ -326,6 +326,15 @@ static void StartAttack(Player &player, Direction d, bool includesFirstFrame)
 		} else if (player._pHeroClass == HeroClass::Barbarian) {
 			skippedAnimationFrames += 2; // change default swing from 10 -> 8 frames
 		}
+	} else if (weaponItemType == ItemType::Bow) {
+		// Breaking a barrel with a bow is considered a melee attack (Even though shooting a monster at point blank is considered a ranged attack)
+		// Fire speed in frames (game ticks):  Rogue=8.  Bard=9.  Warrior/Barbarian=11.  Monk=14.  Sorcerer=16.
+		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].bowActionFrame;
+		if (player._pHeroClass == HeroClass::Sorcerer) {
+			skippedAnimationFrames += 2; // Change default fire rate from 16 -> 14 frames
+		} else if (player._pHeroClass == HeroClass::Monk) {
+			skippedAnimationFrames += 1; // Change default fire rate from 14 -> 13 frames
+		}
 	} else if (weaponItemType == ItemType::Shield) { // unarmed with shield
 		numFramesForClass = PlayersAnimData[static_cast<int>(player._pHeroClass)].unarmedShieldActionFrame;
 		if (player._pHeroClass != HeroClass::Monk && player._pHeroClass != HeroClass::Sorcerer) {
